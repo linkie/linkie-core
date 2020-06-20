@@ -67,13 +67,13 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
 
     private fun loadFromCachedFile(cachedFile: File): MappingsContainer? =
             runCatching {
-                namespace.json.parse(MappingsContainer.serializer(), cachedFile.readText())
+                json.parse(MappingsContainer.serializer(), cachedFile.readText())
             }.also {
                 it.exceptionOrNull()?.printStackTrace()
             }.getOrNull()
 
     private fun MappingsContainer.saveToCachedFile(cachedFile: File) =
-            cachedFile.writeText(namespace.json.stringify(MappingsContainer.serializer(), this))
+            cachedFile.writeText(json.stringify(MappingsContainer.serializer(), this))
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: () -> MappingsContainer) : MappingsSupplier {
