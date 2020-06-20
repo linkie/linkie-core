@@ -53,7 +53,7 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     override fun applyVersion(version: String): MappingsContainer {
         val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.json")
+        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.dat")
         if (cachedFile.exists()) {
             val mappingsContainer = loadFromCachedFile(cachedFile)
             if (mappingsContainer != null) return mappingsContainer
@@ -66,14 +66,10 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     }
 
     private fun loadFromCachedFile(cachedFile: File): MappingsContainer? =
-            runCatching {
-                json.parse(MappingsContainer.serializer(), cachedFile.readText())
-            }.also {
-                it.exceptionOrNull()?.printStackTrace()
-            }.getOrNull()
+            outputBuffer(cachedFile.readBytes()).readMappingsContainer()
 
     private fun MappingsContainer.saveToCachedFile(cachedFile: File) =
-            cachedFile.writeText(json.stringify(MappingsContainer.serializer(), this))
+            cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toByteArray())
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: () -> MappingsContainer) : MappingsSupplier {
