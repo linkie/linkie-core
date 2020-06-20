@@ -2,6 +2,8 @@
 
 package me.shedaniel.linkie
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonConfiguration
 import java.io.File
 
 interface MappingsSupplier {
@@ -42,6 +44,8 @@ private class LoggedMappingsSupplier(val namespace: Namespace, val mappingsSuppl
         return mappingsSupplier.applyVersion(version).also { println("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms") }
     }
 }
+
+private val json = Json(JsonConfiguration.Stable.copy(encodeDefaults = false, ignoreUnknownKeys = true, isLenient = true))
 
 private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (String) -> String, val mappingsSupplier: MappingsSupplier) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)

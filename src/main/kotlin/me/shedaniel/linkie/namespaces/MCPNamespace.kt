@@ -15,7 +15,7 @@ object MCPNamespace : Namespace("mcp") {
 
     init {
         registerSupplier(multipleCachedSupplier({ getAllVersions() }, {
-            "it-${mcpConfigSnapshots[it.toVersion()]?.max()!!}"
+            "$it-${mcpConfigSnapshots[it.toVersion()]?.max()!!}"
         }) {
             MappingsContainer(it, name = "MCP").apply {
                 val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.max()!!
