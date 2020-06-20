@@ -9,7 +9,7 @@ plugins {
 }
 
 group "me.shedaniel"
-version "1.0.0"
+version "1.0.1"
 
 sourceCompatibility = targetCompatibility = 1.8
 
@@ -86,7 +86,7 @@ bintray {
 publishing {
     publications {
         publication(MavenPublication) {
-            artifact(jar)
+            from components.java
             artifact(sourcesJar)
             artifact(javadocsJar)
         }
