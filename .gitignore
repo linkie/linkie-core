@@ -1,0 +1,17 @@
+target
+
+\.idea/
+
+\.gradle/
+
+build/
+
+out/
+
+node_modules
+build
+npm-debug.log
+.env
+.DS_Store
+
+.tmpaccesswidener/

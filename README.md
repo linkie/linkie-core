@@ -1,2 +1,2 @@
 # linkie-core
-The absolute core of linkie
+The absolute core of linkie.
