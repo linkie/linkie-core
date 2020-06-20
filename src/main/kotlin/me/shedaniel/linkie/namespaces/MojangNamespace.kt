@@ -1,9 +1,7 @@
 package me.shedaniel.linkie.namespaces
 
 import kotlinx.serialization.json.content
-import me.shedaniel.linkie.Class
-import me.shedaniel.linkie.MappingsContainer
-import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.onlyClass
 import me.shedaniel.linkie.utils.remapMethodDescriptor
 import me.shedaniel.linkie.utils.toVersion
@@ -16,21 +14,17 @@ object MojangNamespace : Namespace("mojang") {
     private var latestRelease = ""
 
     init {
-        registerProvider({ it == "1.14.4" }) {
+        registerSupplier(simpleCachedSupplier("1.14.4") {
             MappingsContainer(it, name = "Mojang").apply {
-                println("Loading mojmap for $version")
-                classes.clear()
                 readMojangMappings(
                         client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
                         server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
                 )
                 mappingSource = MappingsContainer.MappingSource.MOJANG
             }
-        }
-        registerProvider({ it in versionJsonMap.keys }) {
+        })
+        registerSupplier(multipleCachedSupplier({ versionJsonMap.keys }, { it }) {
             MappingsContainer(it, name = "Mojang").apply {
-                println("Loading mojmap for $version")
-                classes.clear()
                 val url = URL(versionJsonMap[version])
                 val versionJson = json.parseJson(url.readText()).jsonObject
                 val downloads = versionJson["downloads"]!!.jsonObject
@@ -40,7 +34,7 @@ object MojangNamespace : Namespace("mojang") {
                 )
                 mappingSource = MappingsContainer.MappingSource.MOJANG
             }
-        }
+        })
     }
 
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
@@ -118,7 +112,7 @@ object MojangNamespace : Namespace("mojang") {
                         getOrCreateField(split[1], split[0].toActualDescription()).apply {
                             obfName.merged = split[2]
                             invokes.add {
-                                obfDesc.merged = obfDesc.merged ?: intermediaryDesc.remapMethodDescriptor {descClass ->
+                                obfDesc.merged = obfDesc.merged ?: intermediaryDesc.remapMethodDescriptor { descClass ->
                                     getClass(descClass)?.obfName?.merged ?: descClass
                                 }
                             }

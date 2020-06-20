@@ -6,7 +6,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import me.shedaniel.linkie.utils.tryToVersion
-import net.fabricmc.mappings.MappingsProvider
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -21,7 +20,7 @@ abstract class Namespace(val id: String) {
     override fun toString(): String = id
 
     private val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
-    private val mappingsProviders = mutableMapOf<(String) -> Boolean, (String) -> MappingsContainer>()
+    private val mappingsSuppliers = mutableListOf<MappingsSupplier>()
     val json = Json(JsonConfiguration.Stable.copy(ignoreUnknownKeys = true, isLenient = true))
     var reloading = false
 
@@ -50,15 +49,14 @@ abstract class Namespace(val id: String) {
     fun getAllSortedVersions(): List<String> =
             getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
 
-    protected fun registerProvider(versionPredicate: (String) -> Boolean, containerProvider: (String) -> MappingsContainer) {
-        mappingsProviders[versionPredicate] = containerProvider
+    protected fun registerSupplier(mappingsSupplier: MappingsSupplier) {
+        mappingsSuppliers.add(loggedSupplier(mappingsSupplier))
     }
 
     operator fun get(version: String): MappingsContainer? = cachedMappings.firstOrNull { it.version == version.toLowerCase(Locale.ROOT) }
 
     fun create(version: String): MappingsContainer? {
-        val entry = mappingsProviders.entries.firstOrNull { it.key(version) } ?: return null
-        return entry.value(version)
+        return mappingsSuppliers.firstOrNull { it.isApplicable(version) }?.applyVersion(version)
     }
 
     fun createAndAdd(version: String): MappingsContainer? =
@@ -81,8 +79,8 @@ abstract class Namespace(val id: String) {
         if (container != null) {
             return MappingsProvider.of(version, container)
         }
-        val entry = mappingsProviders.entries.firstOrNull { it.key(version) } ?: return MappingsProvider.ofEmpty()
-        return MappingsProvider.ofSupplier(version, false) { entry.value(version).also { cachedMappings.add(it).limitCachedData() } }
+        val entry = mappingsSuppliers.firstOrNull { it.isApplicable(version) } ?: return MappingsProvider.empty()
+        return MappingsProvider.supply(version, false) { entry.applyVersion(version).also { cachedMappings.add(it).limitCachedData() } }
     }
 
     fun getDefaultProvider(command: String?, channelId: Long?): MappingsProvider {
@@ -94,29 +92,4 @@ abstract class Namespace(val id: String) {
     open fun supportsAT(): Boolean = false
     open fun supportsAW(): Boolean = false
     open fun supportsFieldDescription(): Boolean = true
-
-    data class MappingsProvider(var version: String?, var cached: Boolean?, var mappingsContainer: (() -> MappingsContainer)?) {
-        companion object {
-            fun of(version: String, mappingsContainer: MappingsContainer?): MappingsProvider =
-                    if (mappingsContainer == null)
-                        ofSupplier(version, null, null)
-                    else ofSupplier(version, true) { mappingsContainer }
-
-            fun ofSupplier(version: String?, cached: Boolean?, mappingsContainer: (() -> MappingsContainer)?): MappingsProvider =
-                    MappingsProvider(version, cached, mappingsContainer)
-
-            fun ofEmpty(): MappingsProvider =
-                    MappingsProvider(null, null, null)
-        }
-
-        fun isEmpty(): Boolean = version == null || cached == null || mappingsContainer == null
-
-        fun injectDefaultVersion(mappingsProvider: MappingsProvider) {
-            if (isEmpty() && !mappingsProvider.isEmpty()) {
-                version = mappingsProvider.version
-                cached = mappingsProvider.cached
-                mappingsContainer = mappingsProvider.mappingsContainer
-            }
-        }
-    }
 }

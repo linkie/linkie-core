@@ -2,21 +2,20 @@ package me.shedaniel.linkie.namespaces
 
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.simpleCachedSupplier
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.URL
 
 object SpigotNamespace : Namespace("spigot") {
     init {
-        registerProvider({ it == "1.8.9" }) {
+        registerSupplier(simpleCachedSupplier("1.8.9") {
             MappingsContainer(it, name = "Spigot").apply {
-                println("Loading spigot mappings for $version")
-                classes.clear()
                 loadClassFromSpigot(URL("https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/bukkit-1.15.2-cl.csrg?at=refs%2Fheads%2Fmaster").openStream())
                 loadMembersFromSpigot(URL("https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/bukkit-1.15.2-members.csrg?at=refs%2Fheads%2Fmaster").openStream())
                 mappingSource = MappingsContainer.MappingSource.SPIGOT
             }
-        }
+        })
     }
 
     override fun getDefaultLoadedVersions(): List<String> = listOf()

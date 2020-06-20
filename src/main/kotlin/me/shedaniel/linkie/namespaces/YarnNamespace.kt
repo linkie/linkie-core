@@ -20,32 +20,28 @@ object YarnNamespace : Namespace("yarn") {
 
     init {
         YarnV2BlackList.loadData()
-        registerProvider({ it == "1.2.5" }) {
+        registerSupplier(simpleSupplier("1.2.5") {
             MappingsContainer(it, name = "Yarn").apply {
-                println("Loading yarn for $version")
-                classes.clear()
                 loadIntermediaryFromTinyFile(URL("https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"))
                 loadNamedFromGithubRepo("Blayyke/yarn", "1.2.5", showError = false)
                 mappingSource = MappingsContainer.MappingSource.ENGIMA
             }
-        }
-        registerProvider({ it == "1.8.9" }) {
+        })
+        registerSupplier(simpleSupplier("1.8.9") {
             MappingsContainer(it, name = "Yarn").apply {
-                println("Loading yarn for $version")
-                classes.clear()
                 loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
-                loadNamedFromMaven(yarnVersion = yarnBuild1_8_9, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
+                mappingSource = loadNamedFromMaven(yarnVersion = yarnBuild1_8_9, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
             }
-        }
-        registerProvider({ it in yarnBuilds.keys }) {
+        })
+        registerSupplier(multipleCachedSupplier({ yarnBuilds.keys }, { version ->
+            yarnBuilds[version]!!.maven.let { it.substring(it.lastIndexOf(':') + 1) }
+        }) {
             MappingsContainer(it, name = "Yarn").apply {
-                println("Loading yarn for $version")
-                classes.clear()
                 loadIntermediaryFromMaven(version)
                 val yarnMaven = yarnBuilds[version]!!.maven
-                loadNamedFromMaven(yarnMaven.substring(yarnMaven.lastIndexOf(':') + 1), showError = false)
+                mappingSource = loadNamedFromMaven(yarnMaven.substring(yarnMaven.lastIndexOf(':') + 1), showError = false)
             }
-        }
+        })
     }
 
     override fun getDefaultLoadedVersions(): List<String> {
@@ -161,8 +157,8 @@ object YarnNamespace : Namespace("yarn") {
             repo: String = "https://maven.fabricmc.net",
             group: String = "net.fabricmc.yarn",
             showError: Boolean = true
-    ) {
-        mappingSource = if (YarnV2BlackList.blacklist.contains(yarnVersion)) {
+    ): MappingsContainer.MappingSource {
+        return if (YarnV2BlackList.blacklist.contains(yarnVersion)) {
             loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/yarn-$yarnVersion.jar"), showError)
             MappingsContainer.MappingSource.YARN_V1
         } else {

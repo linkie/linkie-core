@@ -2,6 +2,7 @@ package me.shedaniel.linkie.namespaces
 
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.multipleCachedSupplier
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.toVersion
 import java.io.InputStream
@@ -13,10 +14,11 @@ object MCPNamespace : Namespace("mcp") {
     private val mcpConfigSnapshots = mutableMapOf<Version, MutableList<String>>()
 
     init {
-        registerProvider({ it in getAllVersions() }) {
+        registerSupplier(multipleCachedSupplier({ getAllVersions() }, {
+            "it-${mcpConfigSnapshots[it.toVersion()]?.max()!!}"
+        }) {
             MappingsContainer(it, name = "MCP").apply {
                 val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.max()!!
-                println("Loading mcp for $version")
                 mappingSource = if (it.toVersion() >= Version(1, 13)) {
                     loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
                     MappingsContainer.MappingSource.MCP_TSRG
@@ -26,7 +28,7 @@ object MCPNamespace : Namespace("mcp") {
                 }
                 loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
             }
-        }
+        })
     }
 
     override fun supportsFieldDescription(): Boolean = false

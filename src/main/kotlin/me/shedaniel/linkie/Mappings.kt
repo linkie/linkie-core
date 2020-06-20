@@ -2,6 +2,7 @@ package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 data class MappingsContainer(
         val version: String,
         val classes: MutableList<Class> = mutableListOf(),
@@ -33,6 +34,7 @@ data class MappingsContainer(
         }
     }
 
+    @Serializable
     @Suppress("unused")
     enum class MappingSource {
         MCP_SRG,
@@ -108,6 +110,7 @@ fun Class.getFieldByObfName(obf: String): Field? {
     return null
 }
 
+@Serializable
 data class Class(
         val intermediaryName: String,
         val obfName: Obf = Obf(),
@@ -128,6 +131,7 @@ data class Class(
             getField(intermediaryName) ?: Field(intermediaryName, intermediaryDesc).also { fields.add(it) }
 }
 
+@Serializable
 data class Method(
         val intermediaryName: String,
         val intermediaryDesc: String,
@@ -137,6 +141,7 @@ data class Method(
         var mappedDesc: String? = null
 )
 
+@Serializable
 data class Field(
         val intermediaryName: String,
         val intermediaryDesc: String,
@@ -146,6 +151,7 @@ data class Field(
         var mappedDesc: String? = null
 )
 
+@Serializable
 data class Obf(
         var client: String? = null,
         var server: String? = null,
