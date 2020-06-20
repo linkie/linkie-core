@@ -10,10 +10,7 @@ import kotlin.Comparator
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =
-        sequence {
-            drop(drop)
-            take(take)
-        }
+        asSequence().drop(drop).take(take)
 
 private fun editDistance(s11: String, s22: String): Int {
     val costs = IntArray(s22.length + 1)
