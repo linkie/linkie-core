@@ -8,6 +8,7 @@ import java.io.File
 
 interface MappingsSupplier {
     fun isApplicable(version: String): Boolean
+    fun isCached(version: String): Boolean = false
     fun applyVersion(version: String): MappingsContainer
 }
 
@@ -49,6 +50,13 @@ private val json = Json(JsonConfiguration.Stable.copy(encodeDefaults = false, ig
 
 private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (String) -> String, val mappingsSupplier: MappingsSupplier) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
+
+    override fun isCached(version: String): Boolean {
+        val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
+        val uuid = uuidGetter(version)
+        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.dat")
+        return cachedFile.exists()
+    }
 
     override fun applyVersion(version: String): MappingsContainer {
         val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
