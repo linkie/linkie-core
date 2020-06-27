@@ -85,7 +85,7 @@ object YarnNamespace : Namespace("yarn") {
     ) =
             loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
 
-    private fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
+    fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
         val stream = ZipInputStream(url.openStream())
         while (true) {
             val entry = stream.nextEntry ?: break
@@ -96,11 +96,11 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    internal fun MappingsContainer.loadIntermediaryFromTinyFile(url: URL) {
+    fun MappingsContainer.loadIntermediaryFromTinyFile(url: URL) {
         loadIntermediaryFromTinyInputStream(url.openStream())
     }
 
-    private fun MappingsContainer.loadIntermediaryFromTinyInputStream(stream: InputStream) {
+    fun MappingsContainer.loadIntermediaryFromTinyInputStream(stream: InputStream) {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         val isSplit = !mappings.namespaces.contains("official")
         mappings.classEntries.forEach { entry ->
@@ -152,7 +152,7 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    private fun MappingsContainer.loadNamedFromMaven(
+    fun MappingsContainer.loadNamedFromMaven(
             yarnVersion: String,
             repo: String = "https://maven.fabricmc.net",
             group: String = "net.fabricmc.yarn",
@@ -183,11 +183,11 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    private fun MappingsContainer.loadNamedFromTinyFile(url: URL, showError: Boolean = true) {
+    fun MappingsContainer.loadNamedFromTinyFile(url: URL, showError: Boolean = true) {
         loadNamedFromTinyInputStream(url.openStream(), showError)
     }
 
-    private fun MappingsContainer.loadNamedFromTinyInputStream(stream: InputStream, showError: Boolean = true) {
+    fun MappingsContainer.loadNamedFromTinyInputStream(stream: InputStream, showError: Boolean = true) {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         mappings.classEntries.forEach { entry ->
             val intermediary = entry["intermediary"]
@@ -242,13 +242,13 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    internal fun MappingsContainer.loadNamedFromGithubRepo(repo: String, branch: String, showError: Boolean = true, ignoreError: Boolean = false) =
+    fun MappingsContainer.loadNamedFromGithubRepo(repo: String, branch: String, showError: Boolean = true, ignoreError: Boolean = false) =
             loadNamedFromEngimaZip(URL("https://github.com/$repo/archive/$branch.zip"), showError, ignoreError)
 
-    private fun MappingsContainer.loadNamedFromEngimaZip(url: URL, showError: Boolean = true, ignoreError: Boolean = false) =
+    fun MappingsContainer.loadNamedFromEngimaZip(url: URL, showError: Boolean = true, ignoreError: Boolean = false) =
             loadNamedFromEngimaStream(url.openStream(), showError, ignoreError)
 
-    private fun MappingsContainer.loadNamedFromEngimaStream(stream: InputStream, showError: Boolean = true, ignoreError: Boolean = false) {
+    fun MappingsContainer.loadNamedFromEngimaStream(stream: InputStream, showError: Boolean = true, ignoreError: Boolean = false) {
         val zipInputStream = ZipInputStream(stream)
         while (true) {
             val entry = zipInputStream.nextEntry ?: break
