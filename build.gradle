@@ -9,7 +9,7 @@ plugins {
 }
 
 group "me.shedaniel"
-version "1.0.8"
+version "1.0.9"
 
 sourceCompatibility = targetCompatibility = 1.8
 

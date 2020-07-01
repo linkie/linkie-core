@@ -44,7 +44,7 @@ abstract class Namespace(val id: String) {
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): List<String>
     abstract fun reloadData()
-    open fun getMaximumCachedVersion(): Int = 3
+    open fun getMaximumCachedVersion(): Int = 1
     abstract fun getDefaultVersion(command: String?, channelId: Long?): String
     fun getAllSortedVersions(): List<String> =
             getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
@@ -64,8 +64,7 @@ abstract class Namespace(val id: String) {
 
     private fun <T> T.limitCachedData(): T {
         if (cachedMappings.size > getMaximumCachedVersion()) {
-            val defaultLoadedVersions = getDefaultLoadedVersions()
-            cachedMappings.firstOrNull { it.version !in defaultLoadedVersions }?.let { cachedMappings.remove(it) }
+            cachedMappings.removeAt(0)
         }
         System.gc()
         return this
@@ -80,7 +79,7 @@ abstract class Namespace(val id: String) {
             return MappingsProvider.of(version, container)
         }
         val entry = mappingsSuppliers.firstOrNull { it.isApplicable(version) } ?: return MappingsProvider.empty()
-        return MappingsProvider.supply(version, false) { entry.applyVersion(version).also { cachedMappings.add(it).limitCachedData() } }
+        return MappingsProvider.supply(version, entry.isCached(version)) { entry.applyVersion(version).also { cachedMappings.add(it).limitCachedData() } }
     }
 
     fun getDefaultProvider(command: String?, channelId: Long?): MappingsProvider {

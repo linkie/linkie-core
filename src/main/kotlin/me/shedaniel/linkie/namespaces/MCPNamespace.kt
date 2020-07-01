@@ -3,6 +3,7 @@ package me.shedaniel.linkie.namespaces
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.multipleCachedSupplier
+import me.shedaniel.linkie.simpleCachedSupplier
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.toVersion
 import java.io.InputStream
@@ -27,6 +28,13 @@ object MCPNamespace : Namespace("mcp") {
                     MappingsContainer.MappingSource.MCP_SRG
                 }
                 loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
+            }
+        })
+        registerSupplier(simpleCachedSupplier("1.16", "1.16-20200514") {
+            MappingsContainer(it, name = "MCP").apply {
+                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16/mcp_config-1.16.zip"))
+                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200514-1.16/mcp_snapshot-20200514-1.16.zip"))
+                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
     }
