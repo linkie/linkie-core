@@ -15,7 +15,7 @@ object MCPNamespace : Namespace("mcp") {
     private val mcpConfigSnapshots = mutableMapOf<Version, MutableList<String>>()
 
     init {
-        registerSupplier(multipleCachedSupplier({ getAllVersions() }, {
+        registerSupplier(multipleCachedSupplier({ getAllBotVersions() }, {
             "$it-${mcpConfigSnapshots[it.toVersion()]?.max()!!}"
         }) {
             MappingsContainer(it, name = "MCP").apply {
@@ -41,7 +41,8 @@ object MCPNamespace : Namespace("mcp") {
 
     override fun supportsFieldDescription(): Boolean = false
     override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion(null, null))
-    override fun getAllVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }.toMutableList().also { it.add("1.16") }
+    fun getAllBotVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }
+    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.add("1.16") }
     override fun getDefaultVersion(command: String?, channelId: Long?): String = "1.16"
     //    override fun getDefaultVersion(command: String?, channelId: Long?): String = mcpConfigSnapshots.keys.max()!!.toString()
     override fun supportsAT(): Boolean = true
