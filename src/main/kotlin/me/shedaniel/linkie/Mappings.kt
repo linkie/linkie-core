@@ -4,11 +4,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class MappingsContainer(
-        var namespace: String,
         val version: String,
         val classes: MutableList<Class> = mutableListOf(),
         val name: String,
-        var mappingSource: MappingSource? = null
+        var mappingSource: MappingSource? = null,
+        var namespace: String? = null
 ) {
     fun getClass(intermediaryName: String): Class? =
             classes.firstOrNull { it.intermediaryName == intermediaryName }
