@@ -42,9 +42,9 @@ object Namespaces {
         val tickerChannel = ticker(delayMillis = cycleMs, initialDelayMillis = 0)
         CoroutineScope(Dispatchers.Default).launch {
             for (event in tickerChannel) {
+                cachedMappings.clear()
                 Namespaces.namespaces.map { (_, namespace) ->
                     launch {
-                        cachedMappings.remove(namespace)
                         namespace.reset()
                     }
                 }.forEach { it.join() }

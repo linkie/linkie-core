@@ -28,7 +28,11 @@ abstract class Namespace(val id: String) {
             reloadData()
             val jobs = getDefaultLoadedVersions().map {
                 GlobalScope.launch(Dispatchers.IO) {
-                    createAndAdd(it)
+                    val provider = getProvider(it)
+                    if (provider.isEmpty().not() && provider.cached != true)
+                        provider.mappingsContainer!!.invoke().also {
+                            Namespaces.cachedMappings.remove(it)
+                        }
                 }
             }
             jobs.forEach { it.join() }
