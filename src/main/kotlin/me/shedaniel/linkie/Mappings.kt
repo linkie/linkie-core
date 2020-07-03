@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class MappingsContainer(
+        var namespace: String,
         val version: String,
         val classes: MutableList<Class> = mutableListOf(),
         val name: String,

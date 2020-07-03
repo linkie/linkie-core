@@ -12,6 +12,9 @@ interface MappingsSupplier {
     fun applyVersion(version: String): MappingsContainer
 }
 
+fun Namespace.namespacedSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
+        NamespacedMappingsSupplier(this, mappingsSupplier)
+
 fun Namespace.loggedSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
         LoggedMappingsSupplier(this, mappingsSupplier)
 
@@ -36,14 +39,26 @@ fun Namespace.multipleCachedSupplier(versions: Iterable<String>, uuidGetter: (St
 fun Namespace.multipleCachedSupplier(versions: () -> Iterable<String>, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
         cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
-private class LoggedMappingsSupplier(val namespace: Namespace, val mappingsSupplier: MappingsSupplier) : MappingsSupplier {
-    override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
+private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
+    override fun applyVersion(version: String): MappingsContainer = super.applyVersion(version).also {
+        it.namespace = namespace.id
+    }
+}
 
+private class LoggedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
     override fun applyVersion(version: String): MappingsContainer {
         println("Loading $version in $namespace")
         val start = System.currentTimeMillis()
-        return mappingsSupplier.applyVersion(version).also { println("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms") }
+        return super.applyVersion(version).also { println("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms") }
     }
+}
+
+private open class DelegateMappingsSupplier(val mappingsSupplier: MappingsSupplier) : MappingsSupplier {
+    override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
+
+    override fun applyVersion(version: String): MappingsContainer = mappingsSupplier.applyVersion(version)
+
+    override fun isCached(version: String): Boolean = mappingsSupplier.isCached(version)
 }
 
 private val json = Json(JsonConfiguration.Stable.copy(encodeDefaults = false, ignoreUnknownKeys = true, isLenient = true))
