@@ -1,10 +1,11 @@
 package me.shedaniel.linkie
 
-data class MappingsProvider(var version: String?, var cached: Boolean?, var mappingsContainer: (() -> MappingsContainer)?) {
+data class MappingsProvider(var namespace: Namespace, var version: String?, var cached: Boolean?, var mappingsContainer: (() -> MappingsContainer)?) {
     fun isEmpty(): Boolean = version == null || cached == null || mappingsContainer == null
 
     fun injectDefaultVersion(mappingsProvider: MappingsProvider) {
         if (isEmpty() && !mappingsProvider.isEmpty()) {
+            if (namespace != mappingsProvider.namespace) throw IllegalStateException("Could not inject default version as they are from the different namespace: ${namespace.id} and ${mappingsProvider.namespace.id}")
             version = mappingsProvider.version
             cached = mappingsProvider.cached
             mappingsContainer = mappingsProvider.mappingsContainer
@@ -12,15 +13,15 @@ data class MappingsProvider(var version: String?, var cached: Boolean?, var mapp
     }
 
     companion object {
-        fun of(version: String, mappingsContainer: MappingsContainer?): MappingsProvider =
+        fun of(namespace: Namespace, version: String, mappingsContainer: MappingsContainer?): MappingsProvider =
                 if (mappingsContainer == null)
-                    supply(version, null, null)
-                else supply(version, true) { mappingsContainer }
+                    supply(namespace, version, null, null)
+                else supply(namespace, version, true) { mappingsContainer }
 
-        fun supply(version: String?, cached: Boolean?, mappingsContainer: (() -> MappingsContainer)?): MappingsProvider =
-                MappingsProvider(version, cached, mappingsContainer)
+        fun supply(namespace: Namespace, version: String?, cached: Boolean?, mappingsContainer: (() -> MappingsContainer)?): MappingsProvider =
+                MappingsProvider(namespace, version, cached, mappingsContainer)
 
-        fun empty(): MappingsProvider =
-                MappingsProvider(null, null, null)
+        fun empty(namespace: Namespace): MappingsProvider =
+                MappingsProvider(namespace, null, null, null)
     }
 }

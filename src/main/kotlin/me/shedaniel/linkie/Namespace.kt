@@ -68,10 +68,10 @@ abstract class Namespace(val id: String) {
     fun getProvider(version: String): MappingsProvider {
         val container = get(version)
         if (container != null) {
-            return MappingsProvider.of(version, container)
+            return MappingsProvider.of(this, version, container)
         }
-        val entry = mappingsSuppliers.firstOrNull { it.isApplicable(version) } ?: return MappingsProvider.empty()
-        return MappingsProvider.supply(version, entry.isCached(version)) { entry.applyVersion(version).also { Namespaces.addMappingsContainer(it) } }
+        val entry = mappingsSuppliers.firstOrNull { it.isApplicable(version) } ?: return MappingsProvider.empty(this)
+        return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version).also { Namespaces.addMappingsContainer(it) } }
     }
 
     fun getDefaultProvider(command: String?, channelId: Long?): MappingsProvider {
