@@ -100,9 +100,6 @@ object MCPNamespace : Namespace("mcp") {
                     obfName.merged = obf
                     obfDesc.merged = ""
                 }
-            }.also {
-                if (it == null)
-                    println(namedClass)
             }
         }
         lines["MD:"]?.forEach { fieldLine ->

@@ -4,6 +4,8 @@ package me.shedaniel.linkie
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
+import me.shedaniel.linkie.utils.error
+import me.shedaniel.linkie.utils.info
 import java.io.File
 
 interface MappingsSupplier {
@@ -50,9 +52,9 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
 
 private class LoggedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
     override fun applyVersion(version: String): MappingsContainer {
-        println("Loading $version in $namespace")
+        info("Loading $version in $namespace")
         val start = System.currentTimeMillis()
-        return super.applyVersion(version).also { println("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms") }
+        return super.applyVersion(version).also { info("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms") }
     }
 }
 
@@ -83,7 +85,7 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
         if (cachedFile.exists()) {
             val mappingsContainer = loadFromCachedFile(cachedFile)
             if (mappingsContainer != null) return mappingsContainer
-            println("Cache for version $version has failed.")
+            error("Cache for version $version has failed.")
             cachedFile.delete()
         }
         val mappingsContainer = mappingsSupplier.applyVersion(version)

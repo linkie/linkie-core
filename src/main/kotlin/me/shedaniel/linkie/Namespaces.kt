@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.launch
+import me.shedaniel.linkie.utils.info
 import java.util.concurrent.CopyOnWriteArrayList
 
 object Namespaces {
@@ -25,13 +26,13 @@ object Namespaces {
             list.add(first.let { "${it.namespace}-${it.version}" })
         }
         System.gc()
-        println("Removed ${list.size} Mapping(s): " + list.joinToString(", "))
+        info("Removed ${list.size} Mapping(s): " + list.joinToString(", "))
     }
 
     fun addMappingsContainer(mappingsContainer: MappingsContainer) {
         cachedMappings.add(mappingsContainer)
         limitCachedData()
-        println("Currently Loaded ${cachedMappings.size} Mapping(s): " + cachedMappings.joinToString(", ") { "${it.namespace}-${it.version}" })
+        info("Currently Loaded ${cachedMappings.size} Mapping(s): " + cachedMappings.joinToString(", ") { "${it.namespace}-${it.version}" })
     }
 
     fun init(

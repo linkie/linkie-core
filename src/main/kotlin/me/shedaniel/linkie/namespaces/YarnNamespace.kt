@@ -2,6 +2,7 @@ package me.shedaniel.linkie.namespaces
 
 import kotlinx.serialization.builtins.list
 import me.shedaniel.linkie.*
+import me.shedaniel.linkie.utils.warn
 import org.apache.commons.lang3.StringUtils
 import java.io.BufferedReader
 import java.io.InputStream
@@ -193,8 +194,7 @@ object YarnNamespace : Namespace("yarn") {
             val intermediary = entry["intermediary"]
             val clazz = getClass(intermediary)
             if (clazz == null) {
-                if (showError)
-                    println("Class $intermediary does not have intermediary name! Skipping!")
+                if (showError) warn("Class $intermediary does not have intermediary name! Skipping!")
             } else clazz.apply {
                 if (mappedName == null)
                     mappedName = entry["named"]
@@ -204,13 +204,11 @@ object YarnNamespace : Namespace("yarn") {
             val intermediaryTriple = entry["intermediary"]
             val clazz = getClass(intermediaryTriple.owner)
             if (clazz == null) {
-                if (showError)
-                    println("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
+                if (showError) warn("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
             } else clazz.apply {
                 val method = getMethod(intermediaryTriple.name)
                 if (method == null) {
-                    if (showError)
-                        println("Method ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
+                    if (showError) warn("Method ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
                 } else method.apply {
                     val namedTriple = entry["named"]
                     if (mappedName == null)
@@ -224,13 +222,11 @@ object YarnNamespace : Namespace("yarn") {
             val intermediaryTriple = entry["intermediary"]
             val clazz = getClass(intermediaryTriple.owner)
             if (clazz == null) {
-                if (showError)
-                    println("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
+                if (showError) warn("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
             } else clazz.apply {
                 val field = getField(intermediaryTriple.name)
                 if (field == null) {
-                    if (showError)
-                        println("Field ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
+                    if (showError) warn("Field ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
                 } else field.apply {
                     val namedTriple = entry["named"]
                     if (mappedName == null)
@@ -271,17 +267,14 @@ object YarnNamespace : Namespace("yarn") {
                         } else getClass(className)?.apply {
                             mappedName = if (line.split.size >= 3) line.split[2] else null
                         }
-                        if (levels[line.indent] == null && showError)
-                            println("Class $className does not have intermediary name! Skipping!")
+                        if (levels[line.indent] == null && showError) warn("Class $className does not have intermediary name! Skipping!")
                     } else if (line.type == MappingsType.METHOD) {
                         if (levels[line.indent - 1] == null) {
-                            if (showError)
-                                println("Class of ${line.split[1]} does not have intermediary name! Skipping!")
+                            if (showError) warn("Class of ${line.split[1]} does not have intermediary name! Skipping!")
                         } else {
                             levels[line.indent - 1]!!.apply {
                                 val method = if (line.split[1] == "<init>") Method("<init>", line.split.last()).also { methods.add(it) } else if (ignoreError) getOrCreateMethod(line.split[1], line.split.last()) else getMethod(line.split[1])
-                                if (method == null && showError)
-                                    println("Method ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
+                                if (method == null && showError) warn("Method ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
                                 if (line.split.size == 4)
                                     method?.apply {
                                         mappedName = line.split[2]
@@ -290,13 +283,11 @@ object YarnNamespace : Namespace("yarn") {
                         }
                     } else if (line.type == MappingsType.FIELD) {
                         if (levels[line.indent - 1] == null) {
-                            if (showError)
-                                println("Class of ${line.split[1]} does not have intermediary name! Skipping!")
+                            if (showError) warn("Class of ${line.split[1]} does not have intermediary name! Skipping!")
                         } else {
                             levels[line.indent - 1]!!.apply {
                                 val field = if (ignoreError) getOrCreateField(line.split[1], line.split.last()) else getField(line.split[1])
-                                if (field == null && showError)
-                                    println("Field ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
+                                if (field == null && showError) warn("Field ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
                                 if (line.split.size == 4)
                                     field?.apply {
                                         mappedName = line.split[2]

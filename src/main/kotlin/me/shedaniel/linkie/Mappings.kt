@@ -1,6 +1,7 @@
 package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
+import me.shedaniel.linkie.utils.info
 
 @Serializable
 data class MappingsContainer(
@@ -17,22 +18,24 @@ data class MappingsContainer(
             getClass(intermediaryName) ?: Class(intermediaryName).also { classes.add(it) }
 
     fun prettyPrint() {
-        classes.forEach {
-            it.apply {
-                println("$intermediaryName: $mappedName")
-                methods.forEach {
-                    it.apply {
-                        println("  $intermediaryName $intermediaryDesc: $mappedName $mappedDesc")
+        buildString {
+            classes.forEach {
+                it.apply {
+                    append("$intermediaryName: $mappedName\n")
+                    methods.forEach {
+                        it.apply {
+                            append("  $intermediaryName $intermediaryDesc: $mappedName $mappedDesc\n")
+                        }
                     }
-                }
-                fields.forEach {
-                    it.apply {
-                        println("  $intermediaryName $intermediaryDesc: $mappedName $mappedDesc")
+                    fields.forEach {
+                        it.apply {
+                            append("  $intermediaryName $intermediaryDesc: $mappedName $mappedDesc\n")
+                        }
                     }
+                    append("\n")
                 }
-                println()
             }
-        }
+        }.also { info(it) }
     }
 
     @Serializable
