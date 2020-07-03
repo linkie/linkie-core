@@ -14,7 +14,7 @@ object PlasmaNamespace : Namespace("plasma") {
     private var lastId by Delegates.notNull<Long>()
 
     init {
-        registerSupplier(simpleCachedSupplier("b1.7.3", "b1.7.3-$lastId") {
+        registerSupplier(simpleCachedSupplier("b1.7.3", { "b1.7.3-$lastId" }) {
             MappingsContainer(it, name = "Plasma").apply {
                 loadIntermediaryFromTinyFile(URL("https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/Beta%201.7.3%20Merge.tiny"))
                 loadNamedFromTinyJar(URL(downloadUrl), showError = false)

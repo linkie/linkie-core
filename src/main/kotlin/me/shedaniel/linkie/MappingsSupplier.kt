@@ -27,6 +27,9 @@ fun Namespace.simpleSupplier(version: String, supplier: (String) -> MappingsCont
 fun Namespace.simpleCachedSupplier(version: String, uuid: String = version, supplier: (String) -> MappingsContainer): MappingsSupplier =
         cachedSupplier({ uuid }, simpleSupplier(version, supplier))
 
+fun Namespace.simpleCachedSupplier(version: String, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
+        cachedSupplier(uuidGetter, simpleSupplier(version, supplier))
+
 fun Namespace.multipleSupplier(versions: Iterable<String>, supplier: (String) -> MappingsContainer): MappingsSupplier =
         multipleSupplier({ versions }, supplier)
 
