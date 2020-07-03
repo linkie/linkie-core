@@ -14,6 +14,7 @@ class LinkieTest {
         assertNull("20w02a".tryToVersion())
         assertEquals(Version(1, 14, snapshot = "alpha.19.w.02a"), "19w02a".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "alpha.20.w.17a"), "20w17a".tryToVersion())
+        assertEquals(Version(1, 16, 2, snapshot = "alpha.20.w.27a"), "20w27a".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "pre3"), "1.16-pre3".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "pre3"), "1.16 Pre-Release 3".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "rc1"), "1.16-rc1".tryToVersion())
