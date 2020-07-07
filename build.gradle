@@ -9,7 +9,7 @@ plugins {
 }
 
 group "me.shedaniel"
-version "1.0.20"
+version = "1.0." + (System.getenv("GITHUB_RUN_NUMBER") == null ? "9999" : System.getenv("GITHUB_RUN_NUMBER"))
 
 sourceCompatibility = targetCompatibility = 1.8
 
