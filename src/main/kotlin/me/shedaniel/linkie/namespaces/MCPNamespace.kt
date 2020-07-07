@@ -37,13 +37,21 @@ object MCPNamespace : Namespace("mcp") {
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
+        registerSupplier(simpleCachedSupplier("1.16.1", "1.16.1-20200707") {
+            MappingsContainer(it, name = "MCP").apply {
+                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.1/mcp_config-1.16.1.zip"))
+                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200707-1.16/mcp_snapshot-20200707-1.16.zip"))
+                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
+            }
+        })
     }
 
     override fun supportsFieldDescription(): Boolean = false
     override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion(null, null))
     fun getAllBotVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }
-    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.add("1.16") }
-    override fun getDefaultVersion(command: String?, channelId: Long?): String = "1.16"
+    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(listOf("1.16", "1.16.1")) }
+    override fun getDefaultVersion(command: String?, channelId: Long?): String = "1.16.1"
+
     //    override fun getDefaultVersion(command: String?, channelId: Long?): String = mcpConfigSnapshots.keys.max()!!.toString()
     override fun supportsAT(): Boolean = true
     override fun reloadData() {
