@@ -28,7 +28,7 @@ object YarnNamespace : Namespace("yarn") {
                 mappingSource = MappingsContainer.MappingSource.ENGIMA
             }
         })
-        registerSupplier(simpleCachedSupplier("1.8.9", "1.8.9-${yarnBuild1_8_9}") {
+        registerSupplier(simpleCachedSupplier("1.8.9", { "1.8.9-${yarnBuild1_8_9}" }) {
             MappingsContainer(it, name = "Yarn").apply {
                 loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
                 mappingSource = loadNamedFromMaven(yarnVersion = yarnBuild1_8_9, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
