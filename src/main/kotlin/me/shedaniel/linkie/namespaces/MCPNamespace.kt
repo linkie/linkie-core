@@ -37,10 +37,10 @@ object MCPNamespace : Namespace("mcp") {
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
-        registerSupplier(simpleCachedSupplier("1.16.1", "1.16.1-20200707") {
+        registerSupplier(simpleCachedSupplier("1.16.1", "1.16.1-20200723") {
             MappingsContainer(it, name = "MCP").apply {
                 loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.1/mcp_config-1.16.1.zip"))
-                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200707-1.16.1/mcp_snapshot-20200707-1.16.1.zip"))
+                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200723-1.16.1/mcp_snapshot-20200723-1.16.1.zip"))
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
