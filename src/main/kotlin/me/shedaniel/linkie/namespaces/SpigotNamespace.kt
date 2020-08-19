@@ -21,7 +21,7 @@ object SpigotNamespace : Namespace("spigot") {
     override fun getDefaultLoadedVersions(): List<String> = listOf()
     override fun getAllVersions(): List<String> = listOf("1.8.9")
     override fun reloadData() {}
-    override fun getDefaultVersion(command: String?, channelId: Long?): String = "1.8.9"
+    override fun getDefaultVersion(channel: String): String = "1.8.9"
 
     private fun MappingsContainer.loadClassFromSpigot(stream: InputStream) {
         InputStreamReader(stream).forEachLine {

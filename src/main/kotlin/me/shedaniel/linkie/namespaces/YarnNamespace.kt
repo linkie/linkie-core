@@ -47,7 +47,7 @@ object YarnNamespace : Namespace("yarn") {
 
     override fun getDefaultLoadedVersions(): List<String> {
         val versions = mutableListOf<String>()
-        val latestVersion = getDefaultVersion(null, null)
+        val latestVersion = getDefaultVersion()
         yarnBuilds.keys.firstOrNull { it.contains('.') && !it.contains('-') }?.takeIf { it != latestVersion }?.also { versions.add(it) }
         latestVersion.also { versions.add(it) }
         return versions
@@ -72,12 +72,15 @@ object YarnNamespace : Namespace("yarn") {
         yarnBuild1_8_9 = pom189.substring(pom189.indexOf("<latest>") + "<latest>".length, pom189.indexOf("</latest>"))
     }
 
-    override fun getDefaultVersion(command: String?, channelId: Long?): String =
-            when (channelId) {
-                602959845842485258 -> "1.2.5"
-                661088839464386571 -> "1.14.4"
+    override fun getDefaultVersion(channel: String): String =
+            when (channel) {
+                "legacy" -> "1.2.5"
+                "patchwork" -> "1.14.4"
+                "snapshot" -> yarnBuilds.keys.first()
                 else -> yarnBuilds.keys.first { it.contains('.') && !it.contains('-') }
             }
+
+    override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot", "patchwork", "legacy")
 
     private fun MappingsContainer.loadIntermediaryFromMaven(
             mcVersion: String,

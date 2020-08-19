@@ -6,9 +6,11 @@ import me.shedaniel.linkie.multipleCachedSupplier
 import me.shedaniel.linkie.simpleCachedSupplier
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.toVersion
+import me.shedaniel.linkie.utils.tryToVersion
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.URL
+import java.util.Comparator
 import java.util.zip.ZipInputStream
 
 object MCPNamespace : Namespace("mcp") {
@@ -44,15 +46,21 @@ object MCPNamespace : Namespace("mcp") {
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
+        registerSupplier(simpleCachedSupplier("1.16.2", "1.16.2-20200723") {
+            MappingsContainer(it, name = "MCP").apply {
+                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.2/mcp_config-1.16.2.zip"))
+                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200723-1.16.1/mcp_snapshot-20200723-1.16.1.zip"))
+                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
+            }
+        })
     }
 
     override fun supportsFieldDescription(): Boolean = false
-    override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion(null, null))
+    override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion())
     fun getAllBotVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }
-    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(listOf("1.16", "1.16.1")) }
-    override fun getDefaultVersion(command: String?, channelId: Long?): String = "1.16.1"
+    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(listOf("1.16", "1.16.1", "1.16.2")) }
+    override fun getDefaultVersion(channel: String): String = getAllVersions().maxWith(Comparator.nullsFirst(compareBy { it.tryToVersion() }))!!
 
-    //    override fun getDefaultVersion(command: String?, channelId: Long?): String = mcpConfigSnapshots.keys.max()!!.toString()
     override fun supportsAT(): Boolean = true
     override fun reloadData() {
         mcpConfigSnapshots.clear()

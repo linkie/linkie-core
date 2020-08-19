@@ -45,7 +45,7 @@ abstract class Namespace(val id: String) {
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): List<String>
     abstract fun reloadData()
-    abstract fun getDefaultVersion(command: String? = null, channelId: Long? = null): String
+    abstract fun getDefaultVersion(channel: String = getDefaultMappingChannel()): String
     fun getAllSortedVersions(): List<String> =
             getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
 
@@ -74,10 +74,13 @@ abstract class Namespace(val id: String) {
         return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version).also { Namespaces.addMappingsContainer(it) } }
     }
 
-    fun getDefaultProvider(command: String?, channelId: Long?): MappingsProvider {
-        val version = getDefaultVersion(command, channelId)
+    fun getDefaultProvider(channel: String = getDefaultMappingChannel()): MappingsProvider {
+        val version = getDefaultVersion()
         return getProvider(version)
     }
+
+    open fun getAvailableMappingChannels(): List<String> = listOf("release")
+    open fun getDefaultMappingChannel(): String = getAvailableMappingChannels().first()
 
     open fun supportsMixin(): Boolean = false
     open fun supportsAT(): Boolean = false

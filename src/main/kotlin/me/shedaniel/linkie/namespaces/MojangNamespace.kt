@@ -12,6 +12,7 @@ import java.net.URL
 object MojangNamespace : Namespace("mojang") {
     val versionJsonMap = mutableMapOf<String, String>()
     private var latestRelease = ""
+    private var latestSnapshot = ""
 
     init {
         registerSupplier(simpleCachedSupplier("1.14.4") {
@@ -55,9 +56,14 @@ object MojangNamespace : Namespace("mojang") {
             }
         }
         latestRelease = versionManifest.jsonObject["latest"]!!.jsonObject["release"]!!.content
+        latestSnapshot = versionManifest.jsonObject["latest"]!!.jsonObject["snapshot"]!!.content
     }
 
-    override fun getDefaultVersion(command: String?, channelId: Long?): String = latestRelease
+    override fun getDefaultVersion(channel: String): String = when(channel) {
+        "snapshot" -> latestSnapshot
+        else -> latestRelease
+    }
+    override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot")
 
     private fun MappingsContainer.readMojangMappings(client: String, server: String) {
         val invokes: MutableList<() -> Unit> = mutableListOf()

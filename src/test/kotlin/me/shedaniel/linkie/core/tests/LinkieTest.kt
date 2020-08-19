@@ -3,6 +3,7 @@ package me.shedaniel.linkie.core.tests
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import me.shedaniel.linkie.Namespaces
+import me.shedaniel.linkie.namespaces.MCPNamespace
 import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.tryToVersion
@@ -42,5 +43,12 @@ class LinkieTest {
         Namespaces.init(YarnNamespace)
         runBlocking { delay(5000) }
         assertEquals("1.16.2", YarnNamespace.getDefaultVersion())
+    }
+
+    @Test
+    fun mcp() {
+        Namespaces.init(MCPNamespace)
+        runBlocking { delay(5000) }
+        assertEquals("1.16.2", MCPNamespace.getDefaultVersion())
     }
 }

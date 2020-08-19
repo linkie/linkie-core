@@ -32,5 +32,5 @@ object PlasmaNamespace : Namespace("plasma") {
     }
 
     override fun supportsMixin(): Boolean = true
-    override fun getDefaultVersion(command: String?, channelId: Long?): String = "b1.7.3"
+    override fun getDefaultVersion(channel: String): String = "b1.7.3"
 }
