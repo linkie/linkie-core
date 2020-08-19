@@ -45,7 +45,7 @@ abstract class Namespace(val id: String) {
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): List<String>
     abstract fun reloadData()
-    abstract fun getDefaultVersion(command: String?, channelId: Long?): String
+    abstract fun getDefaultVersion(command: String? = null, channelId: Long? = null): String
     fun getAllSortedVersions(): List<String> =
             getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
 

@@ -1,5 +1,9 @@
 package me.shedaniel.linkie.core.tests
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import me.shedaniel.linkie.Namespaces
+import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.tryToVersion
 import org.junit.jupiter.api.Test
@@ -31,5 +35,12 @@ class LinkieTest {
         assert(Version(1, 16, snapshot = "alpha.20.w.17a") < Version(1, 16, snapshot = "pre6"))
         assert(Version(1, 16, snapshot = "alpha.20.w.17a") < Version(1, 16, snapshot = "rc1"))
         assertFalse(Version(1, 16, snapshot = "alpha.20.w.17a") > Version(1, 16, snapshot = "alpha.20.w.18a"))
+    }
+
+    @Test
+    fun yarn() {
+        Namespaces.init(YarnNamespace)
+        runBlocking { delay(5000) }
+        assertEquals("1.16.2", YarnNamespace.getDefaultVersion())
     }
 }
