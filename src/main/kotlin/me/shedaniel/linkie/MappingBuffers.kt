@@ -112,7 +112,7 @@ fun ByteBuffer.readObf(): Obf {
 
 fun inputBuffer(capacity: Int = 2048): ByteBuffer = ByteBuffer(input = ByteBuf.create(capacity))
 fun outputBuffer(byteArray: ByteArray): ByteBuffer = ByteBuffer(output = InputByteArray(byteArray))
-fun outputCompressedBuffer(byteArray: ByteArray): ByteBuffer = outputBuffer(GZIPInputStream(ByteArrayInputStream(byteArray)).readAllBytes())
+fun outputCompressedBuffer(byteArray: ByteArray): ByteBuffer = outputBuffer(GZIPInputStream(ByteArrayInputStream(byteArray)).use { it.readBytes() })
 
 @OptIn(ExperimentalUnsignedTypes::class)
 @Suppress("unused")
