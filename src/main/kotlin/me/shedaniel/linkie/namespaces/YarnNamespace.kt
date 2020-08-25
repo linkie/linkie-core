@@ -4,12 +4,15 @@ import kotlinx.serialization.builtins.list
 import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.warn
 import org.apache.commons.lang3.StringUtils
+import org.dom4j.io.SAXReader
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.StringReader
 import java.net.URL
 import java.util.*
 import java.util.zip.ZipInputStream
+import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.collections.LinkedHashMap
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -18,6 +21,7 @@ import kotlin.collections.set
 object YarnNamespace : Namespace("yarn") {
     val yarnBuilds = mutableMapOf<String, YarnBuild>()
     private var yarnBuild1_8_9 = ""
+    private var yarnBuild1_13_2 = ""
 
     init {
         YarnV2BlackList.loadData()
@@ -32,6 +36,12 @@ object YarnNamespace : Namespace("yarn") {
             MappingsContainer(it, name = "Yarn").apply {
                 loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
                 mappingSource = loadNamedFromMaven(yarnVersion = yarnBuild1_8_9, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
+            }
+        })
+        registerSupplier(simpleCachedSupplier("1.13.2", { "1.13.2-${yarnBuild1_13_2}" }) {
+            MappingsContainer(it, name = "Yarn").apply {
+                loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
+                mappingSource = loadNamedFromMaven(yarnVersion = yarnBuild1_13_2, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
             }
         })
         registerSupplier(multipleCachedSupplier({ yarnBuilds.keys }, { version ->
@@ -55,7 +65,7 @@ object YarnNamespace : Namespace("yarn") {
 
     override fun getAllVersions(): List<String> {
         val versions = mutableListOf(
-                "1.2.5", "1.8.9"
+                "1.2.5", "1.8.9", "1.13.2"
         )
         versions.addAll(yarnBuilds.keys)
         return versions
@@ -69,7 +79,14 @@ object YarnNamespace : Namespace("yarn") {
         json.parse(YarnBuild.serializer().list, URL("https://meta.fabricmc.net/v2/versions/yarn").readText()).forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
         buildMap.forEach { (version, builds) -> builds.maxBy { it.build }?.apply { yarnBuilds[version] = this } }
         val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
-        yarnBuild1_8_9 = pom189.substring(pom189.indexOf("<latest>") + "<latest>".length, pom189.indexOf("</latest>"))
+        yarnBuild1_8_9 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                .map { it.text }
+                .filter { it.startsWith("1.8.9") }
+                .last()
+        yarnBuild1_13_2 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                .map { it.text }
+                .filter { it.startsWith("1.13.2") }
+                .last()
     }
 
     override fun getDefaultVersion(channel: String): String =
