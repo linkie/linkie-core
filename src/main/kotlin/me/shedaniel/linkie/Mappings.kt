@@ -170,7 +170,7 @@ data class Obf(
     }
 
     fun isMerged(): Boolean = merged != null
-    fun isEmpty(): Boolean = list().isEmpty()
+    fun isEmpty(): Boolean = client == null && server == null && merged == null
 }
 
 @Serializable

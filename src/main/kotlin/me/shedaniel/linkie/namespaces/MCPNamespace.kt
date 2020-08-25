@@ -42,14 +42,14 @@ object MCPNamespace : Namespace("mcp") {
         registerSupplier(simpleCachedSupplier("1.16.1", "1.16.1-20200723") {
             MappingsContainer(it, name = "MCP").apply {
                 loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.1/mcp_config-1.16.1.zip"))
-                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200723-1.16.1/mcp_snapshot-20200723-1.16.1.zip"))
+                loadMCPFromURLZip(URL("https://www.dogforce-games.com/maven/de/oceanlabs/mcp/mcp_snapshot/20200820-1.16.1/mcp_snapshot-20200820-1.16.1.zip"))
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
-        registerSupplier(simpleCachedSupplier("1.16.2", "1.16.2-20200723") {
+        registerSupplier(simpleCachedSupplier("1.16.2", "1.16.2-20200820") {
             MappingsContainer(it, name = "MCP").apply {
                 loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.2/mcp_config-1.16.2.zip"))
-                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200723-1.16.1/mcp_snapshot-20200723-1.16.1.zip"))
+                loadMCPFromURLZip(URL("https://www.dogforce-games.com/maven/de/oceanlabs/mcp/mcp_snapshot/20200820-1.16.1/mcp_snapshot-20200820-1.16.1.zip"))
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })

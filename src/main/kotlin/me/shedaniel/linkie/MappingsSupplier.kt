@@ -74,14 +74,14 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     override fun isCached(version: String): Boolean {
         val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.dat")
+        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie2.gz")
         return cachedFile.exists()
     }
 
     override fun applyVersion(version: String): MappingsContainer {
         val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.dat")
+        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie2.gz")
         if (cachedFile.exists()) {
             val mappingsContainer = loadFromCachedFile(cachedFile)
             if (mappingsContainer != null) return mappingsContainer
@@ -94,10 +94,10 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     }
 
     private fun loadFromCachedFile(cachedFile: File): MappingsContainer? =
-            outputBuffer(cachedFile.readBytes()).readMappingsContainer()
+            outputCompressedBuffer(cachedFile.readBytes()).readMappingsContainer()
 
     private fun MappingsContainer.saveToCachedFile(cachedFile: File) =
-            cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toByteArray())
+            cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toCompressedByteArray())
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: () -> MappingsContainer) : MappingsSupplier {

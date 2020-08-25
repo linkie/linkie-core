@@ -2,6 +2,10 @@ package me.shedaniel.linkie
 
 import org.boon.primitive.ByteBuf
 import org.boon.primitive.InputByteArray
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
     writeString(mappingsContainer.version)
@@ -17,14 +21,8 @@ fun ByteBuffer.writeClass(aClass: Class) {
     writeString(aClass.intermediaryName)
     writeObf(aClass.obfName)
     writeString(aClass.mappedName)
-    writeInt(aClass.methods.size)
-    for (method in aClass.methods) {
-        writeMethod(method)
-    }
-    writeInt(aClass.fields.size)
-    for (field in aClass.fields) {
-        writeField(field)
-    }
+    writeCollection(aClass.methods) { writeMethod(it) }
+    writeCollection(aClass.fields) { writeField(it) }
 }
 
 fun ByteBuffer.writeMethod(method: Method) {
@@ -46,12 +44,17 @@ fun ByteBuffer.writeField(field: Field) {
 }
 
 fun ByteBuffer.writeObf(obf: Obf) {
-    writeBoolean(obf.isMerged())
-    if (obf.isMerged()) {
-        writeString(obf.merged)
-    } else {
-        writeString(obf.client)
-        writeString(obf.server)
+    when {
+        obf.isEmpty() -> writeByte(0)
+        obf.isMerged() -> {
+            writeByte(1)
+            writeString(obf.merged)
+        }
+        else -> {
+            writeByte(2)
+            writeString(obf.client)
+            writeString(obf.server)
+        }
     }
 }
 
@@ -70,10 +73,8 @@ fun ByteBuffer.readClass(): Class {
     val obfName = readObf()
     val mappedName = readStringOrNull()
     val aClass = Class(intermediaryName, obfName, mappedName)
-    for (i in 0 until readInt())
-        aClass.methods.add(readMethod())
-    for (i in 0 until readInt())
-        aClass.fields.add(readField())
+    aClass.methods.addAll(readCollection { readMethod() })
+    aClass.fields.addAll(readCollection { readField() })
     return aClass
 }
 
@@ -98,23 +99,26 @@ fun ByteBuffer.readField(): Field {
 }
 
 fun ByteBuffer.readObf(): Obf {
-    val merged = readBoolean()
-    return if (merged) {
-        Obf(merged = readStringOrNull())
-    } else {
-        val client = readStringOrNull()
-        val server = readStringOrNull()
-        Obf(client, server)
+    return when (readByte().toInt()) {
+        0 -> Obf()
+        1 -> Obf(merged = readStringOrNull())
+        else -> {
+            val client = readStringOrNull()
+            val server = readStringOrNull()
+            Obf(client, server)
+        }
     }
 }
 
 fun inputBuffer(capacity: Int = 2048): ByteBuffer = ByteBuffer(input = ByteBuf.create(capacity))
 fun outputBuffer(byteArray: ByteArray): ByteBuffer = ByteBuffer(output = InputByteArray(byteArray))
+fun outputCompressedBuffer(byteArray: ByteArray): ByteBuffer = outputBuffer(GZIPInputStream(ByteArrayInputStream(byteArray)).readAllBytes())
 
+@OptIn(ExperimentalUnsignedTypes::class)
 @Suppress("unused")
 class ByteBuffer(private val input: ByteBuf? = null, private val output: InputByteArray? = null) {
     fun writeByte(byte: Byte) {
-        input!!.add(byte.toInt())
+        input!!.add(byte)
     }
 
     fun writeByteArray(array: ByteArray) {
@@ -123,6 +127,14 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
 
     fun writeBoolean(boolean: Boolean) {
         input!!.writeBoolean(boolean)
+    }
+
+    fun writeShort(short: Short) {
+        input!!.add(short)
+    }
+
+    fun writeUnsignedShort(short: UShort) {
+        input!!.add(short.toShort())
     }
 
     fun writeInt(int: Int) {
@@ -145,28 +157,47 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
         input!!.add(char)
     }
     
+    inline fun <T> writeCollection(collection: Collection<T>, crossinline writer: ByteBuffer.(T) -> Unit) {
+        writeInt(collection.size)
+        collection.forEach { writer(this, it) }
+    }
+
     fun toByteArray(): ByteArray = input!!.toBytes()
+    fun toCompressedByteArray(): ByteArray = ByteArrayOutputStream().also { outputStream ->
+        GZIPOutputStream(outputStream).use { it.write(toByteArray()) }
+    }.toByteArray()
 
     fun readByte(): Byte = output!!.readByte()
     fun readByteArray(length: Int): ByteArray = output!!.readBytes(length)
     fun readBoolean(): Boolean = output!!.readBoolean()
+    fun readShort(): Short = output!!.readShort()
+    fun readUnsignedShort(): UShort = output!!.readShort().toUShort()
     fun readInt(): Int = output!!.readInt()
     fun readLong(): Long = output!!.readLong()
     fun readFloat(): Float = output!!.readFloat()
     fun readDouble(): Double = output!!.readDouble()
     fun readChar(): Char = output!!.readChar()
+    
+    inline fun <T> readCollection(crossinline reader: ByteBuffer.() -> T): List<T> {
+        val size = readInt()
+        val list = ArrayList<T>(size)
+        for (i in 0 until size) {
+            list.add(reader(this))
+        }
+        return list
+    }
 
     fun writeString(string: String?) {
         if (string != null) {
-            writeInt(string.length)
+            writeUnsignedShort(string.length.toUShort())
             writeByteArray(string.toByteArray())
         } else {
-            writeInt(0)
+            writeUnsignedShort(0U)
         }
     }
 
     fun readStringOrNull(): String? {
-        val length = readInt()
+        val length = readUnsignedShort().toInt()
         if (length == 0) return null
         return readByteArray(length).toString(Charsets.UTF_8)
     }

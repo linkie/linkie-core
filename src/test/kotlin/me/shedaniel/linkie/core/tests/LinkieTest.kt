@@ -43,6 +43,7 @@ class LinkieTest {
         Namespaces.init(YarnNamespace)
         runBlocking { delay(5000) }
         assertEquals("1.16.2", YarnNamespace.getDefaultVersion())
+        YarnNamespace.getDefaultProvider().mappingsContainer!!.invoke()
     }
 
     @Test
@@ -50,5 +51,6 @@ class LinkieTest {
         Namespaces.init(MCPNamespace)
         runBlocking { delay(5000) }
         assertEquals("1.16.2", MCPNamespace.getDefaultVersion())
+        MCPNamespace.getDefaultProvider().mappingsContainer!!.invoke()
     }
 }
