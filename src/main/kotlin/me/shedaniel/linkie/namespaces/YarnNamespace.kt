@@ -1,6 +1,10 @@
 package me.shedaniel.linkie.namespaces
 
-import kotlinx.serialization.builtins.list
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.warn
 import org.apache.commons.lang3.StringUtils
@@ -12,7 +16,6 @@ import java.io.StringReader
 import java.net.URL
 import java.util.*
 import java.util.zip.ZipInputStream
-import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.collections.LinkedHashMap
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -75,22 +78,28 @@ object YarnNamespace : Namespace("yarn") {
     override fun supportsAW(): Boolean = true
 
     override fun reloadData() {
-        val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
-        json.parse(YarnBuild.serializer().list, URL("https://meta.fabricmc.net/v2/versions/yarn").readText()).forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
-        buildMap.forEach { (version, builds) -> builds.maxBy { it.build }?.apply { yarnBuilds[version] = this } }
-        val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
-        yarnBuild1_8_9 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
-                .map { it.text }
-                .filter { it.startsWith("1.8.9") }
-                .last()
-        yarnBuild1_13_2 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
-                .map { it.text }
-                .filter { it.startsWith("1.13.2") }
-                .last()
+        runBlocking {
+            launch(Dispatchers.IO) {
+                val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
+                json.decodeFromString(ListSerializer(YarnBuild.serializer()), URL("https://meta.fabricmc.net/v2/versions/yarn").readText()).forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
+                buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.build }?.apply { yarnBuilds[version] = this } }
+            }
+            launch(Dispatchers.IO) {
+                val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
+                yarnBuild1_8_9 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                        .map { it.text }
+                        .filter { it.startsWith("1.8.9") }
+                        .last()
+                yarnBuild1_13_2 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                        .map { it.text }
+                        .filter { it.startsWith("1.13.2") }
+                        .last()
+            }
+        }
     }
 
-    override fun getDefaultVersion(channel: String): String =
-            when (channel) {
+    override fun getDefaultVersion(channel: () -> String): String =
+            when (channel()) {
                 "legacy" -> "1.2.5"
                 "patchwork" -> "1.14.4"
                 "snapshot" -> yarnBuilds.keys.first()
@@ -102,7 +111,7 @@ object YarnNamespace : Namespace("yarn") {
     private fun MappingsContainer.loadIntermediaryFromMaven(
             mcVersion: String,
             repo: String = "https://maven.fabricmc.net",
-            group: String = "net.fabricmc.intermediary"
+            group: String = "net.fabricmc.intermediary",
     ) =
             loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
 
@@ -177,7 +186,7 @@ object YarnNamespace : Namespace("yarn") {
             yarnVersion: String,
             repo: String = "https://maven.fabricmc.net",
             group: String = "net.fabricmc.yarn",
-            showError: Boolean = true
+            showError: Boolean = true,
     ): MappingsContainer.MappingSource {
         return if (YarnV2BlackList.blacklist.contains(yarnVersion)) {
             loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/yarn-$yarnVersion.jar"), showError)
@@ -276,7 +285,7 @@ object YarnNamespace : Namespace("yarn") {
                     strings.add(reader.readLine())
                 val lines = strings.map { EngimaLine(it, StringUtils.countMatches(it, '\t'), MappingsType.getByString(it.replace("\t", "").split(" ")[0])) }
                 val levels = mutableListOf<Class?>()
-                repeat(lines.filter { it.type != MappingsType.UNKNOWN }.map { it.indent }.max()!! + 1) { levels.add(null) }
+                repeat(lines.filter { it.type != MappingsType.UNKNOWN }.map { it.indent }.maxOrNull()!! + 1) { levels.add(null) }
                 lines.forEach { line ->
                     if (line.type == MappingsType.CLASS) {
                         var className = line.split[1]
@@ -323,7 +332,7 @@ object YarnNamespace : Namespace("yarn") {
     private data class EngimaLine(
             val text: String,
             val indent: Int,
-            val type: MappingsType
+            val type: MappingsType,
     ) {
         val split: List<String> by lazy { text.trimStart('\t').split(" ") }
     }

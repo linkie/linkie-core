@@ -1,7 +1,7 @@
 package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
-import me.shedaniel.linkie.utils.info
+import me.shedaniel.linkie.utils.*
 
 @Serializable
 data class MappingsContainer(
@@ -9,7 +9,7 @@ data class MappingsContainer(
         val classes: MutableList<Class> = mutableListOf(),
         val name: String,
         var mappingSource: MappingSource? = null,
-        var namespace: String? = null
+        var namespace: String? = null,
 ) {
     fun getClass(intermediaryName: String): Class? =
             classes.firstOrNull { it.intermediaryName == intermediaryName }
@@ -114,13 +114,194 @@ fun Class.getFieldByObfName(obf: String): Field? {
     return null
 }
 
+inline fun buildMappings(
+        version: String,
+        name: String,
+        fillFieldDesc: Boolean = true,
+        fillMethodDesc: Boolean = true,
+        expendIntermediaryToMapped: Boolean = false,
+        crossinline builder: MappingsContainerBuilder.() -> Unit,
+): MappingsContainer =
+        MappingsContainerBuilder(version, name, fillFieldDesc, fillMethodDesc, expendIntermediaryToMapped).also(builder).build()
+
+class MappingsContainerBuilder(
+        val version: String,
+        val name: String,
+        val fillFieldDesc: Boolean,
+        val fillMethodDesc: Boolean,
+        val expendIntermediaryToMapped: Boolean,
+        var lockFill: Boolean = false,
+        var container: MappingsContainer = MappingsContainer(version, name = name),
+) {
+    fun build(): MappingsContainer = container.also { fill() }
+
+    fun fill() {
+        if (lockFill) return
+        container.fillMappedDescViaIntermediary(fillFieldDesc, fillMethodDesc)
+        container.fillObfDescViaIntermediary(fillFieldDesc, fillMethodDesc)
+
+        if (expendIntermediaryToMapped) {
+            container.classes.forEach { clazz ->
+                clazz.mappedName = clazz.mappedName ?: clazz.intermediaryName
+                clazz.fields.forEach { field ->
+                    field.mappedName = field.mappedName ?: field.intermediaryName
+                    field.mappedDesc = field.mappedDesc ?: field.intermediaryDesc
+                }
+                clazz.methods.forEach { method ->
+                    method.mappedName = method.mappedName ?: method.intermediaryName
+                    method.mappedDesc = method.mappedDesc ?: method.intermediaryDesc
+                }
+            }
+        }
+    }
+
+    fun source(mappingSource: MappingsContainer.MappingSource?) {
+        container.mappingSource = mappingSource
+    }
+
+    fun edit(operator: MappingsContainer.() -> Unit) {
+        operator(container)
+    }
+
+    fun replace(operator: MappingsContainer.() -> MappingsContainer) {
+        container = operator(container)
+    }
+    
+    fun lockFill(lockFill: Boolean = true) {
+        this.lockFill = lockFill
+    }
+
+    fun clazz(intermediaryName: String, obf: String? = null, mapped: String? = null): ClassBuilder =
+            ClassBuilder(container.getOrCreateClass(intermediaryName)).apply {
+                obfClass(obf)
+                mapClass(mapped)
+            }
+
+    inline fun clazz(intermediaryName: String, obf: String? = null, mapped: String? = null, crossinline builder: ClassBuilder.() -> Unit): ClassBuilder =
+            ClassBuilder(container.getOrCreateClass(intermediaryName)).also(builder).apply {
+                obfClass(obf)
+                mapClass(mapped)
+            }
+}
+
+fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer) {
+    val classO2I = mutableMapOf<String, Class>()
+    obf2intermediary.classes.forEach { clazz -> clazz.obfName.merged?.also { classO2I[it] = clazz } }
+    classes.forEach { clazz ->
+        classO2I[clazz.obfName.merged]?.also { replacement ->
+            clazz.intermediaryName = replacement.intermediaryName
+            
+            clazz.methods.forEach { method -> 
+                replacement.getMethodByObfNameAndDesc(method.obfName.merged!!, method.obfDesc.merged!!)?.also { replacementMethod ->
+                    method.intermediaryName = replacementMethod.intermediaryName
+                    method.intermediaryDesc = replacementMethod.intermediaryDesc
+                }
+            }
+            clazz.fields.forEach { field ->
+                replacement.getFieldByObfName(field.obfName.merged!!)?.also { replacementField ->
+                    field.intermediaryName = replacementField.intermediaryName
+                    field.intermediaryDesc = replacementField.intermediaryDesc
+                }
+            }
+        }
+    }
+}
+
+inline class ClassBuilder(val clazz: Class) {
+    fun obfClass(obf: String?) {
+        clazz.obfName.merged = obf
+    }
+
+    fun mapClass(mapped: String?) {
+        clazz.mappedName = mapped
+    }
+
+    fun field(intermediaryName: String, intermediaryDesc: String? = null): FieldBuilder =
+            FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).apply {
+                intermediaryDesc(intermediaryDesc)
+            }
+
+    inline fun field(intermediaryName: String, intermediaryDesc: String? = null, crossinline builder: FieldBuilder.() -> Unit): FieldBuilder =
+            FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).also(builder).apply {
+                intermediaryDesc(intermediaryDesc)
+            }
+
+    fun method(intermediaryName: String, intermediaryDesc: String? = null): MethodBuilder =
+            MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).apply {
+                intermediaryDesc(intermediaryDesc)
+            }
+
+    inline fun method(intermediaryName: String, intermediaryDesc: String? = null, crossinline builder: MethodBuilder.() -> Unit): MethodBuilder =
+            MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).also(builder).apply {
+                intermediaryDesc(intermediaryDesc)
+            }
+}
+
+inline class FieldBuilder(val field: Field) {
+    fun intermediaryDesc(intermediaryDesc: String?) = intermediaryDesc?.also {
+        field.intermediaryDesc = it
+    }
+
+    fun obfField(obfName: String?) {
+        field.obfName.merged = obfName
+    }
+
+    fun mapField(mappedName: String?) {
+        field.mappedName = mappedName
+    }
+}
+
+inline class MethodBuilder(val method: Method) {
+    fun intermediaryDesc(intermediaryDesc: String?) = intermediaryDesc?.also {
+        method.intermediaryDesc = it
+    }
+
+    fun obfMethod(obfName: String?) {
+        method.obfName.merged = obfName
+    }
+
+    fun mapMethod(mappedName: String?) {
+        method.mappedName = mappedName
+    }
+}
+
+fun MappingsContainer.fillObfDescViaIntermediary(fillFieldDesc: Boolean, fillMethodDesc: Boolean) {
+    classes.forEach { clazz ->
+        if (fillFieldDesc)
+            clazz.fields.forEach { field ->
+                field.obfDesc.merged = field.obfDesc.merged ?: field.intermediaryDesc.remapFieldDescriptor { descClass ->
+                    getClass(descClass)?.obfName?.merged ?: descClass
+                }
+            }
+        if (fillMethodDesc)
+            clazz.methods.forEach { method ->
+                method.obfDesc.merged = method.obfDesc.merged ?: method.intermediaryDesc.remapMethodDescriptor { descClass ->
+                    getClass(descClass)?.obfName?.merged ?: descClass
+                }
+            }
+    }
+}
+
+fun MappingsContainer.fillMappedDescViaIntermediary(fillFieldDesc: Boolean, fillMethodDesc: Boolean) {
+    classes.forEach { clazz ->
+        if (fillFieldDesc)
+            clazz.fields.forEach { field ->
+                field.mappedDesc = field.mappedDesc ?: field.intermediaryDesc.mapFieldIntermediaryDescToNamed(this)
+            }
+        if (fillMethodDesc)
+            clazz.methods.forEach { method ->
+                method.mappedDesc = method.mappedDesc ?: method.intermediaryDesc.mapMethodIntermediaryDescToNamed(this)
+            }
+    }
+}
+
 @Serializable
 data class Class(
-        val intermediaryName: String,
+        var intermediaryName: String,
         val obfName: Obf = Obf(),
         var mappedName: String? = null,
         val methods: MutableList<Method> = mutableListOf(),
-        val fields: MutableList<Field> = mutableListOf()
+        val fields: MutableList<Field> = mutableListOf(),
 ) {
     fun getMethod(intermediaryName: String): Method? =
             methods.firstOrNull { it.intermediaryName == intermediaryName }
@@ -137,29 +318,29 @@ data class Class(
 
 @Serializable
 data class Method(
-        val intermediaryName: String,
-        val intermediaryDesc: String,
+        var intermediaryName: String,
+        var intermediaryDesc: String,
         val obfName: Obf = Obf(),
         val obfDesc: Obf = Obf(),
         var mappedName: String? = null,
-        var mappedDesc: String? = null
+        var mappedDesc: String? = null,
 )
 
 @Serializable
 data class Field(
-        val intermediaryName: String,
-        val intermediaryDesc: String,
+        var intermediaryName: String,
+        var intermediaryDesc: String,
         val obfName: Obf = Obf(),
         val obfDesc: Obf = Obf(),
         var mappedName: String? = null,
-        var mappedDesc: String? = null
+        var mappedDesc: String? = null,
 )
 
 @Serializable
 data class Obf(
         var client: String? = null,
         var server: String? = null,
-        var merged: String? = null
+        var merged: String? = null,
 ) {
     fun list(): List<String> {
         val list = mutableListOf<String>()
@@ -180,5 +361,5 @@ data class YarnBuild(
         val build: Int,
         val maven: String,
         val version: String,
-        val stable: Boolean
+        val stable: Boolean,
 )

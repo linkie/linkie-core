@@ -2,18 +2,21 @@ package me.shedaniel.linkie
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.launch
 import me.shedaniel.linkie.utils.debug
-import me.shedaniel.linkie.utils.info
+import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 
 object Namespaces {
     val namespaces = mutableMapOf<String, Namespace>()
     val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
+    var cacheFolder = File(System.getProperty("user.dir"), ".linkie-cache")
 
-    private fun registerNamespace(namespace: Namespace) =
-            namespace.also { namespaces[it.id] = it }
+    private fun registerNamespace(namespace: Namespace) = namespace.also {
+        namespaces[it.id] = it
+    }
 
     operator fun get(id: String) = namespaces[id]!!
 
@@ -36,11 +39,15 @@ object Namespaces {
         debug("Currently Loaded ${cachedMappings.size} Mapping(s): " + cachedMappings.joinToString(", ") { "${it.namespace}-${it.version}" })
     }
 
+    @OptIn(ObsoleteCoroutinesApi::class)
     fun init(
             vararg namespaces: Namespace,
-            cycleMs: Long = 1800000
+            cycleMs: Long = 1800000,
     ) {
-        namespaces.forEach { registerNamespace(it) }
+        namespaces.forEach {
+            registerNamespace(it)
+            it.getDependencies().forEach { dependency -> registerNamespace(dependency) }
+        }
         val tickerChannel = ticker(delayMillis = cycleMs, initialDelayMillis = 0)
         CoroutineScope(Dispatchers.Default).launch {
             for (event in tickerChannel) {

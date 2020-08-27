@@ -1,6 +1,9 @@
 package me.shedaniel.linkie.namespaces
 
-import kotlinx.serialization.json.content
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
@@ -26,11 +29,11 @@ object PlasmaNamespace : Namespace("plasma") {
     override fun getDefaultLoadedVersions(): List<String> = listOf()
     override fun getAllVersions(): List<String> = listOf("b1.7.3")
     override fun reloadData() {
-        val element = json.parseJson(URL("https://api.github.com/repos/minecraft-cursed-legacy/Plasma/releases/latest").readText())
-        downloadUrl = element.jsonObject["assets"]!!.jsonArray[0].jsonObject["browser_download_url"]!!.content
-        lastId = element.jsonObject["id"]!!.primitive.long
+        val element = json.parseToJsonElement(URL("https://api.github.com/repos/minecraft-cursed-legacy/Plasma/releases/latest").readText())
+        downloadUrl = element.jsonObject["assets"]!!.jsonArray[0].jsonObject["browser_download_url"]!!.jsonPrimitive.content
+        lastId = element.jsonObject["id"]!!.jsonPrimitive.long
     }
 
     override fun supportsMixin(): Boolean = true
-    override fun getDefaultVersion(channel: String): String = "b1.7.3"
+    override fun getDefaultVersion(channel: () -> String): String = "b1.7.3"
 }

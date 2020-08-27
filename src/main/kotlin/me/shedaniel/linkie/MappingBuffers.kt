@@ -8,70 +8,92 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
-    writeString(mappingsContainer.version)
-    writeString(mappingsContainer.name)
-    writeString(mappingsContainer.mappingSource?.name)
-    writeInt(mappingsContainer.classes.size)
-    for (aClass in mappingsContainer.classes) {
-        writeClass(aClass)
-    }
+    writeNotNullString(mappingsContainer.version)
+    writeNotNullString(mappingsContainer.name)
+    writeStringOrNull(mappingsContainer.mappingSource?.name)
+    writeCollection(mappingsContainer.classes) { writeClass(it) }
 }
 
 fun ByteBuffer.writeClass(aClass: Class) {
-    writeString(aClass.intermediaryName)
-    writeObf(aClass.obfName)
-    writeString(aClass.mappedName)
+    writeNotNullString(aClass.intermediaryName)
+    writeMagicObf(aClass.intermediaryName, aClass.obfName)
+    writeMagic(aClass.intermediaryName, aClass.mappedName)
     writeCollection(aClass.methods) { writeMethod(it) }
     writeCollection(aClass.fields) { writeField(it) }
 }
 
 fun ByteBuffer.writeMethod(method: Method) {
-    writeString(method.intermediaryName)
-    writeString(method.intermediaryDesc)
-    writeObf(method.obfName)
-    writeObf(method.obfDesc)
-    writeString(method.mappedName)
-    writeString(method.mappedDesc)
+    writeNotNullString(method.intermediaryName)
+    writeNotNullString(method.intermediaryDesc)
+    writeMagicObf(method.intermediaryName, method.obfName)
+    writeMagicObf(method.intermediaryDesc, method.obfDesc)
+    writeMagic(method.intermediaryName, method.mappedName)
+    writeMagic(method.intermediaryDesc, method.mappedDesc)
 }
 
 fun ByteBuffer.writeField(field: Field) {
-    writeString(field.intermediaryName)
-    writeString(field.intermediaryDesc)
-    writeObf(field.obfName)
-    writeObf(field.obfDesc)
-    writeString(field.mappedName)
-    writeString(field.mappedDesc)
+    writeNotNullString(field.intermediaryName)
+    writeNotNullString(field.intermediaryDesc)
+    writeMagicObf(field.intermediaryName, field.obfName)
+    writeMagicObf(field.intermediaryDesc, field.obfDesc)
+    writeMagic(field.intermediaryName, field.mappedName)
+    writeMagic(field.intermediaryDesc, field.mappedDesc)
+}
+
+fun ByteBuffer.writeMagic(original: String, string: String?) {
+    when (string) {
+        original -> writeByte(1)
+        null -> writeByte(2)
+        else -> {
+            writeByte(3)
+            writeNotNullString(string)
+        }
+    }
 }
 
 fun ByteBuffer.writeObf(obf: Obf) {
     when {
         obf.isEmpty() -> writeByte(0)
-        obf.isMerged() -> {
-            writeByte(1)
-            writeString(obf.merged)
+        obf.isMerged() -> when (obf.merged) {
+            null -> writeByte(2)
+            else -> {
+                writeByte(3)
+                writeNotNullString(obf.merged!!)
+            }
         }
         else -> {
-            writeByte(2)
-            writeString(obf.client)
-            writeString(obf.server)
+            writeByte(4)
+            writeStringOrNull(obf.client)
+            writeStringOrNull(obf.server)
+        }
+    }
+}
+
+fun ByteBuffer.writeMagicObf(original: String, obf: Obf) {
+    when {
+        obf.isEmpty() -> writeByte(0)
+        obf.isMerged() -> writeMagic(original, obf.merged)
+        else -> {
+            writeByte(4)
+            writeStringOrNull(obf.client)
+            writeStringOrNull(obf.server)
         }
     }
 }
 
 fun ByteBuffer.readMappingsContainer(): MappingsContainer {
-    val version = readString()
-    val name = readString()
+    val version = readNotNullString()
+    val name = readNotNullString()
     val mappingSource = readStringOrNull()?.let { MappingsContainer.MappingSource.valueOf(it) }
     val mappingsContainer = MappingsContainer(version, name = name, mappingSource = mappingSource)
-    for (i in 0 until readInt())
-        mappingsContainer.classes.add(readClass())
+    mappingsContainer.classes.addAll(readCollection { readClass() })
     return mappingsContainer
 }
 
 fun ByteBuffer.readClass(): Class {
-    val intermediaryName = readString()
-    val obfName = readObf()
-    val mappedName = readStringOrNull()
+    val intermediaryName = readNotNullString()
+    val obfName = readMagicObf(intermediaryName)
+    val mappedName = readMagic(intermediaryName)
     val aClass = Class(intermediaryName, obfName, mappedName)
     aClass.methods.addAll(readCollection { readMethod() })
     aClass.fields.addAll(readCollection { readField() })
@@ -79,34 +101,57 @@ fun ByteBuffer.readClass(): Class {
 }
 
 fun ByteBuffer.readMethod(): Method {
-    val intermediaryName = readString()
-    val intermediaryDesc = readString()
-    val obfName = readObf()
-    val obfDesc = readObf()
-    val mappedName = readStringOrNull()
-    val mappedDesc = readStringOrNull()
+    val intermediaryName = readNotNullString()
+    val intermediaryDesc = readNotNullString()
+    val obfName = readMagicObf(intermediaryName)
+    val obfDesc = readMagicObf(intermediaryDesc)
+    val mappedName = readMagic(intermediaryName)
+    val mappedDesc = readMagic(intermediaryDesc)
     return Method(intermediaryName, intermediaryDesc, obfName, obfDesc, mappedName, mappedDesc)
 }
 
 fun ByteBuffer.readField(): Field {
-    val intermediaryName = readString()
-    val intermediaryDesc = readString()
-    val obfName = readObf()
-    val obfDesc = readObf()
-    val mappedName = readStringOrNull()
-    val mappedDesc = readStringOrNull()
+    val intermediaryName = readNotNullString()
+    val intermediaryDesc = readNotNullString()
+    val obfName = readMagicObf(intermediaryName)
+    val obfDesc = readMagicObf(intermediaryDesc)
+    val mappedName = readMagic(intermediaryName)
+    val mappedDesc = readMagic(intermediaryDesc)
     return Field(intermediaryName, intermediaryDesc, obfName, obfDesc, mappedName, mappedDesc)
 }
 
 fun ByteBuffer.readObf(): Obf {
     return when (readByte().toInt()) {
         0 -> Obf()
-        1 -> Obf(merged = readStringOrNull())
+        2 -> Obf(merged = null)
+        3 -> Obf(merged = readNotNullString())
         else -> {
             val client = readStringOrNull()
             val server = readStringOrNull()
             Obf(client, server)
         }
+    }
+}
+
+fun ByteBuffer.readMagicObf(original: String): Obf {
+    return when (readByte().toInt()) {
+        0 -> Obf()
+        1 -> Obf(merged = original)
+        2 -> Obf(merged = null)
+        3 -> Obf(merged = readNotNullString())
+        else -> {
+            val client = readStringOrNull()
+            val server = readStringOrNull()
+            Obf(client, server)
+        }
+    }
+}
+
+fun ByteBuffer.readMagic(original: String): String? {
+    return when (readByte().toInt()) {
+        1 -> original
+        2 -> null
+        else -> readNotNullString()
     }
 }
 
@@ -156,7 +201,7 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
     fun writeChar(char: Char) {
         input!!.add(char)
     }
-    
+
     inline fun <T> writeCollection(collection: Collection<T>, crossinline writer: ByteBuffer.(T) -> Unit) {
         writeInt(collection.size)
         collection.forEach { writer(this, it) }
@@ -177,7 +222,7 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
     fun readFloat(): Float = output!!.readFloat()
     fun readDouble(): Double = output!!.readDouble()
     fun readChar(): Char = output!!.readChar()
-    
+
     inline fun <T> readCollection(crossinline reader: ByteBuffer.() -> T): List<T> {
         val size = readInt()
         val list = ArrayList<T>(size)
@@ -187,13 +232,17 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
         return list
     }
 
-    fun writeString(string: String?) {
+    fun writeStringOrNull(string: String?) {
         if (string != null) {
-            writeUnsignedShort(string.length.toUShort())
-            writeByteArray(string.toByteArray())
+            writeNotNullString(string)
         } else {
             writeUnsignedShort(0U)
         }
+    }
+
+    fun writeNotNullString(string: String) {
+        writeUnsignedShort(string.length.toUShort())
+        writeByteArray(string.toByteArray())
     }
 
     fun readStringOrNull(): String? {
@@ -202,5 +251,5 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
         return readByteArray(length).toString(Charsets.UTF_8)
     }
 
-    fun readString(): String = readStringOrNull() ?: ""
+    fun readNotNullString(): String = readStringOrNull()!!
 }

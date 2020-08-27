@@ -4,9 +4,6 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.getClassByObfName
 import java.io.IOException
 import java.io.StringReader
-import java.util.*
-import java.util.regex.Pattern
-import kotlin.Comparator
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =

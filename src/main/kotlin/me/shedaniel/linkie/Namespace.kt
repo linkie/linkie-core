@@ -4,7 +4,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
 import me.shedaniel.linkie.utils.tryToVersion
 import java.util.*
 
@@ -18,12 +17,19 @@ abstract class Namespace(val id: String) {
     override fun hashCode(): Int = id.hashCode()
     override fun toString(): String = id
 
+    open fun getDependencies(): Set<Namespace> = setOf()
+
     private val mappingsSuppliers = mutableListOf<MappingsSupplier>()
-    val json = Json(JsonConfiguration.Stable.copy(ignoreUnknownKeys = true, isLenient = true))
-    var reloading = false
+    val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
+    val reloading: Boolean
+        get() = selfReloading || getDependencies().any { it.reloading }
+    private var selfReloading = false
 
     suspend fun reset() {
-        reloading = true
+        selfReloading = true
         try {
             reloadData()
             val jobs = getDefaultLoadedVersions().map {
@@ -39,13 +45,16 @@ abstract class Namespace(val id: String) {
         } catch (t: Throwable) {
             t.printStackTrace()
         }
-        reloading = false
+        selfReloading = false
     }
+
+    open fun getAvailableMappingChannels(): List<String> = listOf("release")
+    open fun getDefaultMappingChannel(): String = getAvailableMappingChannels().first()
 
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): List<String>
     abstract fun reloadData()
-    abstract fun getDefaultVersion(channel: String = getDefaultMappingChannel()): String
+    abstract fun getDefaultVersion(channel: () -> String = this::getDefaultMappingChannel): String
     fun getAllSortedVersions(): List<String> =
             getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
 
@@ -74,13 +83,10 @@ abstract class Namespace(val id: String) {
         return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version).also { Namespaces.addMappingsContainer(it) } }
     }
 
-    fun getDefaultProvider(channel: String = getDefaultMappingChannel()): MappingsProvider {
+    fun getDefaultProvider(channel: () -> String = this::getDefaultMappingChannel): MappingsProvider {
         val version = getDefaultVersion()
         return getProvider(version)
     }
-
-    open fun getAvailableMappingChannels(): List<String> = listOf("release")
-    open fun getDefaultMappingChannel(): String = getAvailableMappingChannels().first()
 
     open fun supportsMixin(): Boolean = false
     open fun supportsAT(): Boolean = false

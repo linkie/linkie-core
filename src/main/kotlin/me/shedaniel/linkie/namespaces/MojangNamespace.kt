@@ -1,9 +1,13 @@
 package me.shedaniel.linkie.namespaces
 
-import kotlinx.serialization.json.content
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.onlyClass
-import me.shedaniel.linkie.utils.remapMethodDescriptor
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
 import java.io.InputStream
@@ -14,30 +18,55 @@ object MojangNamespace : Namespace("mojang") {
     private var latestRelease = ""
     private var latestSnapshot = ""
 
+    override fun getDependencies(): Set<Namespace> = setOf(YarnNamespace)
+
     init {
         registerSupplier(simpleCachedSupplier("1.14.4") {
-            MappingsContainer(it, name = "Mojang").apply {
+            buildMappings(it, "Mojang", expendIntermediaryToMapped = true) {
                 readMojangMappings(
                         client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
                         server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
                 )
-                mappingSource = MappingsContainer.MappingSource.MOJANG
+                source(MappingsContainer.MappingSource.MOJANG)
+
+                val yarn = YarnNamespace.getProvider(it)
+                if (!yarn.isEmpty()) {
+                    fill()
+                    edit {
+                        rewireIntermediaryFrom(yarn.mappingsContainer!!.invoke())
+                    }
+                    lockFill()
+                }
             }
         })
-        registerSupplier(multipleCachedSupplier({ versionJsonMap.keys }, { it }) {
-            MappingsContainer(it, name = "Mojang").apply {
+        registerSupplier(multipleCachedSupplier({ versionJsonMap.keys }, {
+            if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it
+        }) {
+            buildMappings(it, "Mojang", expendIntermediaryToMapped = true) {
                 val url = URL(versionJsonMap[version])
-                val versionJson = json.parseJson(url.readText()).jsonObject
+                val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                 val downloads = versionJson["downloads"]!!.jsonObject
                 readMojangMappings(
-                        client = downloads["client_mappings"]!!.jsonObject["url"]!!.content,
-                        server = downloads["server_mappings"]!!.jsonObject["url"]!!.content
+                        client = downloads["client_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content,
+                        server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
                 )
-                mappingSource = MappingsContainer.MappingSource.MOJANG
+                source(MappingsContainer.MappingSource.MOJANG)
+
+                val yarn = YarnNamespace.getProvider(it)
+                if (!yarn.isEmpty()) {
+                    fill()
+                    edit {
+                        rewireIntermediaryFrom(yarn.mappingsContainer!!.invoke())
+                    }
+                    lockFill()
+                }
             }
         })
     }
 
+    override fun supportsMixin(): Boolean = true
+    override fun supportsAW(): Boolean = true
+    
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
 
     override fun getAllVersions(): List<String> =
@@ -45,35 +74,43 @@ object MojangNamespace : Namespace("mojang") {
 
     override fun reloadData() {
         versionJsonMap.clear()
-        val versionManifest = json.parseJson(URL("https://launchermeta.mojang.com/mc/game/version_manifest.json").readText())
+        val versionManifest = json.parseToJsonElement(URL("https://launchermeta.mojang.com/mc/game/version_manifest.json").readText())
         val `19w36a` = "19w36a".toVersion()
         versionManifest.jsonObject["versions"]!!.jsonArray.forEach { versionElement ->
-            val versionString = versionElement.jsonObject["id"]!!.content
+            val versionString = versionElement.jsonObject["id"]!!.jsonPrimitive.content
             val version = versionString.tryToVersion() ?: return@forEach
             if (version >= `19w36a`) {
-                val urlString = versionElement.jsonObject["url"]!!.content
+                val urlString = versionElement.jsonObject["url"]!!.jsonPrimitive.content
                 versionJsonMap[versionString] = urlString
             }
         }
-        latestRelease = versionManifest.jsonObject["latest"]!!.jsonObject["release"]!!.content
-        latestSnapshot = versionManifest.jsonObject["latest"]!!.jsonObject["snapshot"]!!.content
+        latestRelease = versionManifest.jsonObject["latest"]!!.jsonObject["release"]!!.jsonPrimitive.content
+        latestSnapshot = versionManifest.jsonObject["latest"]!!.jsonObject["snapshot"]!!.jsonPrimitive.content
     }
 
-    override fun getDefaultVersion(channel: String): String = when(channel) {
+    override fun getDefaultVersion(channel: () -> String): String = when (channel()) {
         "snapshot" -> latestSnapshot
         else -> latestRelease
     }
+
     override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot")
 
-    private fun MappingsContainer.readMojangMappings(client: String, server: String) {
-        val invokes: MutableList<() -> Unit> = mutableListOf()
-        invokes.addAll(readMappings(URL(client).openStream()))
-        invokes.addAll(readMappings(URL(server).openStream()))
-        invokes.forEach { it() }
+    private fun MappingsContainerBuilder.readMojangMappings(client: String, server: String) {
+        var clientBytes: ByteArray? = null
+        var serverBytes: ByteArray? = null
+        runBlocking {
+            launch(Dispatchers.IO) {
+                clientBytes = URL(client).readBytes()
+            }
+            launch(Dispatchers.IO) {
+                serverBytes = URL(server).readBytes()
+            }
+        }
+        readMappings(clientBytes!!.inputStream())
+        readMappings(serverBytes!!.inputStream())
     }
 
-    private fun MappingsContainer.readMappings(inputStream: InputStream): List<() -> Unit> {
-        val invokes: MutableList<() -> Unit> = mutableListOf()
+    private fun MappingsContainerBuilder.readMappings(inputStream: InputStream) {
         fun String.toActualDescription(): String = when (this) {
             "boolean" -> "Z"
             "char" -> "C"
@@ -93,7 +130,7 @@ object MojangNamespace : Namespace("mojang") {
             return "(${splitClass.joinToString("") { it.toActualDescription() }})${returnType.toActualDescription()}"
         }
 
-        var lastClass: Class? = null
+        var lastClass: ClassBuilder? = null
         inputStream.bufferedReader().forEachLine {
             if (it.startsWith('#')) return@forEachLine
             if (it.startsWith("    ")) {
@@ -103,25 +140,15 @@ object MojangNamespace : Namespace("mojang") {
                     split.remove("->")
                     lastClass!!.apply {
                         val methodName = split[1].substring(0, split[1].indexOf('('))
-                        getOrCreateMethod(methodName, getActualDescription(split[1].substring(methodName.length), split[0])).apply {
-                            obfName.merged = split[2]
-                            invokes.add {
-                                obfDesc.merged = obfDesc.merged ?: intermediaryDesc.remapMethodDescriptor { descClass ->
-                                    getClass(descClass)?.obfName?.merged ?: descClass
-                                }
-                            }
+                        method(methodName, getActualDescription(split[1].substring(methodName.length), split[0])) {
+                            obfMethod(split[2])
                         }
                     }
                 } else {
                     val split = it.trimIndent().replace(" -> ", " ").split(' ')
                     lastClass!!.apply {
-                        getOrCreateField(split[1], split[0].toActualDescription()).apply {
-                            obfName.merged = split[2]
-                            invokes.add {
-                                obfDesc.merged = obfDesc.merged ?: intermediaryDesc.remapMethodDescriptor { descClass ->
-                                    getClass(descClass)?.obfName?.merged ?: descClass
-                                }
-                            }
+                        field(split[1], split[0].toActualDescription()) {
+                            obfField(split[2])
                         }
                     }
                 }
@@ -130,13 +157,9 @@ object MojangNamespace : Namespace("mojang") {
                 val className = split[0].replace('.', '/')
                 val obf = split[1]
                 if (className.onlyClass() != "package-info") {
-                    getOrCreateClass(className).apply {
-                        obfName.merged = obfName.merged ?: obf
-                        lastClass = this
-                    }
+                    lastClass = clazz(className, obf)
                 }
             }
         }
-        return invokes
     }
 }

@@ -2,8 +2,6 @@
 
 package me.shedaniel.linkie
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
 import java.io.File
@@ -66,22 +64,20 @@ private open class DelegateMappingsSupplier(val mappingsSupplier: MappingsSuppli
     override fun isCached(version: String): Boolean = mappingsSupplier.isCached(version)
 }
 
-private val json = Json(JsonConfiguration.Stable.copy(encodeDefaults = false, ignoreUnknownKeys = true, isLenient = true))
-
 private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (String) -> String, val mappingsSupplier: MappingsSupplier) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
 
     override fun isCached(version: String): Boolean {
-        val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
+        val cacheFolder = File(Namespaces.cacheFolder, "mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie2.gz")
+        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie3")
         return cachedFile.exists()
     }
 
     override fun applyVersion(version: String): MappingsContainer {
-        val cacheFolder = File(File(System.getProperty("user.dir")), ".linkie-cache/mappings").also { it.mkdirs() }
+        val cacheFolder = File(Namespaces.cacheFolder, "mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie2.gz")
+        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie3")
         if (cachedFile.exists()) {
             val mappingsContainer = loadFromCachedFile(cachedFile)
             if (mappingsContainer != null) return mappingsContainer
@@ -94,10 +90,10 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     }
 
     private fun loadFromCachedFile(cachedFile: File): MappingsContainer? =
-            outputCompressedBuffer(cachedFile.readBytes()).readMappingsContainer()
+            outputBuffer(cachedFile.readBytes()).readMappingsContainer()
 
     private fun MappingsContainer.saveToCachedFile(cachedFile: File) =
-            cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toCompressedByteArray())
+            cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toByteArray())
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: () -> MappingsContainer) : MappingsSupplier {

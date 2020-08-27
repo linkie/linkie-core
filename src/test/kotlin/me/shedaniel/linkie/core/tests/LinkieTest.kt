@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.namespaces.MCPNamespace
+import me.shedaniel.linkie.namespaces.MojangNamespace
 import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.tryToVersion
@@ -41,7 +42,8 @@ class LinkieTest {
     @Test
     fun yarn() {
         Namespaces.init(YarnNamespace)
-        runBlocking { delay(5000) }
+        runBlocking { delay(2000) }
+        runBlocking { while (YarnNamespace.reloading) delay(100) }
         assertEquals("1.16.2", YarnNamespace.getDefaultVersion())
         YarnNamespace.getDefaultProvider().mappingsContainer!!.invoke()
     }
@@ -49,8 +51,18 @@ class LinkieTest {
     @Test
     fun mcp() {
         Namespaces.init(MCPNamespace)
-        runBlocking { delay(5000) }
+        runBlocking { delay(2000) }
+        runBlocking { while (MCPNamespace.reloading) delay(100) }
         assertEquals("1.16.2", MCPNamespace.getDefaultVersion())
         MCPNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+    }
+
+    @Test
+    fun mojmap() {
+        Namespaces.init(MojangNamespace)
+        runBlocking { delay(2000) }
+        runBlocking { while (MojangNamespace.reloading) delay(100) }
+        assertEquals("1.16.2", MojangNamespace.getDefaultVersion())
+        MojangNamespace.getDefaultProvider().mappingsContainer!!.invoke()
     }
 }
