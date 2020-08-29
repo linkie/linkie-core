@@ -241,14 +241,14 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
     }
 
     fun writeNotNullString(string: String) {
-        writeUnsignedShort(string.length.toUShort())
+        writeUnsignedShort((string.length + 1).toUShort())
         writeByteArray(string.toByteArray())
     }
 
     fun readStringOrNull(): String? {
         val length = readUnsignedShort().toInt()
         if (length == 0) return null
-        return readByteArray(length).toString(Charsets.UTF_8)
+        return readByteArray(length - 1).toString(Charsets.UTF_8)
     }
 
     fun readNotNullString(): String = readStringOrNull()!!
