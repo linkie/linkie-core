@@ -68,7 +68,7 @@ object MCPNamespace : Namespace("mcp") {
     override fun supportsFieldDescription(): Boolean = false
     override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion())
     fun getAllBotVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }
-    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(listOf("1.16", "1.16.1", "1.16.2")) }
+    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(listOf("1.16", "1.16.1", "1.16.2", "1.16.3")) }
     override fun getDefaultVersion(channel: () -> String): String = getAllVersions().maxWithOrNull(Comparator.nullsFirst(compareBy { it.tryToVersion() }))!!
 
     override fun supportsAT(): Boolean = true
@@ -147,7 +147,7 @@ object MCPNamespace : Namespace("mcp") {
 
     private fun MappingsContainer.loadTsrgFromInputStream(stream: InputStream) {
         var lastClass: String? = null
-        InputStreamReader(stream).forEachLine {
+        stream.bufferedReader().forEachLine {
             val split = it.trimIndent().split(" ")
             if (!it.startsWith('\t')) {
                 val obf = split[0]
