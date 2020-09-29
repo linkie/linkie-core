@@ -62,7 +62,7 @@ class LinkieTest {
         Namespaces.init(MojangNamespace)
         runBlocking { delay(2000) }
         runBlocking { while (MojangNamespace.reloading) delay(100) }
-        assertEquals("1.16.2", MojangNamespace.getDefaultVersion())
+        assertEquals("1.16.3", MojangNamespace.getDefaultVersion())
         MojangNamespace.getDefaultProvider().mappingsContainer!!.invoke()
     }
 }
