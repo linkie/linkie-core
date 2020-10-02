@@ -1,12 +1,14 @@
 package me.shedaniel.linkie.namespaces
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.multipleCachedSupplier
-import me.shedaniel.linkie.simpleCachedSupplier
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
@@ -18,6 +20,7 @@ import java.util.zip.ZipInputStream
 
 object MCPNamespace : Namespace("mcp") {
     private val mcpConfigSnapshots = mutableMapOf<Version, MutableList<String>>()
+    private val newMcpVersions = mutableMapOf<Version, MCPVersion>()
 
     init {
         registerSupplier(multipleCachedSupplier({ getAllBotVersions() }, {
@@ -35,31 +38,11 @@ object MCPNamespace : Namespace("mcp") {
                 loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
             }
         })
-        registerSupplier(simpleCachedSupplier("1.16", "1.16-20200514") {
+        registerSupplier(multipleCachedSupplier({ newMcpVersions.keys.map { version -> version.toString() } }, { newMcpVersions[it.toVersion()]!!.name }) {
             MappingsContainer(it, name = "MCP").apply {
-                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16/mcp_config-1.16.zip"))
-                loadMCPFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_snapshot/20200514-1.16/mcp_snapshot-20200514-1.16.zip"))
-                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
-            }
-        })
-        registerSupplier(simpleCachedSupplier("1.16.1", "1.16.1-20200820") {
-            MappingsContainer(it, name = "MCP").apply {
-                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.1/mcp_config-1.16.1.zip"))
-                loadMCPFromURLZip(URL("https://www.dogforce-games.com/maven/de/oceanlabs/mcp/mcp_snapshot/20200820-1.16.1/mcp_snapshot-20200820-1.16.1.zip"))
-                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
-            }
-        })
-        registerSupplier(simpleCachedSupplier("1.16.2", "1.16.2-20200820") {
-            MappingsContainer(it, name = "MCP").apply {
-                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.2/mcp_config-1.16.2.zip"))
-                loadMCPFromURLZip(URL("https://www.dogforce-games.com/maven/de/oceanlabs/mcp/mcp_snapshot/20200820-1.16.1/mcp_snapshot-20200820-1.16.1.zip"))
-                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
-            }
-        })
-        registerSupplier(simpleCachedSupplier("1.16.3", "1.16.3-20200820") {
-            MappingsContainer(it, name = "MCP").apply {
-                loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/1.16.3/mcp_config-1.16.3.zip"))
-                loadMCPFromURLZip(URL("https://www.dogforce-games.com/maven/de/oceanlabs/mcp/mcp_snapshot/20200820-1.16.1/mcp_snapshot-20200820-1.16.1.zip"))
+                val mcpVersion = newMcpVersions[it.toVersion()]!!
+                loadTsrgFromURLZip(URL(mcpVersion.mcp_config))
+                loadMCPFromURLZip(URL(mcpVersion.mcp))
                 mappingSource = MappingsContainer.MappingSource.MCP_TSRG
             }
         })
@@ -68,7 +51,7 @@ object MCPNamespace : Namespace("mcp") {
     override fun supportsFieldDescription(): Boolean = false
     override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion())
     fun getAllBotVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }
-    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(listOf("1.16", "1.16.1", "1.16.2", "1.16.3")) }
+    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(newMcpVersions.keys.map { version -> version.toString() }) }
     override fun getDefaultVersion(channel: () -> String): String = getAllVersions().maxWithOrNull(Comparator.nullsFirst(compareBy { it.tryToVersion() }))!!
 
     override fun supportsAT(): Boolean = true
@@ -81,6 +64,10 @@ object MCPNamespace : Namespace("mcp") {
             }
         }
         mcpConfigSnapshots.filterValues { it.isEmpty() }.keys.toMutableList().forEach { mcpConfigSnapshots.remove(it) }
+        newMcpVersions.clear()
+        json.decodeFromString(MapSerializer(String.serializer(), MCPVersion.serializer()), URL("https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json").readText()).forEach { mcVersion, mcpVersion ->
+            newMcpVersions[mcVersion.toVersion()] = mcpVersion
+        }
     }
 
     private fun MappingsContainer.loadTsrgFromURLZip(url: URL) {
@@ -230,4 +217,11 @@ object MCPNamespace : Namespace("mcp") {
             }
         }
     }
+
+    @Serializable
+    data class MCPVersion(
+            val name: String,
+            val mcp_config: String,
+            val mcp: String,
+    )
 }
