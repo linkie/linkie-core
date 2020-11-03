@@ -13,34 +13,34 @@ interface MappingsSupplier {
 }
 
 fun Namespace.namespacedSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
-        NamespacedMappingsSupplier(this, mappingsSupplier)
+    NamespacedMappingsSupplier(this, mappingsSupplier)
 
 fun Namespace.loggedSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
-        LoggedMappingsSupplier(this, mappingsSupplier)
+    LoggedMappingsSupplier(this, mappingsSupplier)
 
 fun Namespace.cachedSupplier(uuidGetter: (String) -> String, mappingsSupplier: MappingsSupplier): MappingsSupplier =
-        CachedMappingsSupplier(this, uuidGetter, mappingsSupplier)
+    CachedMappingsSupplier(this, uuidGetter, mappingsSupplier)
 
 fun Namespace.simpleSupplier(version: String, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        SimpleMappingsSupplier(version) { supplier(version) }
+    SimpleMappingsSupplier(version) { supplier(version) }
 
 fun Namespace.simpleCachedSupplier(version: String, uuid: String = version, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        cachedSupplier({ uuid }, simpleSupplier(version, supplier))
+    cachedSupplier({ uuid }, simpleSupplier(version, supplier))
 
 fun Namespace.simpleCachedSupplier(version: String, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        cachedSupplier(uuidGetter, simpleSupplier(version, supplier))
+    cachedSupplier(uuidGetter, simpleSupplier(version, supplier))
 
 fun Namespace.multipleSupplier(versions: Iterable<String>, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        multipleSupplier({ versions }, supplier)
+    multipleSupplier({ versions }, supplier)
 
 fun Namespace.multipleSupplier(versions: () -> Iterable<String>, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        MultiMappingsSupplier(versions, supplier)
+    MultiMappingsSupplier(versions, supplier)
 
 fun Namespace.multipleCachedSupplier(versions: Iterable<String>, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
+    cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 fun Namespace.multipleCachedSupplier(versions: () -> Iterable<String>, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
-        cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
+    cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
     override fun applyVersion(version: String): MappingsContainer = super.applyVersion(version).also {
@@ -90,10 +90,10 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     }
 
     private fun loadFromCachedFile(cachedFile: File): MappingsContainer? =
-            outputBuffer(cachedFile.readBytes()).readMappingsContainer()
+        outputBuffer(cachedFile.readBytes()).readMappingsContainer()
 
     private fun MappingsContainer.saveToCachedFile(cachedFile: File) =
-            cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toByteArray())
+        cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toByteArray())
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: () -> MappingsContainer) : MappingsSupplier {

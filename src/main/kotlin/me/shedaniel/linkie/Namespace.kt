@@ -56,7 +56,7 @@ abstract class Namespace(val id: String) {
     abstract fun reloadData()
     abstract fun getDefaultVersion(channel: () -> String = this::getDefaultMappingChannel): String
     fun getAllSortedVersions(): List<String> =
-            getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
+        getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
 
     protected fun registerSupplier(mappingsSupplier: MappingsSupplier) {
         mappingsSuppliers.add(namespacedSupplier(loggedSupplier(mappingsSupplier)))
@@ -69,10 +69,10 @@ abstract class Namespace(val id: String) {
     }
 
     fun createAndAdd(version: String): MappingsContainer? =
-            create(version)?.also { Namespaces.addMappingsContainer(it) }
+        create(version)?.also { Namespaces.addMappingsContainer(it) }
 
     fun getOrCreate(version: String): MappingsContainer? =
-            get(version) ?: createAndAdd(version)
+        get(version) ?: createAndAdd(version)
 
     fun getProvider(version: String): MappingsProvider {
         val container = get(version)

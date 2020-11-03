@@ -5,17 +5,17 @@ import me.shedaniel.linkie.utils.*
 
 @Serializable
 data class MappingsContainer(
-        val version: String,
-        val classes: MutableList<Class> = mutableListOf(),
-        val name: String,
-        var mappingSource: MappingSource? = null,
-        var namespace: String? = null,
+    val version: String,
+    val classes: MutableList<Class> = mutableListOf(),
+    val name: String,
+    var mappingSource: MappingSource? = null,
+    var namespace: String? = null,
 ) {
     fun getClass(intermediaryName: String): Class? =
-            classes.firstOrNull { it.intermediaryName == intermediaryName }
+        classes.firstOrNull { it.intermediaryName == intermediaryName }
 
     fun getOrCreateClass(intermediaryName: String): Class =
-            getClass(intermediaryName) ?: Class(intermediaryName).also { classes.add(it) }
+        getClass(intermediaryName) ?: Class(intermediaryName).also { classes.add(it) }
 
     fun prettyPrint() {
         buildString {
@@ -115,23 +115,23 @@ fun Class.getFieldByObfName(obf: String): Field? {
 }
 
 inline fun buildMappings(
-        version: String,
-        name: String,
-        fillFieldDesc: Boolean = true,
-        fillMethodDesc: Boolean = true,
-        expendIntermediaryToMapped: Boolean = false,
-        crossinline builder: MappingsContainerBuilder.() -> Unit,
+    version: String,
+    name: String,
+    fillFieldDesc: Boolean = true,
+    fillMethodDesc: Boolean = true,
+    expendIntermediaryToMapped: Boolean = false,
+    crossinline builder: MappingsContainerBuilder.() -> Unit,
 ): MappingsContainer =
-        MappingsContainerBuilder(version, name, fillFieldDesc, fillMethodDesc, expendIntermediaryToMapped).also(builder).build()
+    MappingsContainerBuilder(version, name, fillFieldDesc, fillMethodDesc, expendIntermediaryToMapped).also(builder).build()
 
 class MappingsContainerBuilder(
-        val version: String,
-        val name: String,
-        val fillFieldDesc: Boolean,
-        val fillMethodDesc: Boolean,
-        val expendIntermediaryToMapped: Boolean,
-        var lockFill: Boolean = false,
-        var container: MappingsContainer = MappingsContainer(version, name = name),
+    val version: String,
+    val name: String,
+    val fillFieldDesc: Boolean,
+    val fillMethodDesc: Boolean,
+    val expendIntermediaryToMapped: Boolean,
+    var lockFill: Boolean = false,
+    var container: MappingsContainer = MappingsContainer(version, name = name),
 ) {
     fun build(): MappingsContainer = container.also { fill() }
 
@@ -166,22 +166,22 @@ class MappingsContainerBuilder(
     fun replace(operator: MappingsContainer.() -> MappingsContainer) {
         container = operator(container)
     }
-    
+
     fun lockFill(lockFill: Boolean = true) {
         this.lockFill = lockFill
     }
 
     fun clazz(intermediaryName: String, obf: String? = null, mapped: String? = null): ClassBuilder =
-            ClassBuilder(container.getOrCreateClass(intermediaryName)).apply {
-                obfClass(obf)
-                mapClass(mapped)
-            }
+        ClassBuilder(container.getOrCreateClass(intermediaryName)).apply {
+            obfClass(obf)
+            mapClass(mapped)
+        }
 
     inline fun clazz(intermediaryName: String, obf: String? = null, mapped: String? = null, crossinline builder: ClassBuilder.() -> Unit): ClassBuilder =
-            ClassBuilder(container.getOrCreateClass(intermediaryName)).also(builder).apply {
-                obfClass(obf)
-                mapClass(mapped)
-            }
+        ClassBuilder(container.getOrCreateClass(intermediaryName)).also(builder).apply {
+            obfClass(obf)
+            mapClass(mapped)
+        }
 }
 
 fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer) {
@@ -190,8 +190,8 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
     classes.forEach { clazz ->
         classO2I[clazz.obfName.merged]?.also { replacement ->
             clazz.intermediaryName = replacement.intermediaryName
-            
-            clazz.methods.forEach { method -> 
+
+            clazz.methods.forEach { method ->
                 replacement.getMethodByObfNameAndDesc(method.obfName.merged!!, method.obfDesc.merged!!)?.also { replacementMethod ->
                     method.intermediaryName = replacementMethod.intermediaryName
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
@@ -217,24 +217,24 @@ inline class ClassBuilder(val clazz: Class) {
     }
 
     fun field(intermediaryName: String, intermediaryDesc: String? = null): FieldBuilder =
-            FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).apply {
-                intermediaryDesc(intermediaryDesc)
-            }
+        FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).apply {
+            intermediaryDesc(intermediaryDesc)
+        }
 
     inline fun field(intermediaryName: String, intermediaryDesc: String? = null, crossinline builder: FieldBuilder.() -> Unit): FieldBuilder =
-            FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).also(builder).apply {
-                intermediaryDesc(intermediaryDesc)
-            }
+        FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).also(builder).apply {
+            intermediaryDesc(intermediaryDesc)
+        }
 
     fun method(intermediaryName: String, intermediaryDesc: String? = null): MethodBuilder =
-            MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).apply {
-                intermediaryDesc(intermediaryDesc)
-            }
+        MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).apply {
+            intermediaryDesc(intermediaryDesc)
+        }
 
     inline fun method(intermediaryName: String, intermediaryDesc: String? = null, crossinline builder: MethodBuilder.() -> Unit): MethodBuilder =
-            MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).also(builder).apply {
-                intermediaryDesc(intermediaryDesc)
-            }
+        MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).also(builder).apply {
+            intermediaryDesc(intermediaryDesc)
+        }
 }
 
 inline class FieldBuilder(val field: Field) {
@@ -297,50 +297,50 @@ fun MappingsContainer.fillMappedDescViaIntermediary(fillFieldDesc: Boolean, fill
 
 @Serializable
 data class Class(
-        var intermediaryName: String,
-        val obfName: Obf = Obf(),
-        var mappedName: String? = null,
-        val methods: MutableList<Method> = mutableListOf(),
-        val fields: MutableList<Field> = mutableListOf(),
+    var intermediaryName: String,
+    val obfName: Obf = Obf(),
+    var mappedName: String? = null,
+    val methods: MutableList<Method> = mutableListOf(),
+    val fields: MutableList<Field> = mutableListOf(),
 ) {
     fun getMethod(intermediaryName: String): Method? =
-            methods.firstOrNull { it.intermediaryName == intermediaryName }
+        methods.firstOrNull { it.intermediaryName == intermediaryName }
 
     fun getOrCreateMethod(intermediaryName: String, intermediaryDesc: String): Method =
-            getMethod(intermediaryName) ?: Method(intermediaryName, intermediaryDesc).also { methods.add(it) }
+        getMethod(intermediaryName) ?: Method(intermediaryName, intermediaryDesc).also { methods.add(it) }
 
     fun getField(intermediaryName: String): Field? =
-            fields.firstOrNull { it.intermediaryName == intermediaryName }
+        fields.firstOrNull { it.intermediaryName == intermediaryName }
 
     fun getOrCreateField(intermediaryName: String, intermediaryDesc: String): Field =
-            getField(intermediaryName) ?: Field(intermediaryName, intermediaryDesc).also { fields.add(it) }
+        getField(intermediaryName) ?: Field(intermediaryName, intermediaryDesc).also { fields.add(it) }
 }
 
 @Serializable
 data class Method(
-        var intermediaryName: String,
-        var intermediaryDesc: String,
-        val obfName: Obf = Obf(),
-        val obfDesc: Obf = Obf(),
-        var mappedName: String? = null,
-        var mappedDesc: String? = null,
+    var intermediaryName: String,
+    var intermediaryDesc: String,
+    val obfName: Obf = Obf(),
+    val obfDesc: Obf = Obf(),
+    var mappedName: String? = null,
+    var mappedDesc: String? = null,
 )
 
 @Serializable
 data class Field(
-        var intermediaryName: String,
-        var intermediaryDesc: String,
-        val obfName: Obf = Obf(),
-        val obfDesc: Obf = Obf(),
-        var mappedName: String? = null,
-        var mappedDesc: String? = null,
+    var intermediaryName: String,
+    var intermediaryDesc: String,
+    val obfName: Obf = Obf(),
+    val obfDesc: Obf = Obf(),
+    var mappedName: String? = null,
+    var mappedDesc: String? = null,
 )
 
 @Serializable
 data class Obf(
-        var client: String? = null,
-        var server: String? = null,
-        var merged: String? = null,
+    var client: String? = null,
+    var server: String? = null,
+    var merged: String? = null,
 ) {
     fun list(): List<String> {
         val list = mutableListOf<String>()
@@ -356,10 +356,10 @@ data class Obf(
 
 @Serializable
 data class YarnBuild(
-        val gameVersion: String,
-        val separator: String,
-        val build: Int,
-        val maven: String,
-        val version: String,
-        val stable: Boolean,
+    val gameVersion: String,
+    val separator: String,
+    val build: Int,
+    val maven: String,
+    val version: String,
+    val stable: Boolean,
 )

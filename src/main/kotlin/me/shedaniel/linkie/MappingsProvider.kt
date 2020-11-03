@@ -14,14 +14,14 @@ data class MappingsProvider(var namespace: Namespace, var version: String?, var 
 
     companion object {
         fun of(namespace: Namespace, version: String, mappingsContainer: MappingsContainer?): MappingsProvider =
-                if (mappingsContainer == null)
-                    supply(namespace, version, null, null)
-                else supply(namespace, version, true) { mappingsContainer }
+            if (mappingsContainer == null)
+                supply(namespace, version, null, null)
+            else supply(namespace, version, true) { mappingsContainer }
 
         fun supply(namespace: Namespace, version: String?, cached: Boolean?, mappingsContainer: (() -> MappingsContainer)?): MappingsProvider =
-                MappingsProvider(namespace, version, cached, mappingsContainer)
+            MappingsProvider(namespace, version, cached, mappingsContainer)
 
         fun empty(namespace: Namespace): MappingsProvider =
-                MappingsProvider(namespace, null, null, null)
+            MappingsProvider(namespace, null, null, null)
     }
 }

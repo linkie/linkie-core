@@ -1,7 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
@@ -68,7 +67,7 @@ object YarnNamespace : Namespace("yarn") {
 
     override fun getAllVersions(): List<String> {
         val versions = mutableListOf(
-                "1.2.5", "1.8.9", "1.13.2"
+            "1.2.5", "1.8.9", "1.13.2"
         )
         versions.addAll(yarnBuilds.keys)
         return versions
@@ -87,33 +86,33 @@ object YarnNamespace : Namespace("yarn") {
             launch(Dispatchers.IO) {
                 val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
                 yarnBuild1_8_9 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
-                        .map { it.text }
-                        .filter { it.startsWith("1.8.9") }
-                        .last()
+                    .map { it.text }
+                    .filter { it.startsWith("1.8.9") }
+                    .last()
                 yarnBuild1_13_2 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
-                        .map { it.text }
-                        .filter { it.startsWith("1.13.2") }
-                        .last()
+                    .map { it.text }
+                    .filter { it.startsWith("1.13.2") }
+                    .last()
             }
         }
     }
 
     override fun getDefaultVersion(channel: () -> String): String =
-            when (channel()) {
-                "legacy" -> "1.2.5"
-                "patchwork" -> "1.14.4"
-                "snapshot" -> yarnBuilds.keys.first()
-                else -> yarnBuilds.keys.first { it.contains('.') && !it.contains('-') }
-            }
+        when (channel()) {
+            "legacy" -> "1.2.5"
+            "patchwork" -> "1.14.4"
+            "snapshot" -> yarnBuilds.keys.first()
+            else -> yarnBuilds.keys.first { it.contains('.') && !it.contains('-') }
+        }
 
     override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot", "patchwork", "legacy")
 
     private fun MappingsContainer.loadIntermediaryFromMaven(
-            mcVersion: String,
-            repo: String = "https://maven.fabricmc.net",
-            group: String = "net.fabricmc.intermediary",
+        mcVersion: String,
+        repo: String = "https://maven.fabricmc.net",
+        group: String = "net.fabricmc.intermediary",
     ) =
-            loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
+        loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
 
     fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
         val stream = ZipInputStream(url.openStream())
@@ -183,10 +182,10 @@ object YarnNamespace : Namespace("yarn") {
     }
 
     fun MappingsContainer.loadNamedFromMaven(
-            yarnVersion: String,
-            repo: String = "https://maven.fabricmc.net",
-            group: String = "net.fabricmc.yarn",
-            showError: Boolean = true,
+        yarnVersion: String,
+        repo: String = "https://maven.fabricmc.net",
+        group: String = "net.fabricmc.yarn",
+        showError: Boolean = true,
     ): MappingsContainer.MappingSource {
         return if (YarnV2BlackList.blacklist.contains(yarnVersion)) {
             loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/yarn-$yarnVersion.jar"), showError)
@@ -268,10 +267,10 @@ object YarnNamespace : Namespace("yarn") {
     }
 
     fun MappingsContainer.loadNamedFromGithubRepo(repo: String, branch: String, showError: Boolean = true, ignoreError: Boolean = false) =
-            loadNamedFromEngimaZip(URL("https://github.com/$repo/archive/$branch.zip"), showError, ignoreError)
+        loadNamedFromEngimaZip(URL("https://github.com/$repo/archive/$branch.zip"), showError, ignoreError)
 
     fun MappingsContainer.loadNamedFromEngimaZip(url: URL, showError: Boolean = true, ignoreError: Boolean = false) =
-            loadNamedFromEngimaStream(url.openStream(), showError, ignoreError)
+        loadNamedFromEngimaStream(url.openStream(), showError, ignoreError)
 
     fun MappingsContainer.loadNamedFromEngimaStream(stream: InputStream, showError: Boolean = true, ignoreError: Boolean = false) {
         val zipInputStream = ZipInputStream(stream)
@@ -330,9 +329,9 @@ object YarnNamespace : Namespace("yarn") {
     }
 
     private data class EngimaLine(
-            val text: String,
-            val indent: Int,
-            val type: MappingsType,
+        val text: String,
+        val indent: Int,
+        val type: MappingsType,
     ) {
         val split: List<String> by lazy { text.trimStart('\t').split(" ") }
     }
@@ -345,7 +344,7 @@ object YarnNamespace : Namespace("yarn") {
 
         companion object {
             fun getByString(string: String): MappingsType =
-                    values().firstOrNull { it.name.equals(string, true) } ?: UNKNOWN
+                values().firstOrNull { it.name.equals(string, true) } ?: UNKNOWN
         }
     }
 

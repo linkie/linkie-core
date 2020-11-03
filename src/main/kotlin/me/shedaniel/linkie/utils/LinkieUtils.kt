@@ -7,7 +7,7 @@ import java.io.StringReader
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =
-        asSequence().drop(drop).take(take)
+    asSequence().drop(drop).take(take)
 
 private fun editDistance(s11: String, s22: String): Int {
     val costs = IntArray(s22.length + 1)
@@ -65,13 +65,13 @@ fun String?.containsOrMatchWildcard(searchTerm: String): MatchResult {
 data class MatchResult(val matched: Boolean, val matchStr: String? = null, val selfTerm: String? = null)
 
 fun String.mapFieldIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
-        remapFieldDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
+    remapFieldDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
 
 fun String.mapMethodIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
-        remapMethodDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
+    remapMethodDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
 
 fun String.mapMethodOfficialDescToNamed(mappingsContainer: MappingsContainer): String =
-        remapMethodDescriptor { mappingsContainer.getClassByObfName(it)?.mappedName ?: it }
+    remapMethodDescriptor { mappingsContainer.getClassByObfName(it)?.mappedName ?: it }
 
 fun String.remapFieldDescriptor(classMappings: (String) -> String): String {
     return try {

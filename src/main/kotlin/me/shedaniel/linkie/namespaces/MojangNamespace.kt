@@ -26,8 +26,8 @@ object MojangNamespace : Namespace("mojang") {
         registerSupplier(simpleCachedSupplier("1.14.4") {
             buildMappings(it, getName(it), expendIntermediaryToMapped = true) {
                 readMojangMappings(
-                        client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
-                        server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
+                    client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
+                    server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
                 )
                 source(MappingsContainer.MappingSource.MOJANG)
 
@@ -49,8 +49,8 @@ object MojangNamespace : Namespace("mojang") {
                 val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                 val downloads = versionJson["downloads"]!!.jsonObject
                 readMojangMappings(
-                        client = downloads["client_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content,
-                        server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                    client = downloads["client_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content,
+                    server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
                 )
                 source(MappingsContainer.MappingSource.MOJANG)
 
@@ -72,7 +72,7 @@ object MojangNamespace : Namespace("mojang") {
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
 
     override fun getAllVersions(): List<String> =
-            versionJsonMap.keys.toMutableList().apply { add("1.14.4") }
+        versionJsonMap.keys.toMutableList().apply { add("1.14.4") }
 
     override fun reloadData() {
         versionJsonMap.clear()

@@ -41,8 +41,8 @@ object Namespaces {
 
     @OptIn(ObsoleteCoroutinesApi::class)
     fun init(
-            vararg namespaces: Namespace,
-            cycleMs: Long = 1800000,
+        vararg namespaces: Namespace,
+        cycleMs: Long = 1800000,
     ) {
         namespaces.forEach {
             registerNamespace(it)

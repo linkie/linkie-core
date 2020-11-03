@@ -29,13 +29,13 @@ class Version(val major: Int, val minor: Int, val patch: Int, val snapshot: Stri
     override fun compareTo(other: Version): Int = Comparator.comparingLong<Version> { it.version }.thenComparing(compareBy(nullsLast<String>()) { it.snapshot }).compare(this, other)
 
     fun isAtLeast(major: Int, minor: Int): Boolean = // this.version >= versionOf(major, minor, 0)
-            this.major > major || (this.major == major &&
-                    this.minor >= minor)
+        this.major > major || (this.major == major &&
+                this.minor >= minor)
 
     fun isAtLeast(major: Int, minor: Int, patch: Int): Boolean = // this.version >= versionOf(major, minor, patch)
-            this.major > major || (this.major == major &&
-                    (this.minor > minor || this.minor == minor &&
-                            this.patch >= patch))
+        this.major > major || (this.major == major &&
+                (this.minor > minor || this.minor == minor &&
+                        this.patch >= patch))
 }
 
 val snapshotRegex = Pattern.compile("(?:Snapshot )?(\\d+)w([0-9]\\d*)([a-z])")!!

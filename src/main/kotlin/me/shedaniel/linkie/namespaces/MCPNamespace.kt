@@ -220,8 +220,8 @@ object MCPNamespace : Namespace("mcp") {
 
     @Serializable
     data class MCPVersion(
-            val name: String,
-            val mcp_config: String,
-            val mcp: String,
+        val name: String,
+        val mcp_config: String,
+        val mcp: String,
     )
 }
