@@ -1,19 +1,25 @@
 package me.shedaniel.linkie.namespaces
 
-import me.shedaniel.linkie.*
+import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsContainerBuilder
+import me.shedaniel.linkie.Namespace
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.URL
 
 object SpigotNamespace : Namespace("spigot") {
     init {
-        registerSupplier(simpleCachedSupplier("1.8.9") {
-            buildMappings(it, "Spigot", fillFieldDesc = false) {
-                loadClassFromSpigot(URL("https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/bukkit-1.15.2-cl.csrg?at=refs%2Fheads%2Fmaster").openStream())
-                loadMembersFromSpigot(URL("https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/bukkit-1.15.2-members.csrg?at=refs%2Fheads%2Fmaster").openStream())
-                source(MappingsContainer.MappingSource.SPIGOT)
+        buildSupplier {
+            cached()
+
+            buildVersion("1.8.9") {
+                buildMappings(it, "Spigot", fillFieldDesc = false) {
+                    loadClassFromSpigot(URL("https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/bukkit-1.15.2-cl.csrg?at=refs%2Fheads%2Fmaster").openStream())
+                    loadMembersFromSpigot(URL("https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/bukkit-1.15.2-members.csrg?at=refs%2Fheads%2Fmaster").openStream())
+                    source(MappingsContainer.MappingSource.SPIGOT)
+                }
             }
-        })
+        }
     }
 
     override fun getDefaultLoadedVersions(): List<String> = listOf()

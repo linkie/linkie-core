@@ -23,29 +23,45 @@ object MCPNamespace : Namespace("mcp") {
     private val newMcpVersions = mutableMapOf<Version, MCPVersion>()
 
     init {
-        registerSupplier(multipleCachedSupplier({ getAllBotVersions() }, {
-            "$it-${mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!}"
-        }) {
-            MappingsContainer(it, name = "MCP").apply {
-                val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!
-                mappingSource = if (it.toVersion() >= Version(1, 13)) {
-                    loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
-                    MappingsContainer.MappingSource.MCP_TSRG
-                } else {
-                    loadSrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
-                    MappingsContainer.MappingSource.MCP_SRG
+        buildSupplier {
+            cached()
+
+            buildVersions {
+                versions(::getAllBotVersions)
+                uuid {
+                    "$it-${mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!}"
                 }
-                loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
+                mappings {
+                    MappingsContainer(it, name = "MCP").apply {
+                        val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!
+                        mappingSource = if (it.toVersion() >= Version(1, 13)) {
+                            loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
+                            MappingsContainer.MappingSource.MCP_TSRG
+                        } else {
+                            loadSrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
+                            MappingsContainer.MappingSource.MCP_SRG
+                        }
+                        loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
+                    }
+                }
             }
-        })
-        registerSupplier(multipleCachedSupplier({ newMcpVersions.keys.map { version -> version.toString() } }, { newMcpVersions[it.toVersion()]!!.name }) {
-            MappingsContainer(it, name = "MCP").apply {
-                val mcpVersion = newMcpVersions[it.toVersion()]!!
-                loadTsrgFromURLZip(URL(mcpVersion.mcp_config))
-                loadMCPFromURLZip(URL(mcpVersion.mcp))
-                mappingSource = MappingsContainer.MappingSource.MCP_TSRG
+            buildVersions {
+                versions {
+                    newMcpVersions.keys.map(Version::toString)
+                }
+                uuid {
+                    newMcpVersions[it.toVersion()]!!.name
+                }
+                mappings {
+                    MappingsContainer(it, name = "MCP").apply {
+                        val mcpVersion = newMcpVersions[it.toVersion()]!!
+                        loadTsrgFromURLZip(URL(mcpVersion.mcp_config))
+                        loadMCPFromURLZip(URL(mcpVersion.mcp))
+                        mappingSource = MappingsContainer.MappingSource.MCP_TSRG
+                    }
+                }
             }
-        })
+        }
     }
 
     override fun supportsFieldDescription(): Boolean = false

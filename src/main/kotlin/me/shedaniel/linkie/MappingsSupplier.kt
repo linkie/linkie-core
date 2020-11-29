@@ -107,3 +107,31 @@ private class MultiMappingsSupplier(val versions: () -> Iterable<String>, val su
 
     override fun applyVersion(version: String): MappingsContainer = supplier(version)
 }
+
+object EmptyMappingsSupplier : MappingsSupplier {
+    override fun isApplicable(version: String): Boolean = false
+    override fun isCached(version: String): Boolean = false
+    override fun applyVersion(version: String): MappingsContainer = throw UnsupportedOperationException()
+}
+
+class ConcatMappingsSupplier(val suppliers: List<MappingsSupplier>) : MappingsSupplier {
+    override fun isApplicable(version: String): Boolean = suppliers.any { it.isApplicable(version) }
+    override fun isCached(version: String): Boolean {
+        for (supplier in suppliers) {
+            if (supplier.isApplicable(version)) {
+                return supplier.isCached(version)
+            }
+        }
+        
+        return false
+    }
+    override fun applyVersion(version: String): MappingsContainer {
+        for (supplier in suppliers) {
+            if (supplier.isApplicable(version)) {
+                return supplier.applyVersion(version)
+            }
+        }
+
+        throw IllegalStateException()
+    }
+}
