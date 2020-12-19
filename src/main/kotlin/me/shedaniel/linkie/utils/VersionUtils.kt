@@ -58,7 +58,9 @@ private fun String.innerToVersion(): Version? {
             val week = matcher.group(2)
             val weekInt = week.toInt()
             val build = matcher.group(3).first()
-            if (year == 20 && weekInt >= 27) {
+            if (year == 20 && weekInt >= 45) {
+                return Version(1, 17, snapshot = "alpha.$year.w.$week$build")
+            } else if (year == 20 && weekInt >= 27) {
                 return Version(1, 16, 2, snapshot = "alpha.$year.w.$week$build")
             } else if (year == 20 && weekInt >= 6) {
                 return Version(1, 16, snapshot = "alpha.$year.w.$week$build")

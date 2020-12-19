@@ -7,6 +7,7 @@ import me.shedaniel.linkie.namespaces.MCPNamespace
 import me.shedaniel.linkie.namespaces.MojangNamespace
 import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.utils.Version
+import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -24,6 +25,8 @@ class LinkieTest {
         assertEquals(Version(1, 16, snapshot = "pre3"), "1.16-pre3".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "pre3"), "1.16 Pre-Release 3".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "rc1"), "1.16-rc1".tryToVersion())
+        assertEquals(Version(1, 17, snapshot = "alpha.20.w.45a"), "20w45a".tryToVersion())
+        assert(Version(1, 17, snapshot = "alpha.20.w.45a") >= "1.16.4".toVersion())
         assert(Version(1, 14, 4) > Version(1, 14, 3))
         assert(Version(1, 14, 4) >= Version(1, 14, 4))
         assertFalse(Version(1, 13, 2) >= Version(1, 14, 4))
