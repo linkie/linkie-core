@@ -3,6 +3,7 @@ package me.shedaniel.linkie.namespaces
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.warn
@@ -21,6 +22,16 @@ import kotlin.collections.component2
 import kotlin.collections.set
 
 object YarnNamespace : Namespace("yarn") {
+    @Serializable
+    data class YarnBuild(
+        val gameVersion: String,
+        val separator: String,
+        val build: Int,
+        val maven: String,
+        val version: String,
+        val stable: Boolean,
+    )
+    
     val yarnBuilds = mutableMapOf<String, YarnBuild>()
     private var yarrnBuildInf20100618 = ""
     private var yarnBuild1_8_9 = ""

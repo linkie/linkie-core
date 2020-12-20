@@ -1,16 +1,38 @@
 package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
+import me.shedaniel.linkie.MappingsContainer.MappingSource
 import me.shedaniel.linkie.utils.*
+
+interface MappingsMetadata {
+    val version: String
+    val name: String
+    var mappingSource: MappingSource?
+    var namespace: String
+}
+
+data class SimpleMappingsMetadata(
+    override val version: String,
+    override val name: String,
+    override var mappingSource: MappingSource? = null,
+    override var namespace: String = "",
+) : MappingsMetadata
 
 @Serializable
 data class MappingsContainer(
-    val version: String,
+    override val version: String,
     val classes: MutableList<Class> = mutableListOf(),
-    val name: String,
-    var mappingSource: MappingSource? = null,
-    var namespace: String? = null,
-) {
+    override val name: String,
+    override var mappingSource: MappingSource? = null,
+    override var namespace: String = "",
+) : MappingsMetadata {
+    fun toSimpleMappingsMetadata(): MappingsMetadata = SimpleMappingsMetadata(
+        version = version,
+        name = name,
+        mappingSource = mappingSource,
+        namespace = namespace
+    )
+
     fun getClass(intermediaryName: String): Class? =
         classes.firstOrNull { it.intermediaryName == intermediaryName }
 
@@ -155,7 +177,7 @@ class MappingsContainerBuilder(
         }
     }
 
-    fun source(mappingSource: MappingsContainer.MappingSource?) {
+    fun source(mappingSource: MappingSource?) {
         container.mappingSource = mappingSource
     }
 
@@ -295,14 +317,35 @@ fun MappingsContainer.fillMappedDescViaIntermediary(fillFieldDesc: Boolean, fill
     }
 }
 
+enum class MappingsEntryType {
+    CLASS,
+    FIELD,
+    METHOD
+}
+
+interface MappingsEntry {
+    var intermediaryName: String
+    val obfName: Obf
+    var mappedName: String?
+}
+
+interface MappingsMember : MappingsEntry {
+    var intermediaryDesc: String
+    val obfDesc: Obf
+    var mappedDesc: String?
+}
+
+val MappingsEntry.optimumName: String
+    get() = mappedName ?: intermediaryName
+
 @Serializable
 data class Class(
-    var intermediaryName: String,
-    val obfName: Obf = Obf(),
-    var mappedName: String? = null,
+    override var intermediaryName: String,
+    override val obfName: Obf = Obf(),
+    override var mappedName: String? = null,
     val methods: MutableList<Method> = mutableListOf(),
     val fields: MutableList<Field> = mutableListOf(),
-) {
+) : MappingsEntry {
     fun getMethod(intermediaryName: String): Method? =
         methods.firstOrNull { it.intermediaryName == intermediaryName }
 
@@ -318,23 +361,23 @@ data class Class(
 
 @Serializable
 data class Method(
-    var intermediaryName: String,
-    var intermediaryDesc: String,
-    val obfName: Obf = Obf(),
-    val obfDesc: Obf = Obf(),
-    var mappedName: String? = null,
-    var mappedDesc: String? = null,
-)
+    override var intermediaryName: String,
+    override var intermediaryDesc: String,
+    override val obfName: Obf = Obf(),
+    override val obfDesc: Obf = Obf(),
+    override var mappedName: String? = null,
+    override var mappedDesc: String? = null,
+) : MappingsMember
 
 @Serializable
 data class Field(
-    var intermediaryName: String,
-    var intermediaryDesc: String,
-    val obfName: Obf = Obf(),
-    val obfDesc: Obf = Obf(),
-    var mappedName: String? = null,
-    var mappedDesc: String? = null,
-)
+    override var intermediaryName: String,
+    override var intermediaryDesc: String,
+    override val obfName: Obf = Obf(),
+    override val obfDesc: Obf = Obf(),
+    override var mappedName: String? = null,
+    override var mappedDesc: String? = null,
+) : MappingsMember
 
 @Serializable
 data class Obf(
@@ -342,6 +385,27 @@ data class Obf(
     var server: String? = null,
     var merged: String? = null,
 ) {
+    companion object {
+        private val empty = Obf()
+
+        fun empty(): Obf = empty
+    }
+
+    fun sequence(): Sequence<String> {
+        if (isMerged()) return sequenceOf(merged!!)
+        if (client == null) {
+            if (server == null) {
+                return emptySequence()
+            }
+            return sequenceOf(server!!)
+        } else {
+            if (client == null) {
+                return emptySequence()
+            }
+            return sequenceOf(client!!)
+        }
+    }
+
     fun list(): List<String> {
         val list = mutableListOf<String>()
         if (client != null) list.add(client!!)
@@ -353,13 +417,3 @@ data class Obf(
     fun isMerged(): Boolean = merged != null
     fun isEmpty(): Boolean = client == null && server == null && merged == null
 }
-
-@Serializable
-data class YarnBuild(
-    val gameVersion: String,
-    val separator: String,
-    val build: Int,
-    val maven: String,
-    val version: String,
-    val stable: Boolean,
-)

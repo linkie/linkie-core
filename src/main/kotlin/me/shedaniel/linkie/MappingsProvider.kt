@@ -12,6 +12,9 @@ data class MappingsProvider(var namespace: Namespace, var version: String?, var 
         }
     }
 
+    fun getOrNull(): MappingsContainer? = mappingsContainer?.invoke()
+    fun get(): MappingsContainer = getOrNull()!!
+
     companion object {
         fun of(namespace: Namespace, version: String, mappingsContainer: MappingsContainer?): MappingsProvider =
             if (mappingsContainer == null)
