@@ -6,6 +6,27 @@ typealias ClassResultSequence = Sequence<ResultHolder<Class>>
 typealias FieldResultSequence = Sequence<ResultHolder<Pair<Class, Field>>>
 typealias MethodResultSequence = Sequence<ResultHolder<Pair<Class, Method>>>
 
+enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?) {
+    MAPPED({ mappedName }),
+    INTERMEDIARY({ intermediaryName }),
+    OBF_MERGED({ obfName.merged }),
+    OBF_CLIENT({ obfName.client }),
+    OBF_SERVER({ obfName.server }),
+    WILDCARD({ throw IllegalStateException("Cannot get definition of type WILDCARD!") });
+
+    operator fun invoke(entry: MappingsEntry): String? = toDefinition(entry)
+
+    companion object {
+        val allProper = listOf(
+            MAPPED,
+            INTERMEDIARY,
+            OBF_MERGED,
+            OBF_CLIENT,
+            OBF_SERVER,
+        )
+    }
+}
+
 object MappingsQuery {
     private data class MemberResultMore<T : MappingsMember>(
         val parent: Class,
@@ -16,42 +37,9 @@ object MappingsQuery {
         fun toSimplePair(): Pair<Class, T> = parent to field
     }
 
-    private data class FieldResult(
-        val parent: Class,
-        val field: Field,
-        val cm: QueryDefinition,
-    )
-
-    private data class MethodResult(
-        val parent: Class,
-        val method: Method,
-        val cm: QueryDefinition,
-    )
-
-    enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?) {
-        MAPPED({ mappedName }),
-        INTERMEDIARY({ intermediaryName }),
-        OBF_MERGED({ obfName.merged }),
-        OBF_CLIENT({ obfName.client }),
-        OBF_SERVER({ obfName.server }),
-        WILDCARD({ throw IllegalStateException("Cannot get definition of type WILDCARD!") });
-
-        operator fun invoke(entry: MappingsEntry): String? = toDefinition(entry)
-
-        companion object {
-            val allProper = listOf(
-                MAPPED,
-                INTERMEDIARY,
-                OBF_MERGED,
-                OBF_CLIENT,
-                OBF_SERVER,
-            )
-        }
-    }
-
-    fun errorNoResultsFound(type: MappingsEntryType, searchKey: String) {
+    fun errorNoResultsFound(type: MappingsEntryType?, searchKey: String) {
         val onlyClass = searchKey.onlyClass()
-        if (onlyClass.firstOrNull()?.isDigit() == true && !onlyClass.isValidIdentifier()) {
+        if (onlyClass.firstOrNull()?.isDigit() == true && !onlyClass.isValidJavaIdentifier()) {
             throw NullPointerException("No results found! `$onlyClass` is not a valid java identifier!")
         }
         if (type != MappingsEntryType.METHOD) {
@@ -72,18 +60,15 @@ object MappingsQuery {
         throw NullPointerException("No results found!")
     }
 
-    fun searchDefinition(clazz: MappingsEntry, classKey: String): QueryDefinition? = clazz.searchDefinition(classKey)
-
-    @JvmName("_searchDefinition")
     fun MappingsEntry.searchDefinition(classKey: String): QueryDefinition? {
         return QueryDefinition.allProper.firstOrNull { it(this).doesContainsOrMatchWildcard(classKey) }
     }
 
-    fun MappingsEntry.searchWithDefinition(classKey: String): MatchResultConfirmedWithDefinition? {
+    fun MappingsEntry.searchWithDefinition(classKey: String): MatchResultWithDefinition? {
         return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey, it) }
     }
 
-    fun MappingsEntry.search(classKey: String): MatchResultConfirmed? {
+    fun MappingsEntry.search(classKey: String): MatchResult? {
         return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey) }
     }
 
@@ -225,12 +210,16 @@ data class QueryContext(
     val searchKey: String,
 )
 
-fun <T> QueryResult<MappingsContainer, T>.decompound(): QueryResult<MappingsMetadata, T> = QueryResult(mappings.toSimpleMappingsMetadata(), value)
+fun <T> QueryResult<MappingsContainer, T>.deCompound(): QueryResult<MappingsMetadata, T> = mapKey { it.toSimpleMappingsMetadata() }
 
 data class QueryResult<A : MappingsMetadata, T>(
     val mappings: A,
     val value: T,
 )
+
+inline fun <A : MappingsMetadata, T, B : MappingsMetadata> QueryResult<A, T>.mapKey(transformer: (A) -> B): QueryResult<B, T> {
+    return QueryResult(transformer(mappings), value)
+}
 
 inline fun <A : MappingsMetadata, T, V> QueryResult<A, T>.map(transformer: (T) -> V): QueryResult<A, V> {
     return QueryResult(mappings, transformer(value))

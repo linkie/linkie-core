@@ -10,9 +10,11 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 
 object Namespaces {
+    lateinit var config: LinkieConfig
     val namespaces = mutableMapOf<String, Namespace>()
     val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
-    var cacheFolder = File(System.getProperty("user.dir"), ".linkie-cache")
+    val cacheFolder: File
+        get() = config.cacheDirectory
 
     private fun registerNamespace(namespace: Namespace) = namespace.also {
         namespaces[it.id] = it
@@ -20,7 +22,7 @@ object Namespaces {
 
     operator fun get(id: String) = namespaces[id]!!
 
-    fun getMaximumCachedVersion(): Int = 2
+    fun getMaximumCachedVersion(): Int = config.maximumLoadedVersions
 
     fun limitCachedData() {
         val list = mutableListOf<String>()
@@ -41,18 +43,18 @@ object Namespaces {
 
     @OptIn(ObsoleteCoroutinesApi::class)
     fun init(
-        vararg namespaces: Namespace,
-        cycleMs: Long = 1800000,
+        config: LinkieConfig,
     ) {
-        namespaces.forEach {
+        Namespaces.config = config
+        config.namespaces.forEach {
             registerNamespace(it)
             it.getDependencies().forEach { dependency -> registerNamespace(dependency) }
         }
-        val tickerChannel = ticker(delayMillis = cycleMs, initialDelayMillis = 0)
+        val tickerChannel = ticker(delayMillis = config.reloadCycleDuration.toMillis(), initialDelayMillis = 0)
         CoroutineScope(Dispatchers.Default).launch {
             for (event in tickerChannel) {
                 cachedMappings.clear()
-                Namespaces.namespaces.map { (_, namespace) ->
+                namespaces.map { (_, namespace) ->
                     launch {
                         namespace.reset()
                     }

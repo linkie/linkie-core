@@ -2,6 +2,7 @@
 
 package me.shedaniel.linkie
 
+import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
 import java.io.File
@@ -68,16 +69,16 @@ private class CachedMappingsSupplier(val namespace: Namespace, val uuidGetter: (
     override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
 
     override fun isCached(version: String): Boolean {
-        val cacheFolder = File(Namespaces.cacheFolder, "mappings").also { it.mkdirs() }
+        val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie3")
+        val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie3"
         return cachedFile.exists()
     }
 
     override fun applyVersion(version: String): MappingsContainer {
-        val cacheFolder = File(Namespaces.cacheFolder, "mappings").also { it.mkdirs() }
+        val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
-        val cachedFile = File(cacheFolder, "${namespace.id}-$uuid.linkie3")
+        val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie3"
         if (cachedFile.exists()) {
             val mappingsContainer = loadFromCachedFile(cachedFile)
             if (mappingsContainer != null) return mappingsContainer
@@ -122,9 +123,10 @@ class ConcatMappingsSupplier(val suppliers: List<MappingsSupplier>) : MappingsSu
                 return supplier.isCached(version)
             }
         }
-        
+
         return false
     }
+
     override fun applyVersion(version: String): MappingsContainer {
         for (supplier in suppliers) {
             if (supplier.isApplicable(version)) {

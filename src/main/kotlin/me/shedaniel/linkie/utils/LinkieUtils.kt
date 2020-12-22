@@ -2,6 +2,7 @@ package me.shedaniel.linkie.utils
 
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.getClassByObfName
+import java.io.File
 import java.io.IOException
 import java.io.StringReader
 import kotlin.math.min
@@ -24,19 +25,25 @@ fun <T, R> Sequence<T>.firstMapped(filterTransform: (entry: T) -> R?): R? {
 }
 
 fun <T> Sequence<T>.inverse(): Sequence<T> {
-    val list = toList()
-    var counter = list.lastIndex
-    return generateSequence {
-        list.getOrNull(counter--)
+    return Sequence {
+        val list = toList()
+        var counter = list.lastIndex
+        object : Iterator<T> {
+            override fun hasNext(): Boolean = counter >= 1
+            override fun next(): T = list[counter--]
+        }
     }
 }
 
 fun <T, R> Sequence<T>.inverseMapIndexed(transform: (index: Int, entry: T) -> R): Sequence<R> {
-    val list = toList()
-    var counter = list.lastIndex
-    return generateSequence {
-        (counter--).let { 
-            list.getOrNull(it)?.let { entry -> transform(list.size - 1 - it, entry) }
+    return Sequence {
+        val list = toList()
+        var counter = list.lastIndex
+        object : Iterator<R> {
+            override fun hasNext(): Boolean = counter >= 1
+            override fun next(): R = (counter--).let {
+                transform(list.size - 1 - it, list[it])
+            }
         }
     }
 }
@@ -88,25 +95,6 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
     return if (indexOf < 0) null else substring(indexOf + 1)
 }
 
-fun String?.containsOrMatchWildcard(searchTerm: String): MatchResult {
-    if (this == null) return MatchResult(false)
-    val searchOnlyClass = searchTerm.onlyClassOrNull()
-    return if (searchOnlyClass != null) {
-        if (contains(searchTerm, true)) {
-            MatchResult(true, searchTerm, this)
-        } else {
-            MatchResult(false)
-        }
-    } else {
-        val onlyClass = onlyClass()
-        if (onlyClass.contains(searchTerm, true)) {
-            MatchResult(true, searchTerm, onlyClass)
-        } else {
-            MatchResult(false)
-        }
-    }
-}
-
 fun String?.doesContainsOrMatchWildcard(searchTerm: String): Boolean {
     if (this == null) return false
     return if (searchTerm.onlyClassOrNull() != null) {
@@ -116,47 +104,46 @@ fun String?.doesContainsOrMatchWildcard(searchTerm: String): Boolean {
     }
 }
 
-fun String?.containsOrMatchWildcardOrNull(searchTerm: String): MatchResultConfirmed? {
+fun String?.containsOrMatchWildcardOrNull(searchTerm: String): MatchResult? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
     return if (searchOnlyClass != null) {
         if (contains(searchTerm, true)) {
-            MatchResultConfirmed(searchTerm, this)
+            MatchResult(searchTerm, this)
         } else {
             null
         }
     } else {
         val onlyClass = onlyClass()
         if (onlyClass.contains(searchTerm, true)) {
-            MatchResultConfirmed(searchTerm, onlyClass)
+            MatchResult(searchTerm, onlyClass)
         } else {
             null
         }
     }
 }
 
-fun String?.containsOrMatchWildcardOrNull(searchTerm: String, definition: MappingsQuery.QueryDefinition): MatchResultConfirmedWithDefinition? {
+fun String?.containsOrMatchWildcardOrNull(searchTerm: String, definition: QueryDefinition): MatchResultWithDefinition? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
     return if (searchOnlyClass != null) {
         if (contains(searchTerm, true)) {
-            MatchResultConfirmedWithDefinition(searchTerm, this, definition)
+            MatchResultWithDefinition(searchTerm, this, definition)
         } else {
             null
         }
     } else {
         val onlyClass = onlyClass()
         if (onlyClass.contains(searchTerm, true)) {
-            MatchResultConfirmedWithDefinition(searchTerm, onlyClass, definition)
+            MatchResultWithDefinition(searchTerm, onlyClass, definition)
         } else {
             null
         }
     }
 }
 
-data class MatchResult(val matched: Boolean, val matchStr: String? = null, val selfTerm: String? = null)
-data class MatchResultConfirmed(val matchStr: String, val selfTerm: String)
-data class MatchResultConfirmedWithDefinition(val matchStr: String, val selfTerm: String, val definition: MappingsQuery.QueryDefinition)
+data class MatchResult(val matchStr: String, val selfTerm: String)
+data class MatchResultWithDefinition(val matchStr: String, val selfTerm: String, val definition: QueryDefinition)
 
 fun String.mapFieldIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
     remapFieldDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
@@ -233,7 +220,7 @@ fun String.remapMethodDescriptor(classMappings: (String) -> String): String {
     }
 }
 
-fun String.isValidIdentifier(): Boolean {
+fun String.isValidJavaIdentifier(): Boolean {
     forEachIndexed { index, c ->
         if (index == 0) {
             if (!Character.isJavaIdentifierStart(c))
@@ -245,3 +232,5 @@ fun String.isValidIdentifier(): Boolean {
     }
     return isNotEmpty()
 }
+
+operator fun File.div(related: String): File = File(this, related)

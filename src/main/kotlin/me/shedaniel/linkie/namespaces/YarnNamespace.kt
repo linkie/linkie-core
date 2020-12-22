@@ -34,8 +34,14 @@ object YarnNamespace : Namespace("yarn") {
     
     val yarnBuilds = mutableMapOf<String, YarnBuild>()
     private var yarrnBuildInf20100618 = ""
-    private var yarnBuild1_8_9 = ""
-    private var yarnBuild1_13_2 = ""
+    val legacyFabricVersions = mutableMapOf<String, String?>(
+        "1.6.4" to null,
+        "1.7.10" to null,
+        "1.8.9" to null,
+        "1.12.2" to null,
+        "1.13.2" to null,
+    )
+    val workingLegacyFabricVersions = mutableListOf<String>()
 
     init {
         YarnV2BlackList.loadData()
@@ -72,21 +78,13 @@ object YarnNamespace : Namespace("yarn") {
                     }
                 }
             }
-            buildVersion("1.8.9") {
-                uuid { "1.8.9-$yarnBuild1_8_9" }
-                mappings {
-                    MappingsContainer(it, name = "Yarn").apply {
+            buildVersions { 
+                versions { workingLegacyFabricVersions }
+                uuid { version -> "$version-${legacyFabricVersions[version]}" }
+                mappings { version ->
+                    MappingsContainer(version, name = "Yarn").apply {
                         loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
-                        mappingSource = loadNamedFromMaven(yarnVersion = yarnBuild1_8_9, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
-                    }
-                }
-            }
-            buildVersion("1.13.2") {
-                uuid { "1.8.9-$yarnBuild1_13_2" }
-                mappings {
-                    MappingsContainer(it, name = "Yarn").apply {
-                        loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
-                        mappingSource = loadNamedFromMaven(yarnVersion = yarnBuild1_13_2, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
+                        mappingSource = loadNamedFromMaven(yarnVersion = legacyFabricVersions[version]!!, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
                     }
                 }
             }
@@ -116,8 +114,9 @@ object YarnNamespace : Namespace("yarn") {
 
     override fun getAllVersions(): List<String> {
         val versions = mutableListOf(
-            "infdev", "1.2.5", "1.8.9", "1.13.2"
+            "infdev", "1.2.5"
         )
+        versions.addAll(workingLegacyFabricVersions)
         versions.addAll(yarnBuilds.keys)
         return versions
     }
@@ -134,14 +133,19 @@ object YarnNamespace : Namespace("yarn") {
             }
             launch(Dispatchers.IO) {
                 val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
-                yarnBuild1_8_9 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
                     .map { it.text }
-                    .filter { it.startsWith("1.8.9") }
-                    .last()
-                yarnBuild1_13_2 = SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
-                    .map { it.text }
-                    .filter { it.startsWith("1.13.2") }
-                    .last()
+                    .groupBy { it.substringBefore('+') }
+                    .forEach { (mcVersion, builds) ->
+                        if (legacyFabricVersions.containsKey(mcVersion)) {
+                            legacyFabricVersions[mcVersion] = builds.last()
+                        }
+                    }
+                workingLegacyFabricVersions.clear()
+                workingLegacyFabricVersions.addAll(legacyFabricVersions.asSequence()
+                    .filter { it.value != null }
+                    .map { it.key }
+                )
             }
             launch(Dispatchers.IO) {
                 val pomYarrn = URL("https://maven.concern.i.ng/net/textilemc/yarrn/maven-metadata.xml").readText()
