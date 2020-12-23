@@ -5,7 +5,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
-import me.shedaniel.linkie.*
+import me.shedaniel.linkie.Class
+import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.Method
+import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.utils.forEachEntry
 import me.shedaniel.linkie.utils.warn
 import org.apache.commons.lang3.StringUtils
 import org.dom4j.io.SAXReader
@@ -22,6 +26,9 @@ import kotlin.collections.component2
 import kotlin.collections.set
 
 object YarnNamespace : Namespace("yarn") {
+    const val legacyFabricMaven = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven"
+    const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
+
     @Serializable
     data class YarnBuild(
         val gameVersion: String,
@@ -31,8 +38,10 @@ object YarnNamespace : Namespace("yarn") {
         val version: String,
         val stable: Boolean,
     )
-    
+
     val yarnBuilds = mutableMapOf<String, YarnBuild>()
+    val latestYarnVersion: String?
+        get() = yarnBuilds.keys.firstOrNull { it.contains('.') && !it.contains('-') }
     private var yarrnBuildInf20100618 = ""
     val legacyFabricVersions = mutableMapOf<String, String?>(
         "1.6.4" to null,
@@ -49,7 +58,7 @@ object YarnNamespace : Namespace("yarn") {
             buildVersion("1.2.5") {
                 mappings {
                     MappingsContainer(it, name = "Yarn").apply {
-                        loadIntermediaryFromTinyFile(URL("https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"))
+                        loadIntermediaryFromTinyFile(URL(intermediary125))
                         loadNamedFromGithubRepo("Blayyke/yarn", "1.2.5", showError = false)
                         mappingSource = MappingsContainer.MappingSource.ENGIMA
                     }
@@ -78,13 +87,17 @@ object YarnNamespace : Namespace("yarn") {
                     }
                 }
             }
-            buildVersions { 
+            buildVersions {
                 versions { workingLegacyFabricVersions }
                 uuid { version -> "$version-${legacyFabricVersions[version]}" }
                 mappings { version ->
                     MappingsContainer(version, name = "Yarn").apply {
-                        loadIntermediaryFromMaven(version, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven")
-                        mappingSource = loadNamedFromMaven(yarnVersion = legacyFabricVersions[version]!!, repo = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven", showError = false)
+                        loadIntermediaryFromMaven(version, repo = legacyFabricMaven)
+                        mappingSource = loadNamedFromMaven(
+                            yarnVersion = legacyFabricVersions[version]!!,
+                            repo = legacyFabricMaven,
+                            showError = false
+                        )
                     }
                 }
             }
@@ -107,7 +120,7 @@ object YarnNamespace : Namespace("yarn") {
     override fun getDefaultLoadedVersions(): List<String> {
         val versions = mutableListOf<String>()
         val latestVersion = getDefaultVersion()
-        yarnBuilds.keys.firstOrNull { it.contains('.') && !it.contains('-') }?.takeIf { it != latestVersion }?.also { versions.add(it) }
+        latestYarnVersion?.takeIf { it != latestVersion }?.also { versions.add(it) }
         latestVersion.also { versions.add(it) }
         return versions
     }
@@ -128,12 +141,17 @@ object YarnNamespace : Namespace("yarn") {
         runBlocking {
             launch(Dispatchers.IO) {
                 val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
-                json.decodeFromString(ListSerializer(YarnBuild.serializer()), URL("https://meta.fabricmc.net/v2/versions/yarn").readText()).forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
+                json.decodeFromString(ListSerializer(YarnBuild.serializer()), URL("https://meta.fabricmc.net/v2/versions/yarn").readText())
+                    .forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
                 buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.build }?.apply { yarnBuilds[version] = this } }
             }
             launch(Dispatchers.IO) {
                 val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
-                SAXReader().read(StringReader(pom189)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                SAXReader().read(StringReader(pom189)).rootElement
+                    .element("versioning")
+                    .element("versions")
+                    .elementIterator("version")
+                    .asSequence()
                     .map { it.text }
                     .groupBy { it.substringBefore('+') }
                     .forEach { (mcVersion, builds) ->
@@ -149,7 +167,11 @@ object YarnNamespace : Namespace("yarn") {
             }
             launch(Dispatchers.IO) {
                 val pomYarrn = URL("https://maven.concern.i.ng/net/textilemc/yarrn/maven-metadata.xml").readText()
-                yarrnBuildInf20100618 = SAXReader().read(StringReader(pomYarrn)).rootElement.element("versioning").element("versions").elementIterator("version").asSequence()
+                yarrnBuildInf20100618 = SAXReader().read(StringReader(pomYarrn)).rootElement
+                    .element("versioning")
+                    .element("versions")
+                    .elementIterator("version")
+                    .asSequence()
                     .map { it.text }
                     .filter { it.startsWith("inf-20100618+build") }
                     .last()
@@ -162,10 +184,15 @@ object YarnNamespace : Namespace("yarn") {
             "legacy" -> "1.2.5"
             "patchwork" -> "1.14.4"
             "snapshot" -> yarnBuilds.keys.first()
-            else -> yarnBuilds.keys.first { it.contains('.') && !it.contains('-') }
+            else -> latestYarnVersion!!
         }
 
-    override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot", "patchwork", "legacy")
+    override fun getAvailableMappingChannels(): List<String> = listOf(
+        "release",
+        "snapshot",
+        "patchwork",
+        "legacy"
+    )
 
     private fun MappingsContainer.loadIntermediaryFromMaven(
         mcVersion: String,
@@ -255,7 +282,7 @@ object YarnNamespace : Namespace("yarn") {
             try {
                 loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/$id-$yarnVersion-v2.jar"), showError)
                 MappingsContainer.MappingSource.YARN_V2
-            } catch (t: Throwable) {
+            } catch (ignored: Throwable) {
                 loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/$id-$yarnVersion.jar"), showError)
                 MappingsContainer.MappingSource.YARN_V1
             }
@@ -263,12 +290,12 @@ object YarnNamespace : Namespace("yarn") {
     }
 
     fun MappingsContainer.loadNamedFromTinyJar(url: URL, showError: Boolean = true) {
-        val stream = ZipInputStream(url.openStream())
-        while (true) {
-            val entry = stream.nextEntry ?: break
+        ZipInputStream(url.openStream()).forEachEntry { stream, entry ->
             if (!entry.isDirectory && entry.name.split("/").lastOrNull() == "mappings.tiny") {
                 loadNamedFromTinyInputStream(stream, showError)
-                break
+                true
+            } else {
+                false
             }
         }
     }
@@ -362,12 +389,19 @@ object YarnNamespace : Namespace("yarn") {
                             if (showError) warn("Class of ${line.split[1]} does not have intermediary name! Skipping!")
                         } else {
                             levels[line.indent - 1]!!.apply {
-                                val method = if (line.split[1] == "<init>") Method("<init>", line.split.last()).also { methods.add(it) } else if (ignoreError) getOrCreateMethod(line.split[1], line.split.last()) else getMethod(line.split[1])
-                                if (method == null && showError) warn("Method ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
-                                if (line.split.size == 4)
+                                val method = when {
+                                    line.split[1] == "<init>" -> Method("<init>", line.split.last()).also { methods.add(it) }
+                                    ignoreError -> getOrCreateMethod(line.split[1], line.split.last())
+                                    else -> getMethod(line.split[1])
+                                }
+                                if (method == null && showError) {
+                                    warn("Method ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
+                                }
+                                if (line.split.size == 4) {
                                     method?.apply {
                                         mappedName = line.split[2]
                                     }
+                                }
                             }
                         }
                     } else if (line.type == MappingsType.FIELD) {
@@ -375,12 +409,18 @@ object YarnNamespace : Namespace("yarn") {
                             if (showError) warn("Class of ${line.split[1]} does not have intermediary name! Skipping!")
                         } else {
                             levels[line.indent - 1]!!.apply {
-                                val field = if (ignoreError) getOrCreateField(line.split[1], line.split.last()) else getField(line.split[1])
-                                if (field == null && showError) warn("Field ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
-                                if (line.split.size == 4)
+                                val field = when {
+                                    ignoreError -> getOrCreateField(line.split[1], line.split.last())
+                                    else -> getField(line.split[1])
+                                }
+                                if (field == null && showError) {
+                                    warn("Field ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")
+                                }
+                                if (line.split.size == 4) {
                                     field?.apply {
                                         mappedName = line.split[2]
                                     }
+                                }
                             }
                         }
                     }

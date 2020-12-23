@@ -2,9 +2,13 @@ package me.shedaniel.linkie.utils
 
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.getClassByObfName
+import me.shedaniel.linkie.optimumName
 import java.io.File
 import java.io.IOException
 import java.io.StringReader
+import java.util.*
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =
@@ -22,30 +26,6 @@ fun <T, R> Sequence<T>.firstMapped(filterTransform: (entry: T) -> R?): R? {
         return filterTransform(entry) ?: continue
     }
     return null
-}
-
-fun <T> Sequence<T>.inverse(): Sequence<T> {
-    return Sequence {
-        val list = toList()
-        var counter = list.lastIndex
-        object : Iterator<T> {
-            override fun hasNext(): Boolean = counter >= 1
-            override fun next(): T = list[counter--]
-        }
-    }
-}
-
-fun <T, R> Sequence<T>.inverseMapIndexed(transform: (index: Int, entry: T) -> R): Sequence<R> {
-    return Sequence {
-        val list = toList()
-        var counter = list.lastIndex
-        object : Iterator<R> {
-            override fun hasNext(): Boolean = counter >= 1
-            override fun next(): R = (counter--).let {
-                transform(list.size - 1 - it, list[it])
-            }
-        }
-    }
 }
 
 private fun editDistance(s11: String, s22: String): Int {
@@ -145,16 +125,16 @@ fun String?.containsOrMatchWildcardOrNull(searchTerm: String, definition: QueryD
 data class MatchResult(val matchStr: String, val selfTerm: String)
 data class MatchResultWithDefinition(val matchStr: String, val selfTerm: String, val definition: QueryDefinition)
 
-fun String.mapFieldIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
-    remapFieldDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
+fun String.mapIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
+    remapDescriptor { mappingsContainer.getClass(it)?.optimumName ?: it }
 
-fun String.mapMethodIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
-    remapMethodDescriptor { mappingsContainer.getClass(it)?.mappedName ?: it }
+fun String.mapObfDescToNamed(mappingsContainer: MappingsContainer): String =
+    remapDescriptor { mappingsContainer.getClassByObfName(it)?.optimumName ?: it }
 
-fun String.mapMethodOfficialDescToNamed(mappingsContainer: MappingsContainer): String =
-    remapMethodDescriptor { mappingsContainer.getClassByObfName(it)?.mappedName ?: it }
+fun String.mapObfDescToIntermediary(container: MappingsContainer): String =
+    remapDescriptor { container.getClassByObfName(it)?.intermediaryName ?: it }
 
-fun String.remapFieldDescriptor(classMappings: (String) -> String): String {
+fun String.remapDescriptor(classMappings: (String) -> String): String {
     return try {
         val reader = StringReader(this)
         val result = StringBuilder()
@@ -173,43 +153,8 @@ fun String.remapFieldDescriptor(classMappings: (String) -> String): String {
                 className.append(c.toChar())
             } else {
                 result.append(c.toChar())
-                if (c == 'L'.toInt()) {
-                    insideClassName = true
-                    className.setLength(0)
-                }
             }
-        }
-        result.toString()
-    } catch (e: IOException) {
-        throw AssertionError(e)
-    }
-}
-
-fun String.remapMethodDescriptor(classMappings: (String) -> String): String {
-    return try {
-        val reader = StringReader(this)
-        val result = StringBuilder()
-        var started = false
-        var insideClassName = false
-        val className = StringBuilder()
-        while (true) {
-            val c: Int = reader.read()
-            if (c == -1) {
-                break
-            }
-            if (c == ';'.toInt()) {
-                insideClassName = false
-                result.append(classMappings(className.toString()))
-            }
-            if (insideClassName) {
-                className.append(c.toChar())
-            } else {
-                result.append(c.toChar())
-            }
-            if (c == '('.toInt()) {
-                started = true
-            }
-            if (!insideClassName && started && c == 'L'.toInt()) {
+            if (!insideClassName && c == 'L'.toInt()) {
                 insideClassName = true
                 className.setLength(0)
             }
@@ -220,17 +165,96 @@ fun String.remapMethodDescriptor(classMappings: (String) -> String): String {
     }
 }
 
-fun String.isValidJavaIdentifier(): Boolean {
-    forEachIndexed { index, c ->
-        if (index == 0) {
-            if (!Character.isJavaIdentifierStart(c))
-                return false
-        } else {
-            if (!Character.isJavaIdentifierPart(c))
-                return false
+fun String.localiseFieldDesc(): String {
+    if (isEmpty()) return this
+    val clear = dropWhile { it == '[' }
+    val arrays = length - clear.length
+
+    return buildString {
+        clear.firstOrNull()?.let { first ->
+            if (first == 'L') {
+                append(clear.substring(1 until clear.length - 1).replace('/', '.'))
+            } else {
+                append(localisePrimitive(first))
+            }
+        }
+
+        for (i in 0 until arrays) {
+            append("[]")
         }
     }
-    return isNotEmpty()
+}
+
+fun localisePrimitive(char: Char): String = when (char) {
+    'Z' -> "boolean"
+    'C' -> "char"
+    'B' -> "byte"
+    'S' -> "short"
+    'I' -> "int"
+    'F' -> "float"
+    'J' -> "long"
+    'D' -> "double"
+    else -> char.toString()
+}
+
+/**
+ * Determines if the specified string is permissible as a Java identifier.
+ */
+fun String.isValidJavaIdentifier(): Boolean {
+    return isNotEmpty() && allIndexed { index, c ->
+        if (index == 0) {
+            Character.isJavaIdentifierStart(c)
+        } else {
+            Character.isJavaIdentifierPart(c)
+        }
+    }
+}
+
+fun CharSequence.allIndexed(predicate: (index: Int, Char) -> Boolean): Boolean {
+    var index = 0
+    for (char in this) {
+        if (!predicate(index++, char)) {
+            return false
+        }
+    }
+    return true
 }
 
 operator fun File.div(related: String): File = File(this, related)
+
+fun <T> singleSequenceOf(value: T): Sequence<T> = SingleSequence(value)
+
+inline fun <T,R> List<T>.getMappedOrDefault(index: Int, default: R, transform: (T) -> R): R {
+    return getOrNull(index)?.let(transform) ?: default
+}
+
+inline fun <T,R> List<T>.getMappedOrDefaulted(index: Int, transform: (T) -> R, default: (Int) -> R): R {
+    return getOrNull(index)?.let(transform) ?: default(index)
+}
+
+fun ZipInputStream.forEachEntry(action: (stream: ZipInputStream, entry: ZipEntry) -> Boolean) {
+    while (true) {
+        val entry = nextEntry ?: break
+        if (action(this, entry)) {
+            close()
+            return
+        }
+    }
+}
+
+private class SingleSequence<T>(private var value: T?) : Iterator<T>, Sequence<T> {
+    private var first = true
+    override fun iterator(): Iterator<T> =
+        this.takeIf { first } ?: throw UnsupportedOperationException()
+
+    override fun hasNext(): Boolean = first
+    override fun next(): T {
+        if (first) {
+            val answer: T = value!!
+            first = false
+            value = null
+            return answer
+        }
+        throw NoSuchElementException()
+    }
+}

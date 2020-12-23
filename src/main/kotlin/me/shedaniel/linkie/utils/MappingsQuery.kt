@@ -1,6 +1,19 @@
 package me.shedaniel.linkie.utils
 
-import me.shedaniel.linkie.*
+import me.shedaniel.linkie.Class
+import me.shedaniel.linkie.Field
+import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsEntry
+import me.shedaniel.linkie.MappingsEntryType
+import me.shedaniel.linkie.MappingsEntryType.CLASS
+import me.shedaniel.linkie.MappingsEntryType.FIELD
+import me.shedaniel.linkie.MappingsEntryType.METHOD
+import me.shedaniel.linkie.MappingsMember
+import me.shedaniel.linkie.MappingsMetadata
+import me.shedaniel.linkie.MappingsProvider
+import me.shedaniel.linkie.Method
+import me.shedaniel.linkie.getClassByObfName
+import me.shedaniel.linkie.optimumName
 
 typealias ClassResultSequence = Sequence<ResultHolder<Class>>
 typealias FieldResultSequence = Sequence<ResultHolder<Pair<Class, Field>>>
@@ -39,25 +52,18 @@ object MappingsQuery {
 
     fun errorNoResultsFound(type: MappingsEntryType?, searchKey: String) {
         val onlyClass = searchKey.onlyClass()
-        if (onlyClass.firstOrNull()?.isDigit() == true && !onlyClass.isValidJavaIdentifier()) {
-            throw NullPointerException("No results found! `$onlyClass` is not a valid java identifier!")
-        }
-        if (type != MappingsEntryType.METHOD) {
-            if (searchKey.startsWith("func_") || searchKey.startsWith("method_")) {
+
+        throw when {
+            onlyClass.firstOrNull()?.isDigit() == true && !onlyClass.isValidJavaIdentifier() ->
+                NullPointerException("No results found! `$onlyClass` is not a valid java identifier!")
+            type != METHOD && (searchKey.startsWith("func_") || searchKey.startsWith("method_")) ->
                 throw NullPointerException("No results found! `$searchKey` looks like a method!")
-            }
-        }
-        if (type != MappingsEntryType.FIELD) {
-            if (searchKey.startsWith("field_")) {
+            type != FIELD && searchKey.startsWith("field_") ->
                 throw NullPointerException("No results found! `$searchKey` looks like a field!")
-            }
-        }
-        if (type != MappingsEntryType.CLASS) {
-            if ((!searchKey.startsWith("class_") && searchKey.firstOrNull()?.isLowerCase() == true) || searchKey.firstOrNull()?.isDigit() == true) {
+            type != CLASS && !searchKey.startsWith("class_") && searchKey.firstOrNull()?.isLowerCase() == true ->
                 throw NullPointerException("No results found! `$searchKey` doesn't look like a class!")
-            }
+            else -> NullPointerException("No results found!")
         }
-        throw NullPointerException("No results found!")
     }
 
     fun MappingsEntry.searchDefinition(classKey: String): QueryDefinition? {
@@ -99,7 +105,10 @@ object MappingsQuery {
     fun queryMethods(context: QueryContext): QueryResult<MappingsContainer, MethodResultSequence> =
         queryMember(context) { it.methods.asSequence() }
 
-    fun <T : MappingsMember> queryMember(context: QueryContext, memberGetter: (Class) -> Sequence<T>): QueryResult<MappingsContainer, Sequence<ResultHolder<Pair<Class, T>>>> {
+    fun <T : MappingsMember> queryMember(
+        context: QueryContext,
+        memberGetter: (Class) -> Sequence<T>,
+    ): QueryResult<MappingsContainer, Sequence<ResultHolder<Pair<Class, T>>>> {
         val searchKey = context.searchKey
         val hasClassFilter = searchKey.contains('/')
         val classKey = if (hasClassFilter) searchKey.substring(0, searchKey.lastIndexOf('/')) else ""
@@ -129,7 +138,7 @@ object MappingsQuery {
                     compareBy<MemberResultMore<T>> { it.parent.optimumName.onlyClass() }
                         .thenBy { it.field.intermediaryName }
                         .reversed()
-                ).mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1) * 100.0 }
+                ).mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1.0) }
             }
             fieldKey == "*" -> {
                 // Only field wildcard
@@ -141,12 +150,10 @@ object MappingsQuery {
                     compareByDescending<MemberResultMore<T>> { it.fieldDef(it.field)!!.onlyClass().similarity(fieldKey) }
                         .thenBy { it.parent.optimumName.onlyClass() }
                         .reversed()
-                )
-                    .mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1) * 100.0 }
+                ).mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1.0) }
             }
             else -> {
-                members
-                    .map {
+                members.map {
                         it.toSimplePair() hold it.fieldDef(it.field)!!.onlyClass().similarity(fieldKey)
                     }
             }
@@ -155,46 +162,6 @@ object MappingsQuery {
             .thenBy { it.value.second.intermediaryName })
 
         return QueryResult(mappings, sortedMembers)
-    }
-
-    fun String.mapObfDescToNamed(container: MappingsContainer): String =
-        remapMethodDescriptor { container.getClassByObfName(it)?.intermediaryName ?: it }
-
-    fun String.localiseFieldDesc(): String {
-        if (isEmpty()) return this
-        if (length == 1) {
-            return localisePrimitive(first())
-        }
-        val s = this
-        var offset = 0
-        for (i in s.indices) {
-            if (s[i] == '[')
-                offset++
-            else break
-        }
-        if (offset + 1 == length) {
-            val primitive = StringBuilder(localisePrimitive(first()))
-            for (i in 1..offset) primitive.append("[]")
-            return primitive.toString()
-        }
-        if (s[offset + 1] == 'L') {
-            val substring = StringBuilder(substring(offset + 1))
-            for (i in 1..offset) substring.append("[]")
-            return substring.toString()
-        }
-        return s
-    }
-
-    fun localisePrimitive(char: Char): String = when (char) {
-        'Z' -> "boolean"
-        'C' -> "char"
-        'B' -> "byte"
-        'S' -> "short"
-        'I' -> "int"
-        'F' -> "float"
-        'J' -> "long"
-        'D' -> "double"
-        else -> char.toString()
     }
 }
 
@@ -210,7 +177,8 @@ data class QueryContext(
     val searchKey: String,
 )
 
-fun <T> QueryResult<MappingsContainer, T>.deCompound(): QueryResult<MappingsMetadata, T> = mapKey { it.toSimpleMappingsMetadata() }
+fun <T> QueryResult<MappingsContainer, T>.deCompound(): QueryResult<MappingsMetadata, T> =
+    mapKey { it.toSimpleMappingsMetadata() }
 
 data class QueryResult<A : MappingsMetadata, T>(
     val mappings: A,

@@ -63,7 +63,7 @@ abstract class Namespace(val id: String) {
         getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
 
     protected fun registerSupplier(mappingsSupplier: MappingsSupplier) {
-        mappingsSuppliers.add(namespacedSupplier(loggedSupplier(mappingsSupplier)))
+        mappingsSuppliers.add(namespacedSupplier(loggingSupplier(mappingsSupplier)))
     }
 
     protected inline fun buildSupplier(builder: MappingsSupplierBuilder.() -> Unit) {
@@ -295,8 +295,7 @@ abstract class Namespace(val id: String) {
     }
 
     fun getDefaultProvider(channel: () -> String = this::getDefaultMappingChannel): MappingsProvider {
-        val version = getDefaultVersion()
-        return getProvider(version)
+        return getProvider(getDefaultVersion(channel))
     }
 
     open fun supportsMixin(): Boolean = false

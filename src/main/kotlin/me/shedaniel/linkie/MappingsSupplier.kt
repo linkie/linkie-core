@@ -16,31 +16,59 @@ interface MappingsSupplier {
 fun Namespace.namespacedSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
     NamespacedMappingsSupplier(this, mappingsSupplier)
 
-fun Namespace.loggedSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
-    LoggedMappingsSupplier(this, mappingsSupplier)
+fun Namespace.loggingSupplier(mappingsSupplier: MappingsSupplier): MappingsSupplier =
+    LoggingMappingsSupplier(this, mappingsSupplier)
 
-fun Namespace.cachedSupplier(uuidGetter: (String) -> String, mappingsSupplier: MappingsSupplier): MappingsSupplier =
+fun Namespace.cachedSupplier(
+    uuidGetter: (String) -> String,
+    mappingsSupplier: MappingsSupplier,
+): MappingsSupplier =
     CachedMappingsSupplier(this, uuidGetter, mappingsSupplier)
 
-fun Namespace.simpleSupplier(version: String, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.simpleSupplier(
+    version: String,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     SimpleMappingsSupplier(version) { supplier(version) }
 
-fun Namespace.simpleCachedSupplier(version: String, uuid: String = version, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.simpleCachedSupplier(
+    version: String,
+    uuid: String = version,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     cachedSupplier({ uuid }, simpleSupplier(version, supplier))
 
-fun Namespace.simpleCachedSupplier(version: String, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.simpleCachedSupplier(
+    version: String,
+    uuidGetter: (String) -> String,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     cachedSupplier(uuidGetter, simpleSupplier(version, supplier))
 
-fun Namespace.multipleSupplier(versions: Iterable<String>, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.multipleSupplier(
+    versions: Iterable<String>,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     multipleSupplier({ versions }, supplier)
 
-fun Namespace.multipleSupplier(versions: () -> Iterable<String>, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.multipleSupplier(
+    versions: () -> Iterable<String>,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     MultiMappingsSupplier(versions, supplier)
 
-fun Namespace.multipleCachedSupplier(versions: Iterable<String>, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.multipleCachedSupplier(
+    versions: Iterable<String>,
+    uuidGetter: (String) -> String,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
-fun Namespace.multipleCachedSupplier(versions: () -> Iterable<String>, uuidGetter: (String) -> String, supplier: (String) -> MappingsContainer): MappingsSupplier =
+fun Namespace.multipleCachedSupplier(
+    versions: () -> Iterable<String>,
+    uuidGetter: (String) -> String,
+    supplier: (String) -> MappingsContainer,
+): MappingsSupplier =
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
@@ -49,11 +77,13 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
     }
 }
 
-private class LoggedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
+private class LoggingMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
     override fun applyVersion(version: String): MappingsContainer {
         info("Loading $version in $namespace")
         val start = System.currentTimeMillis()
-        return super.applyVersion(version).also { info("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms") }
+        return super.applyVersion(version).also {
+            info("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms")
+        }
     }
 }
 

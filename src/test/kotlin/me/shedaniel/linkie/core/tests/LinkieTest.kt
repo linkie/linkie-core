@@ -2,11 +2,16 @@ package me.shedaniel.linkie.core.tests
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import me.shedaniel.linkie.LinkieConfig
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.namespaces.MCPNamespace
 import me.shedaniel.linkie.namespaces.MojangNamespace
 import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.utils.Version
+import me.shedaniel.linkie.utils.localiseFieldDesc
+import me.shedaniel.linkie.utils.remapDescriptor
+import me.shedaniel.linkie.utils.remapDescriptor
+import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
 import org.junit.jupiter.api.Test
@@ -18,7 +23,6 @@ class LinkieTest {
     @Test
     fun versioning() {
         assertEquals(Version(1, 14, 4), "1.14.4".tryToVersion())
-        assertNull("20w02a".tryToVersion())
         assertEquals(Version(1, 14, snapshot = "alpha.19.w.02a"), "19w02a".tryToVersion())
         assertEquals(Version(1, 16, snapshot = "alpha.20.w.17a"), "20w17a".tryToVersion())
         assertEquals(Version(1, 16, 2, snapshot = "alpha.20.w.27a"), "20w27a".tryToVersion())
@@ -44,7 +48,7 @@ class LinkieTest {
 
     @Test
     fun yarn() {
-        Namespaces.init(YarnNamespace)
+        Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
         runBlocking { delay(2000) }
         runBlocking { while (YarnNamespace.reloading) delay(100) }
         assertEquals("1.16.4", YarnNamespace.getDefaultVersion())
@@ -53,7 +57,7 @@ class LinkieTest {
 
     @Test
     fun mcp() {
-        Namespaces.init(MCPNamespace)
+        Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
         runBlocking { delay(2000) }
         runBlocking { while (MCPNamespace.reloading) delay(100) }
         assertEquals("1.16.3", MCPNamespace.getDefaultVersion())
@@ -63,12 +67,46 @@ class LinkieTest {
     @Test
     fun mojmap() {
         val currentFreeRam = Runtime.getRuntime().freeMemory()
-        Namespaces.init(MojangNamespace)
+        Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
         runBlocking { delay(2000) }
         runBlocking { while (MojangNamespace.reloading) delay(100) }
         assertEquals("1.16.4", MojangNamespace.getDefaultVersion())
         MojangNamespace.getDefaultProvider().mappingsContainer!!.invoke()
         System.gc()
         println("added memory of " + (currentFreeRam - Runtime.getRuntime().freeMemory()))
+    }
+
+    @Test
+    fun descriptionLocalising() {
+        assertEquals("int", "I".localiseFieldDesc())
+        assertEquals("int[]", "[I".localiseFieldDesc())
+        assertEquals("me.shedaniel.linkie.MappingsKt", "Lme/shedaniel/linkie/MappingsKt;".localiseFieldDesc())
+    }
+    
+    @Test
+    fun remapDescription() {
+        val remaps = mapOf(
+            "kotlin/Sad" to "kotlin/Happy",
+            "java/util/Comparator" to "kotlin/IceCream",
+        )
+        val remapper: (String) -> String = { remaps[it] ?: it }
+        
+        assertEquals("()V", "()V".remapDescriptor(remapper))
+        assertEquals("(Ljava/util/Optional;)V", "(Ljava/util/Optional;)V".remapDescriptor(remapper))
+        assertEquals("(IJ)Ljava/util/Optional;", "(IJ)Ljava/util/Optional;".remapDescriptor(remapper))
+        assertEquals("(JZLjava/util/Optional;IJ)Ljava/util/Optional;", "(JZLjava/util/Optional;IJ)Ljava/util/Optional;".remapDescriptor(remapper))
+        assertEquals("(JZLkotlin/Happy;Ljava/util/Optional;IJ)Ljava/util/Optional;", 
+            "(JZLkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Optional;".remapDescriptor(remapper))
+        assertEquals("(JZLkotlin/Happy;Ljava/util/Optional;IJ)Lkotlin/IceCream;", 
+            "(JZLkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Comparator;".remapDescriptor(remapper))
+        assertEquals("(JZ[Lkotlin/Happy;Ljava/util/Optional;IJ)Lkotlin/IceCream;",
+            "(JZ[Lkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Comparator;".remapDescriptor(remapper))
+
+        assertEquals("V", "V".remapDescriptor(remapper))
+        assertEquals("Ljava/util/Optional;", "Ljava/util/Optional;".remapDescriptor(remapper))
+        assertEquals("Lkotlin/Happy;", "Lkotlin/Sad;".remapDescriptor(remapper))
+        assertEquals("Lkotlin/IceCream;", "Ljava/util/Comparator;".remapDescriptor(remapper))
+        assertEquals("[Lkotlin/IceCream;", "[Ljava/util/Comparator;".remapDescriptor(remapper))
+        assertEquals("[J", "[J".remapDescriptor(remapper))
     }
 }

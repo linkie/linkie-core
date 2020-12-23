@@ -8,7 +8,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
-import me.shedaniel.linkie.multipleCachedSupplier
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
@@ -81,7 +80,7 @@ object MCPNamespace : Namespace("mcp") {
         }
         mcpConfigSnapshots.filterValues { it.isEmpty() }.keys.toMutableList().forEach { mcpConfigSnapshots.remove(it) }
         newMcpVersions.clear()
-        json.decodeFromString(MapSerializer(String.serializer(), MCPVersion.serializer()), URL("https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json").readText()).forEach { mcVersion, mcpVersion ->
+        json.decodeFromString(MapSerializer(String.serializer(), MCPVersion.serializer()), URL("https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json").readText()).forEach { (mcVersion, mcpVersion) ->
             newMcpVersions[mcVersion.toVersion()] = mcpVersion
         }
     }
@@ -225,10 +224,10 @@ object MCPNamespace : Namespace("mcp") {
             map[split[0]] = split[1]
         }
         classes.forEach {
-            it.methods.forEach {
-                map[it.intermediaryName]?.apply {
-                    it.mappedName = this
-                    it.mappedDesc = ""
+            it.methods.forEach { method ->
+                map[method.intermediaryName]?.apply {
+                    method.mappedName = this
+                    method.mappedDesc = ""
                 }
             }
         }

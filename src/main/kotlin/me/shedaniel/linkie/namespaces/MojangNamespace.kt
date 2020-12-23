@@ -46,7 +46,7 @@ object MojangNamespace : Namespace("mojang") {
             if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it
         }) {
             buildMappings(it, getName(it), expendIntermediaryToMapped = true) {
-                val url = URL(versionJsonMap[version])
+                val url = URL(versionJsonMap[it])
                 val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                 val downloads = versionJson["downloads"]!!.jsonObject
                 readMojangMappings(
@@ -78,11 +78,11 @@ object MojangNamespace : Namespace("mojang") {
     override fun reloadData() {
         versionJsonMap.clear()
         val versionManifest = json.parseToJsonElement(URL("https://launchermeta.mojang.com/mc/game/version_manifest.json").readText())
-        val `19w36a` = "19w36a".toVersion()
+        val lowestVersionWithMojmap = "19w36a".toVersion()
         versionManifest.jsonObject["versions"]!!.jsonArray.forEach { versionElement ->
             val versionString = versionElement.jsonObject["id"]!!.jsonPrimitive.content
             val version = versionString.tryToVersion() ?: return@forEach
-            if (version >= `19w36a`) {
+            if (version >= lowestVersionWithMojmap) {
                 val urlString = versionElement.jsonObject["url"]!!.jsonPrimitive.content
                 versionJsonMap[versionString] = urlString
             }

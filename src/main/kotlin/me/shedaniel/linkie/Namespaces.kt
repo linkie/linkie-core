@@ -38,7 +38,9 @@ object Namespaces {
     fun addMappingsContainer(mappingsContainer: MappingsContainer) {
         cachedMappings.add(mappingsContainer)
         limitCachedData()
-        debug("Currently Loaded ${cachedMappings.size} Mapping(s): " + cachedMappings.joinToString(", ") { "${it.namespace}-${it.version}" })
+        debug("Currently Loaded ${cachedMappings.size} Mapping(s): " + cachedMappings.joinToString(", ") {
+            "${it.namespace}-${it.version}"
+        })
     }
 
     @OptIn(ObsoleteCoroutinesApi::class)

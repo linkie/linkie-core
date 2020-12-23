@@ -25,7 +25,9 @@ data class MappingsContainer(
     override val name: String,
     override var mappingSource: MappingSource? = null,
     override var namespace: String = "",
-) : MappingsMetadata {
+) : MappingsMetadata, me.shedaniel.linkie.namespaces.MappingsContainerBuilder {
+    override fun build(version: String): MappingsContainer = this
+    
     fun toSimpleMappingsMetadata(): MappingsMetadata = SimpleMappingsMetadata(
         version = version,
         name = name,
@@ -75,52 +77,40 @@ data class MappingsContainer(
     }
 }
 
-fun MappingsContainer.getClassByObfName(obf: String): Class? {
-    classes.forEach {
+fun MappingsContainer.getClassByObfName(obf: String, ignoreCase: Boolean = false): Class? {
+    return classes.firstOrNull {
         if (it.obfName.isMerged()) {
-            if (it.obfName.merged.equals(obf, ignoreCase = false))
-                return it
-        } else if (it.obfName.client.equals(obf, ignoreCase = false))
-            return it
-        else if (it.obfName.server.equals(obf, ignoreCase = false))
-            return it
+            it.obfMergedName.equals(obf, ignoreCase = ignoreCase)
+        } else {
+            it.obfClientName.equals(obf, ignoreCase = ignoreCase)
+                    || it.obfServerName.equals(obf, ignoreCase = ignoreCase)
+        }
     }
-    return null
 }
 
-fun Class.getMethodByObfName(obf: String): Method? {
-    methods.forEach {
+fun Class.getMethodByObfName(obf: String, ignoreCase: Boolean = false): Method? {
+    return methods.firstOrNull {
         if (it.obfName.isMerged()) {
-            if (it.obfName.merged.equals(obf, ignoreCase = false))
-                return it
-        } else if (it.obfName.client.equals(obf, ignoreCase = false))
-            return it
-        else if (it.obfName.server.equals(obf, ignoreCase = false))
-            return it
+            it.obfMergedName.equals(obf, ignoreCase = ignoreCase)
+        } else {
+            it.obfClientName.equals(obf, ignoreCase = ignoreCase)
+                    || it.obfServerName.equals(obf, ignoreCase = ignoreCase)
+        }
     }
-    return null
 }
 
-fun Class.getMethodByObfNameAndDesc(obf: String, desc: String): Method? {
-    methods.filter {
+fun Class.getMethodByObf(obf: String, desc: String, ignoreCase: Boolean = false): Method? {
+    return methods.firstOrNull {
         if (it.obfName.isMerged()) {
-            if (it.obfName.merged.equals(obf, ignoreCase = false))
-                return@filter true
-        } else if (it.obfName.client.equals(obf, ignoreCase = false))
-            return@filter true
-        else if (it.obfName.server.equals(obf, ignoreCase = false))
-            return@filter true
-        return@filter false
-    }.forEach {
-        if (it.obfDesc.isMerged()) {
-            if (it.obfDesc.merged.equals(desc, ignoreCase = false))
-                return it
-        } else if (it.obfDesc.client.equals(desc, ignoreCase = false))
-            return it
-        else if (it.obfDesc.server.equals(desc, ignoreCase = false))
-            return it
+            it.obfMergedName.equals(obf, ignoreCase = ignoreCase)
+                    && it.obfMergedDesc.equals(desc, ignoreCase = ignoreCase)
+        } else {
+            (it.obfClientName.equals(obf, ignoreCase = ignoreCase)
+                    && it.obfClientDesc.equals(desc, ignoreCase = ignoreCase))
+                    || (it.obfServerName.equals(obf, ignoreCase = ignoreCase)
+                    && it.obfServerDesc.equals(desc, ignoreCase = ignoreCase))
+        }
     }
-    return null
 }
 
 fun Class.getFieldByObfName(obf: String): Field? {
@@ -144,16 +134,19 @@ inline fun buildMappings(
     expendIntermediaryToMapped: Boolean = false,
     crossinline builder: MappingsContainerBuilder.() -> Unit,
 ): MappingsContainer =
-    MappingsContainerBuilder(version, name, fillFieldDesc, fillMethodDesc, expendIntermediaryToMapped).also(builder).build()
+    MappingsContainerBuilder(
+        fillFieldDesc,
+        fillMethodDesc,
+        expendIntermediaryToMapped,
+        container = MappingsContainer(version, name = name)
+    ).also(builder).build()
 
 class MappingsContainerBuilder(
-    val version: String,
-    val name: String,
     val fillFieldDesc: Boolean,
     val fillMethodDesc: Boolean,
     val expendIntermediaryToMapped: Boolean,
     var lockFill: Boolean = false,
-    var container: MappingsContainer = MappingsContainer(version, name = name),
+    var container: MappingsContainer,
 ) {
     fun build(): MappingsContainer = container.also { fill() }
 
@@ -193,13 +186,22 @@ class MappingsContainerBuilder(
         this.lockFill = lockFill
     }
 
-    fun clazz(intermediaryName: String, obf: String? = null, mapped: String? = null): ClassBuilder =
+    fun clazz(
+        intermediaryName: String,
+        obf: String? = null,
+        mapped: String? = null,
+    ): ClassBuilder =
         ClassBuilder(container.getOrCreateClass(intermediaryName)).apply {
             obfClass(obf)
             mapClass(mapped)
         }
 
-    inline fun clazz(intermediaryName: String, obf: String? = null, mapped: String? = null, crossinline builder: ClassBuilder.() -> Unit): ClassBuilder =
+    inline fun clazz(
+        intermediaryName: String,
+        obf: String? = null,
+        mapped: String? = null,
+        crossinline builder: ClassBuilder.() -> Unit,
+    ): ClassBuilder =
         ClassBuilder(container.getOrCreateClass(intermediaryName)).also(builder).apply {
             obfClass(obf)
             mapClass(mapped)
@@ -214,7 +216,7 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
             clazz.intermediaryName = replacement.intermediaryName
 
             clazz.methods.forEach { method ->
-                replacement.getMethodByObfNameAndDesc(method.obfName.merged!!, method.obfDesc.merged!!)?.also { replacementMethod ->
+                replacement.getMethodByObf(method.obfName.merged!!, method.obfDesc.merged!!)?.also { replacementMethod ->
                     method.intermediaryName = replacementMethod.intermediaryName
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
                 }
@@ -238,22 +240,36 @@ inline class ClassBuilder(val clazz: Class) {
         clazz.mappedName = mapped
     }
 
-    fun field(intermediaryName: String, intermediaryDesc: String? = null): FieldBuilder =
+    fun field(
+        intermediaryName: String,
+        intermediaryDesc: String? = null,
+    ): FieldBuilder =
         FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).apply {
             intermediaryDesc(intermediaryDesc)
         }
 
-    inline fun field(intermediaryName: String, intermediaryDesc: String? = null, crossinline builder: FieldBuilder.() -> Unit): FieldBuilder =
+    inline fun field(
+        intermediaryName: String,
+        intermediaryDesc: String? = null,
+        crossinline builder: FieldBuilder.() -> Unit,
+    ): FieldBuilder =
         FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).also(builder).apply {
             intermediaryDesc(intermediaryDesc)
         }
 
-    fun method(intermediaryName: String, intermediaryDesc: String? = null): MethodBuilder =
+    fun method(
+        intermediaryName: String,
+        intermediaryDesc: String? = null,
+    ): MethodBuilder =
         MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).apply {
             intermediaryDesc(intermediaryDesc)
         }
 
-    inline fun method(intermediaryName: String, intermediaryDesc: String? = null, crossinline builder: MethodBuilder.() -> Unit): MethodBuilder =
+    inline fun method(
+        intermediaryName: String,
+        intermediaryDesc: String? = null,
+        crossinline builder: MethodBuilder.() -> Unit,
+    ): MethodBuilder =
         MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).also(builder).apply {
             intermediaryDesc(intermediaryDesc)
         }
@@ -289,31 +305,31 @@ inline class MethodBuilder(val method: Method) {
 
 fun MappingsContainer.fillObfDescViaIntermediary(fillFieldDesc: Boolean, fillMethodDesc: Boolean) {
     classes.forEach { clazz ->
-        if (fillFieldDesc)
-            clazz.fields.forEach { field ->
-                field.obfDesc.merged = field.obfDesc.merged ?: field.intermediaryDesc.remapFieldDescriptor { descClass ->
-                    getClass(descClass)?.obfName?.merged ?: descClass
-                }
+        val fillDesc: (MappingsMember) -> Unit = {
+            it.obfMergedDesc = it.obfMergedDesc ?: it.intermediaryDesc.remapDescriptor { descClass ->
+                getClass(descClass)?.obfName?.merged ?: descClass
             }
-        if (fillMethodDesc)
-            clazz.methods.forEach { method ->
-                method.obfDesc.merged = method.obfDesc.merged ?: method.intermediaryDesc.remapMethodDescriptor { descClass ->
-                    getClass(descClass)?.obfName?.merged ?: descClass
-                }
-            }
+        }
+        if (fillFieldDesc) {
+            clazz.fields.forEach(fillDesc)
+        }
+        if (fillMethodDesc) {
+            clazz.methods.forEach(fillDesc)
+        }
     }
 }
 
 fun MappingsContainer.fillMappedDescViaIntermediary(fillFieldDesc: Boolean, fillMethodDesc: Boolean) {
     classes.forEach { clazz ->
-        if (fillFieldDesc)
-            clazz.fields.forEach { field ->
-                field.mappedDesc = field.mappedDesc ?: field.intermediaryDesc.mapFieldIntermediaryDescToNamed(this)
-            }
-        if (fillMethodDesc)
-            clazz.methods.forEach { method ->
-                method.mappedDesc = method.mappedDesc ?: method.intermediaryDesc.mapMethodIntermediaryDescToNamed(this)
-            }
+        val fillDesc: (MappingsMember) -> Unit = {
+            it.obfMergedDesc = it.obfMergedDesc ?: it.intermediaryDesc.mapIntermediaryDescToNamed(this)
+        }
+        if (fillFieldDesc) {
+            clazz.fields.forEach(fillDesc)
+        }
+        if (fillMethodDesc) {
+            clazz.methods.forEach(fillDesc)
+        }
     }
 }
 
@@ -338,6 +354,42 @@ interface MappingsMember : MappingsEntry {
 val MappingsEntry.optimumName: String
     get() = mappedName ?: intermediaryName
 
+var MappingsEntry.obfClientName: String?
+    get() = obfName.client
+    set(value) {
+        obfName.client = value
+    }
+
+var MappingsEntry.obfServerName: String?
+    get() = obfName.server
+    set(value) {
+        obfName.server = value
+    }
+
+var MappingsEntry.obfMergedName: String?
+    get() = obfName.merged
+    set(value) {
+        obfName.merged = value
+    }
+
+var MappingsMember.obfClientDesc: String?
+    get() = obfDesc.client
+    set(value) {
+        obfDesc.client = value
+    }
+
+var MappingsMember.obfServerDesc: String?
+    get() = obfDesc.server
+    set(value) {
+        obfDesc.server = value
+    }
+
+var MappingsMember.obfMergedDesc: String?
+    get() = obfDesc.merged
+    set(value) {
+        obfDesc.merged = value
+    }
+
 @Serializable
 data class Class(
     override var intermediaryName: String,
@@ -346,6 +398,9 @@ data class Class(
     val methods: MutableList<Method> = mutableListOf(),
     val fields: MutableList<Field> = mutableListOf(),
 ) : MappingsEntry {
+    val members: Sequence<MappingsMember>
+        get() = methods.asSequence() + fields.asSequence()
+
     fun getMethod(intermediaryName: String): Method? =
         methods.firstOrNull { it.intermediaryName == intermediaryName }
 
@@ -391,28 +446,16 @@ data class Obf(
         fun empty(): Obf = empty
     }
 
-    fun sequence(): Sequence<String> {
-        if (isMerged()) return sequenceOf(merged!!)
-        if (client == null) {
-            if (server == null) {
-                return emptySequence()
-            }
-            return sequenceOf(server!!)
-        } else {
-            if (client == null) {
-                return emptySequence()
-            }
-            return sequenceOf(client!!)
+    fun sequence(): Sequence<String> = when {
+        isMerged() -> singleSequenceOf(merged!!)
+        client == null -> server?.let(::singleSequenceOf) ?: emptySequence()
+        server == null -> client?.let(::singleSequenceOf) ?: emptySequence()
+        else -> {
+            sequenceOf(server!!, client!!)
         }
     }
 
-    fun list(): List<String> {
-        val list = mutableListOf<String>()
-        if (client != null) list.add(client!!)
-        if (server != null) list.add(server!!)
-        if (merged != null) list.add(merged!!)
-        return list
-    }
+    fun list(): List<String> = sequence().toList()
 
     fun isMerged(): Boolean = merged != null
     fun isEmpty(): Boolean = client == null && server == null && merged == null
