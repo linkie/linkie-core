@@ -85,7 +85,7 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    private fun MappingsContainer.loadTsrgFromURLZip(url: URL) {
+    fun MappingsContainer.loadTsrgFromURLZip(url: URL) {
         val stream = ZipInputStream(url.openStream())
         while (true) {
             val entry = stream.nextEntry ?: break
@@ -96,7 +96,7 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    private fun MappingsContainer.loadSrgFromURLZip(url: URL) {
+    fun MappingsContainer.loadSrgFromURLZip(url: URL) {
         val stream = ZipInputStream(url.openStream())
         while (true) {
             val entry = stream.nextEntry ?: break
@@ -187,7 +187,7 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    private fun MappingsContainer.loadMCPFromURLZip(url: URL) {
+    fun MappingsContainer.loadMCPFromURLZip(url: URL) {
         val stream = ZipInputStream(url.openStream())
         while (true) {
             val entry = stream.nextEntry ?: break
