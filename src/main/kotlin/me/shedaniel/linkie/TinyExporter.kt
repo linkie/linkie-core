@@ -25,18 +25,20 @@ object TinyExporter {
                 val tinyClass = TinyClass(buildList {
                     add(clazz.intermediaryName)
                     named?.also { add(clazz.mappedName ?: clazz.intermediaryName) }
-                    obfMerged?.also { add(clazz.obfName.merged ?: clazz.intermediaryName) }
-                    obfClient?.also { add(clazz.obfName.client ?: clazz.intermediaryName) }
-                    obfServer?.also { add(clazz.obfName.server ?: clazz.intermediaryName) }
+                    obfMerged?.also { add(clazz.obfMergedName ?: clazz.intermediaryName) }
+                    obfClient?.also { add(clazz.obfClientName ?: clazz.intermediaryName) }
+                    obfServer?.also { add(clazz.obfServerName ?: clazz.intermediaryName) }
                 })
                 tinyClass.methods.addAll(buildList {
                     clazz.methods.forEach { method ->
+                        if (method.intermediaryDesc.isBlank())
+                            println(method)
                         val tinyMethod = TinyMethod(method.intermediaryDesc, buildList {
                             add(method.intermediaryName)
-                            named?.also { add(method.mappedName ?: method.intermediaryName) }
-                            obfMerged?.also { add(method.obfName.merged ?: method.intermediaryName) }
-                            obfClient?.also { add(method.obfName.client ?: method.intermediaryName) }
-                            obfServer?.also { add(method.obfName.server ?: method.intermediaryName) }
+                            named?.also { add(method.optimumName) }
+                            obfMerged?.also { add(method.obfMergedName ?: method.intermediaryName) }
+                            obfClient?.also { add(method.obfClientName ?: method.intermediaryName) }
+                            obfServer?.also { add(method.obfServerName ?: method.intermediaryName) }
                         }, emptyList(), emptyList(), emptyList())
                         add(tinyMethod)
                     }
@@ -45,10 +47,10 @@ object TinyExporter {
                     clazz.fields.forEach { field ->
                         val tinyMethod = TinyField(field.intermediaryDesc, buildList {
                             add(field.intermediaryName)
-                            named?.also { add(field.mappedName ?: field.intermediaryName) }
-                            obfMerged?.also { add(field.obfName.merged ?: field.intermediaryName) }
-                            obfClient?.also { add(field.obfName.client ?: field.intermediaryName) }
-                            obfServer?.also { add(field.obfName.server ?: field.intermediaryName) }
+                            named?.also { add(field.optimumName) }
+                            obfMerged?.also { add(field.obfMergedName ?: field.intermediaryName) }
+                            obfClient?.also { add(field.obfClientName ?: field.intermediaryName) }
+                            obfServer?.also { add(field.obfServerName ?: field.intermediaryName) }
                         }, emptyList())
                         add(tinyMethod)
                     }

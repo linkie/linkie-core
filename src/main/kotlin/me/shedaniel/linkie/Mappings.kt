@@ -208,26 +208,32 @@ class MappingsContainerBuilder(
         }
 }
 
-fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer) {
+fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer, removeUnfound: Boolean = false) {
     val classO2I = mutableMapOf<String, Class>()
     obf2intermediary.classes.forEach { clazz -> clazz.obfName.merged?.also { classO2I[it] = clazz } }
-    classes.forEach { clazz ->
-        classO2I[clazz.obfName.merged]?.also { replacement ->
+    classes.removeIf { clazz ->
+        val replacement = classO2I[clazz.obfName.merged]
+        if (replacement != null) {
             clazz.intermediaryName = replacement.intermediaryName
 
-            clazz.methods.forEach { method ->
-                replacement.getMethodByObf(method.obfName.merged!!, method.obfDesc.merged!!)?.also { replacementMethod ->
+            clazz.methods.removeIf { method ->
+                val replacementMethod = replacement.getMethodByObf(method.obfName.merged!!, method.obfDesc.merged!!)
+                if (replacementMethod != null) {
                     method.intermediaryName = replacementMethod.intermediaryName
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
                 }
+                replacementMethod == null && removeUnfound
             }
-            clazz.fields.forEach { field ->
-                replacement.getFieldByObfName(field.obfName.merged!!)?.also { replacementField ->
+            clazz.fields.removeIf { field ->
+                val replacementField = replacement.getFieldByObfName(field.obfName.merged!!)
+                if (replacementField != null) {
                     field.intermediaryName = replacementField.intermediaryName
                     field.intermediaryDesc = replacementField.intermediaryDesc
                 }
+                replacementField == null && removeUnfound
             }
         }
+        replacement == null && removeUnfound
     }
 }
 
