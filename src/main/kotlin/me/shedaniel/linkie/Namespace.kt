@@ -1,20 +1,20 @@
 package me.shedaniel.linkie
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import me.shedaniel.linkie.namespaces.MappingsVersion
 import me.shedaniel.linkie.namespaces.MappingsContainerBuilder
+import me.shedaniel.linkie.namespaces.MappingsVersion
 import me.shedaniel.linkie.namespaces.MappingsVersionBuilder
 import me.shedaniel.linkie.namespaces.ofVersion
+import me.shedaniel.linkie.namespaces.toBuilder
 import me.shedaniel.linkie.utils.tryToVersion
-import java.util.*
 
 abstract class Namespace(val id: String) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
+        if (other == null) return false
+        if (this::class != other::class) return false
         return id == (other as Namespace).id
     }
 
@@ -37,7 +37,7 @@ abstract class Namespace(val id: String) {
         try {
             reloadData()
             val jobs = getDefaultLoadedVersions().map {
-                GlobalScope.launch(Dispatchers.IO) {
+                GlobalScope.launch {
                     val provider = getProvider(it)
                     if (provider.isEmpty().not() && provider.cached != true)
                         provider.mappingsContainer!!.invoke().also {
@@ -56,11 +56,11 @@ abstract class Namespace(val id: String) {
     open fun getDefaultMappingChannel(): String = getAvailableMappingChannels().first()
 
     abstract fun getDefaultLoadedVersions(): List<String>
-    abstract fun getAllVersions(): List<String>
-    abstract fun reloadData()
+    abstract fun getAllVersions(): Sequence<String>
+    abstract suspend fun reloadData()
     abstract fun getDefaultVersion(channel: () -> String = this::getDefaultMappingChannel): String
     fun getAllSortedVersions(): List<String> =
-        getAllVersions().sortedWith(Comparator.nullsFirst(compareBy { it.tryToVersion() })).asReversed()
+        getAllVersions().sortedWith(nullsFirst(compareBy { it.tryToVersion() })).toList().asReversed()
 
     protected fun registerSupplier(mappingsSupplier: MappingsSupplier) {
         mappingsSuppliers.add(namespacedSupplier(loggingSupplier(mappingsSupplier)))
@@ -94,6 +94,14 @@ abstract class Namespace(val id: String) {
         fun version(version: String, uuid: (String) -> String, mappings: MappingsContainerBuilder) {
             val list = listOf(version)
             versions(list, uuid, mappings)
+        }
+
+        fun version(version: String, uuid: String, mappings: suspend (String) -> MappingsContainer) {
+            version(version, uuid, toBuilder(mappings))
+        }
+
+        fun version(version: String, uuid: (String) -> String, mappings: suspend (String) -> MappingsContainer) {
+            version(version, uuid, toBuilder(mappings))
         }
 
         fun version(version: String, mappings: MappingsVersionBuilder) {
@@ -132,6 +140,16 @@ abstract class Namespace(val id: String) {
             versions(list, uuid, mappings)
         }
 
+        fun versions(vararg versions: String, uuid: String, mappings: suspend (String) -> MappingsContainer) {
+            val list = versions.toList()
+            versions(list, uuid, toBuilder(mappings))
+        }
+
+        fun versions(vararg versions: String, uuid: (String) -> String, mappings: suspend (String) -> MappingsContainer) {
+            val list = versions.toList()
+            versions(list, uuid, toBuilder(mappings))
+        }
+
         fun buildVersions(vararg versions: String, spec: VersionSpec.() -> Unit) {
             buildVersions {
                 versions(*versions)
@@ -150,6 +168,14 @@ abstract class Namespace(val id: String) {
 
         fun versions(versions: Iterable<String>, uuid: (String) -> String, mappings: MappingsContainer) {
             versions(versions, uuid) { mappings }
+        }
+
+        fun versions(versions: Iterable<String>, uuid: String, mappings: suspend (String) -> MappingsContainer) {
+            versions(versions, uuid, toBuilder(mappings))
+        }
+
+        fun versions(versions: Iterable<String>, uuid: (String) -> String, mappings: suspend (String) -> MappingsContainer) {
+            versions(versions, uuid, toBuilder(mappings))
         }
 
         fun versions(versions: Iterable<String>, uuid: String, mappings: MappingsContainerBuilder) {
@@ -234,13 +260,17 @@ abstract class Namespace(val id: String) {
             mappingsGetter = mappings
         }
 
-        inline fun buildMappings(
+        fun mappings(mappings: suspend (String) -> MappingsContainer) {
+            mappingsGetter = toBuilder(mappings)
+        }
+
+        suspend inline fun buildMappings(
             version: String,
             name: String,
             fillFieldDesc: Boolean = true,
             fillMethodDesc: Boolean = true,
             expendIntermediaryToMapped: Boolean = false,
-            crossinline builder: me.shedaniel.linkie.MappingsContainerBuilder.() -> Unit,
+            crossinline builder: suspend MappingsBuilder.() -> Unit,
         ) {
             mappings(me.shedaniel.linkie.buildMappings(version, name, fillFieldDesc, fillMethodDesc, expendIntermediaryToMapped, builder))
         }
@@ -263,6 +293,13 @@ abstract class Namespace(val id: String) {
             this.versions = versions
         }
 
+        fun versionsSeq(versions: () -> Sequence<String>) {
+            this.versions = {
+                val sequence = versions()
+                Iterable { sequence.iterator() }
+            }
+        }
+
         fun accept(spec: VersionSpec.() -> Unit): MappingsVersionBuilder {
             also(spec)
             mappingsGetter!!
@@ -273,19 +310,19 @@ abstract class Namespace(val id: String) {
         }
     }
 
-    operator fun get(version: String): MappingsContainer? = Namespaces.cachedMappings.firstOrNull { it.namespace == id && it.version == version.toLowerCase(Locale.ROOT) }
+    operator fun get(version: String): MappingsContainer? = Namespaces.cachedMappings.firstOrNull { it.namespace == id && it.version == version.toLowerCase() }
 
-    fun create(version: String): MappingsContainer? {
+    suspend fun create(version: String): MappingsContainer? {
         return mappingsSuppliers.firstOrNull { it.isApplicable(version) }?.applyVersion(version)
     }
 
-    fun createAndAdd(version: String): MappingsContainer? =
+    suspend fun createAndAdd(version: String): MappingsContainer? =
         create(version)?.also { Namespaces.addMappingsContainer(it) }
 
-    fun getOrCreate(version: String): MappingsContainer? =
+    suspend fun getOrCreate(version: String): MappingsContainer? =
         get(version) ?: createAndAdd(version)
 
-    fun getProvider(version: String): MappingsProvider {
+    suspend fun getProvider(version: String): MappingsProvider {
         val container = get(version)
         if (container != null) {
             return MappingsProvider.of(this, version, container)
@@ -294,7 +331,7 @@ abstract class Namespace(val id: String) {
         return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version).also { Namespaces.addMappingsContainer(it) } }
     }
 
-    fun getDefaultProvider(channel: () -> String = this::getDefaultMappingChannel): MappingsProvider {
+    suspend fun getDefaultProvider(channel: () -> String = this::getDefaultMappingChannel): MappingsProvider {
         return getProvider(getDefaultVersion(channel))
     }
 

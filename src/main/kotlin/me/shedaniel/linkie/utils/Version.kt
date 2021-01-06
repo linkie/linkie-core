@@ -1,16 +1,12 @@
 package me.shedaniel.linkie.utils
 
-import java.util.*
-import java.util.Comparator.comparingLong
-import java.util.regex.Pattern
-
 data class Version(val major: Int, val minor: Int, val patch: Int, val snapshot: String? = null) : Comparable<Version> {
     constructor(snapshot: String? = null) : this(0, 0, 0, snapshot)
     constructor(major: Int, snapshot: String? = null) : this(major, 0, 0, snapshot)
     constructor(major: Int, minor: Int, snapshot: String? = null) : this(major, minor, 0, snapshot)
 
     companion object {
-        private val comparator = comparingLong<Version> { it.version }.thenBy(nullsLast()) { it.snapshot }
+        private val comparator = compareBy<Version> { it.version }.thenBy(nullsLast()) { it.snapshot }
     }
 
     private val version = versionOf(major, minor, patch)
@@ -27,7 +23,7 @@ data class Version(val major: Int, val minor: Int, val patch: Int, val snapshot:
         return this.version == otherVersion.version && this.snapshot == otherVersion.snapshot
     }
 
-    override fun hashCode(): Int = Objects.hash(version, snapshot)
+    override fun hashCode(): Int = hashCodeOf(version, snapshot)
 
     override fun compareTo(other: Version): Int = comparator.compare(this, other)
 
@@ -41,7 +37,7 @@ data class Version(val major: Int, val minor: Int, val patch: Int, val snapshot:
                         this.patch >= patch))
 }
 
-val snapshotRegex = Pattern.compile("(?:Snapshot )?(\\d+)w([0-9]\\d*)([a-z])")!!
+val snapshotRegex = "(?:Snapshot )?(\\d+)w([0-9]\\d*)([a-z])".toRegex()
 val bigPreReleaseRegex = ".* Pre-[Rr]elease \\d+".toRegex()
 val preReleaseRegex = " Pre-[Rr]elease ".toRegex()
 
@@ -105,12 +101,12 @@ private fun String.innerToVersion(): Version? {
         if (bigPreReleaseRegex.matches(this)) {
             return replace(preReleaseRegex, "-pre").toVersion()
         }
-        val matcher = snapshotRegex.matcher(this)
-        if (matcher.matches()) {
-            val year = matcher.group(YEAR_GROUP).toInt()
-            val week = matcher.group(WEEK_GROUP)
+        val matcher = snapshotRegex.matchEntire(this)
+        if (matcher != null) {
+            val year = matcher.groups[YEAR_GROUP]!!.value.toInt()
+            val week = matcher.groups[WEEK_GROUP]!!.value
             val weekInt = week.toInt()
-            val build = matcher.group(BUILD_GROUP).first()
+            val build = matcher.groups[BUILD_GROUP]!!.value.first()
             MinecraftVersionLookupData.map.forEach { (mcVersion, snapshot) ->
                 if (year > snapshot.year || (year == snapshot.year && weekInt >= snapshot.week)) {
                     return mcVersion.copy(snapshot = "alpha.$year.w.$week$build")

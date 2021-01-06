@@ -57,11 +57,11 @@ object MappingsQuery {
             onlyClass.firstOrNull()?.isDigit() == true && !onlyClass.isValidJavaIdentifier() ->
                 NullPointerException("No results found! `$onlyClass` is not a valid java identifier!")
             type != METHOD && (searchKey.startsWith("func_") || searchKey.startsWith("method_")) ->
-                throw NullPointerException("No results found! `$searchKey` looks like a method!")
+                NullPointerException("No results found! `$searchKey` looks like a method!")
             type != FIELD && searchKey.startsWith("field_") ->
-                throw NullPointerException("No results found! `$searchKey` looks like a field!")
+                NullPointerException("No results found! `$searchKey` looks like a field!")
             type != CLASS && !searchKey.startsWith("class_") && searchKey.firstOrNull()?.isLowerCase() == true ->
-                throw NullPointerException("No results found! `$searchKey` doesn't look like a class!")
+                NullPointerException("No results found! `$searchKey` doesn't look like a class!")
             else -> NullPointerException("No results found!")
         }
     }
@@ -78,7 +78,7 @@ object MappingsQuery {
         return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey) }
     }
 
-    fun queryClasses(context: QueryContext): QueryResult<MappingsContainer, ClassResultSequence> {
+    suspend fun queryClasses(context: QueryContext): QueryResult<MappingsContainer, ClassResultSequence> {
         val searchKey = context.searchKey
         val isSearchKeyWildcard = searchKey == "*"
         val mappings = context.provider.get()
@@ -99,13 +99,13 @@ object MappingsQuery {
         return QueryResult(mappings, results)
     }
 
-    fun queryFields(context: QueryContext): QueryResult<MappingsContainer, FieldResultSequence> =
+    suspend fun queryFields(context: QueryContext): QueryResult<MappingsContainer, FieldResultSequence> =
         queryMember(context) { it.fields.asSequence() }
 
-    fun queryMethods(context: QueryContext): QueryResult<MappingsContainer, MethodResultSequence> =
+    suspend fun queryMethods(context: QueryContext): QueryResult<MappingsContainer, MethodResultSequence> =
         queryMember(context) { it.methods.asSequence() }
 
-    fun <T : MappingsMember> queryMember(
+    suspend fun <T : MappingsMember> queryMember(
         context: QueryContext,
         memberGetter: (Class) -> Sequence<T>,
     ): QueryResult<MappingsContainer, Sequence<ResultHolder<Pair<Class, T>>>> {
@@ -177,7 +177,7 @@ data class QueryContext(
     val searchKey: String,
 )
 
-fun <T> QueryResult<MappingsContainer, T>.deCompound(): QueryResult<MappingsMetadata, T> =
+fun <T> QueryResult<MappingsContainer, T>.toSimpleMappingsMetadata(): QueryResult<MappingsMetadata, T> =
     mapKey { it.toSimpleMappingsMetadata() }
 
 data class QueryResult<A : MappingsMetadata, T>(

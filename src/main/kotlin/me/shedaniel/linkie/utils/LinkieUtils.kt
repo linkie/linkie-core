@@ -1,14 +1,12 @@
 package me.shedaniel.linkie.utils
 
+import com.soywiz.korio.compression.zip.ZipEntry2
+import com.soywiz.korio.compression.zip.ZipFile
+import com.soywiz.korio.file.VfsFile
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.getClassByObfName
 import me.shedaniel.linkie.optimumName
-import java.io.File
-import java.io.IOException
 import java.io.StringReader
-import java.util.*
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =
@@ -135,9 +133,8 @@ fun String.mapObfDescToIntermediary(container: MappingsContainer): String =
     remapDescriptor { container.getClassByObfName(it)?.intermediaryName ?: it }
 
 fun String.remapDescriptor(classMappings: (String) -> String): String {
-    return try {
-        val reader = StringReader(this)
-        val result = StringBuilder()
+    val reader = StringReader(this)
+    return buildString {
         var insideClassName = false
         val className = StringBuilder()
         while (true) {
@@ -147,21 +144,18 @@ fun String.remapDescriptor(classMappings: (String) -> String): String {
             }
             if (c == ';'.toInt()) {
                 insideClassName = false
-                result.append(classMappings(className.toString()))
+                append(classMappings(className.toString()))
             }
             if (insideClassName) {
                 className.append(c.toChar())
             } else {
-                result.append(c.toChar())
+                append(c.toChar())
             }
             if (!insideClassName && c == 'L'.toInt()) {
                 insideClassName = true
                 className.setLength(0)
             }
         }
-        result.toString()
-    } catch (e: IOException) {
-        throw AssertionError(e)
     }
 }
 
@@ -220,25 +214,21 @@ fun CharSequence.allIndexed(predicate: (index: Int, Char) -> Boolean): Boolean {
     return true
 }
 
-operator fun File.div(related: String): File = File(this, related)
+operator fun VfsFile.div(related: String): VfsFile = this[related]
 
 fun <T> singleSequenceOf(value: T): Sequence<T> = SingleSequence(value)
 
-inline fun <T,R> List<T>.getMappedOrDefault(index: Int, default: R, transform: (T) -> R): R {
+inline fun <T, R> List<T>.getMappedOrDefault(index: Int, default: R, transform: (T) -> R): R {
     return getOrNull(index)?.let(transform) ?: default
 }
 
-inline fun <T,R> List<T>.getMappedOrDefaulted(index: Int, transform: (T) -> R, default: (Int) -> R): R {
+inline fun <T, R> List<T>.getMappedOrDefaulted(index: Int, transform: (T) -> R, default: (Int) -> R): R {
     return getOrNull(index)?.let(transform) ?: default(index)
 }
 
-fun ZipInputStream.forEachEntry(action: (stream: ZipInputStream, entry: ZipEntry) -> Boolean) {
-    while (true) {
-        val entry = nextEntry ?: break
-        if (action(this, entry)) {
-            close()
-            return
-        }
+suspend fun ZipFile.forEachEntry(action: suspend (path: String, entry: ZipEntry2) -> Unit) {
+    files.entries.forEach {
+        action(it.key, it.value)
     }
 }
 
@@ -257,4 +247,12 @@ private class SingleSequence<T>(private var value: T?) : Iterator<T>, Sequence<T
         }
         throw NoSuchElementException()
     }
+}
+
+fun hashCodeOf(vararg fields: Any?): Int {
+    var result = 17
+    fields.forEach { field ->
+        result = 37 * result + (field?.hashCode() ?: 0)
+    }
+    return result
 }

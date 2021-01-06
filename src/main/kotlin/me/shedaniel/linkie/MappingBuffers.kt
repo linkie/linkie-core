@@ -1,11 +1,9 @@
 package me.shedaniel.linkie
 
-import org.boon.primitive.ByteBuf
-import org.boon.primitive.InputByteArray
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
+import okio.Buffer
+import okio.BufferedSink
+import okio.BufferedSource
+import kotlin.properties.Delegates
 
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
     writeNotNullString(mappingsContainer.version)
@@ -155,73 +153,53 @@ fun ByteBuffer.readMagic(original: String): String? {
     }
 }
 
-fun inputBuffer(capacity: Int = 2048): ByteBuffer = ByteBuffer(input = ByteBuf.create(capacity))
-fun outputBuffer(byteArray: ByteArray): ByteBuffer = ByteBuffer(output = InputByteArray(byteArray))
-fun outputCompressedBuffer(byteArray: ByteArray): ByteBuffer = outputBuffer(GZIPInputStream(ByteArrayInputStream(byteArray)).use { it.readBytes() })
+fun inputBuffer(): ByteBuffer = ByteBuffer(Buffer() as BufferedSink)
+fun outputBuffer(byteArray: ByteArray): ByteBuffer = ByteBuffer(Buffer() as BufferedSource).apply { writeByteArray(byteArray) }
+@JvmName("outputBuffer_")
+fun ByteArray.outputBuffer(): ByteBuffer = outputBuffer(this)
 
 @OptIn(ExperimentalUnsignedTypes::class)
 @Suppress("unused")
-class ByteBuffer(private val input: ByteBuf? = null, private val output: InputByteArray? = null) {
-    fun writeByte(byte: Byte) {
-        input!!.add(byte)
+class ByteBuffer {
+    var source by Delegates.notNull<BufferedSource>()
+    var sink by Delegates.notNull<BufferedSink>()
+
+    constructor(source: BufferedSource) {
+        this.source = source
     }
 
-    fun writeByteArray(array: ByteArray) {
-        input!!.add(array)
+    constructor(sink: BufferedSink) {
+        this.sink = sink
     }
 
-    fun writeBoolean(boolean: Boolean) {
-        input!!.writeBoolean(boolean)
-    }
-
-    fun writeShort(short: Short) {
-        input!!.add(short)
-    }
-
-    fun writeUnsignedShort(short: UShort) {
-        input!!.add(short.toShort())
-    }
-
-    fun writeInt(int: Int) {
-        input!!.add(int)
-    }
-
-    fun writeLong(long: Long) {
-        input!!.add(long)
-    }
-
-    fun writeFloat(float: Float) {
-        input!!.add(float)
-    }
-
-    fun writeDouble(double: Double) {
-        input!!.add(double)
-    }
-
-    fun writeChar(char: Char) {
-        input!!.add(char)
-    }
+    fun writeByte(byte: Byte) = sink.writeByte(byte.toInt())
+    fun writeByteArray(array: ByteArray) = sink.write(array)
+    fun writeBoolean(boolean: Boolean) = sink.writeByte(if (boolean) 1 else 0)
+    fun writeShort(short: Short) = sink.writeShort(short.toInt())
+    fun writeUnsignedShort(short: UShort) = writeShort(short.toShort())
+    fun writeInt(int: Int) = sink.writeInt(int)
+    fun writeLong(long: Long) = sink.writeLong(long)
+    fun writeFloat(float: Float) = writeInt(float.toBits())
+    fun writeDouble(double: Double) = writeLong(double.toBits())
+    fun writeChar(char: Char) = writeByte(char.toByte())
 
     inline fun <T> writeCollection(collection: Collection<T>, crossinline writer: ByteBuffer.(T) -> Unit) {
         writeInt(collection.size)
         collection.forEach { writer(this, it) }
     }
 
-    fun toByteArray(): ByteArray = input!!.toBytes()
-    fun toCompressedByteArray(): ByteArray = ByteArrayOutputStream().also { outputStream ->
-        GZIPOutputStream(outputStream).use { it.write(toByteArray()) }
-    }.toByteArray()
+    fun toByteArray(): ByteArray = source.readByteArray()
 
-    fun readByte(): Byte = output!!.readByte()
-    fun readByteArray(length: Int): ByteArray = output!!.readBytes(length)
-    fun readBoolean(): Boolean = output!!.readBoolean()
-    fun readShort(): Short = output!!.readShort()
-    fun readUnsignedShort(): UShort = output!!.readShort().toUShort()
-    fun readInt(): Int = output!!.readInt()
-    fun readLong(): Long = output!!.readLong()
-    fun readFloat(): Float = output!!.readFloat()
-    fun readDouble(): Double = output!!.readDouble()
-    fun readChar(): Char = output!!.readChar()
+    fun readByte(): Byte = source.readByte()
+    fun readByteArray(length: Int): ByteArray = source.readByteArray(length.toLong())
+    fun readBoolean(): Boolean = source.readByte().toInt() == 1
+    fun readShort(): Short = source.readShort()
+    fun readUnsignedShort(): UShort = source.readShort().toUShort()
+    fun readInt(): Int = source.readInt()
+    fun readLong(): Long = source.readLong()
+    fun readFloat(): Float = Float.fromBits(source.readInt())
+    fun readDouble(): Double = Double.fromBits(source.readLong())
+    fun readChar(): Char = source.readByte().toChar()
 
     inline fun <T> readCollection(crossinline reader: ByteBuffer.() -> T): List<T> {
         val size = readInt()
@@ -242,13 +220,13 @@ class ByteBuffer(private val input: ByteBuf? = null, private val output: InputBy
 
     fun writeNotNullString(string: String) {
         writeUnsignedShort((string.length + 1).toUShort())
-        writeByteArray(string.toByteArray())
+        sink.writeUtf8(string)
     }
 
     fun readStringOrNull(): String? {
-        val length = readUnsignedShort().toInt()
-        if (length == 0) return null
-        return readByteArray(length - 1).toString(Charsets.UTF_8)
+        val length = readUnsignedShort().toLong()
+        if (length == 0L) return null
+        return source.readUtf8(length - 1)
     }
 
     fun readNotNullString(): String = readStringOrNull()!!

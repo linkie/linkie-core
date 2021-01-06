@@ -1,8 +1,7 @@
 package me.shedaniel.linkie.namespaces
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import com.soywiz.korio.compression.zip.ZipFile
+import com.soywiz.korio.net.URL
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.Class
@@ -10,25 +9,17 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.utils.forEachEntry
+import me.shedaniel.linkie.utils.lines
+import me.shedaniel.linkie.utils.readBytes
+import me.shedaniel.linkie.utils.readText
+import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.warn
-import org.apache.commons.lang3.StringUtils
-import org.dom4j.io.SAXReader
-import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.StringReader
-import java.net.URL
-import java.util.*
-import java.util.zip.ZipInputStream
-import kotlin.collections.LinkedHashMap
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 
 object YarnNamespace : Namespace("yarn") {
-    const val legacyFabricMaven = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven"
-    const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
-
     @Serializable
     data class YarnBuild(
         val gameVersion: String,
@@ -42,65 +33,12 @@ object YarnNamespace : Namespace("yarn") {
     val yarnBuilds = mutableMapOf<String, YarnBuild>()
     val latestYarnVersion: String?
         get() = yarnBuilds.keys.firstOrNull { it.contains('.') && !it.contains('-') }
-    private var yarrnBuildInf20100618 = ""
-    val legacyFabricVersions = mutableMapOf<String, String?>(
-        "1.6.4" to null,
-        "1.7.10" to null,
-        "1.8.9" to null,
-        "1.12.2" to null,
-        "1.13.2" to null,
-    )
-    val workingLegacyFabricVersions = mutableListOf<String>()
 
     init {
         YarnV2BlackList.loadData()
         buildSupplier {
-            buildVersion("1.2.5") {
-                mappings {
-                    MappingsContainer(it, name = "Yarn").apply {
-                        loadIntermediaryFromTinyFile(URL(intermediary125))
-                        loadNamedFromGithubRepo("Blayyke/yarn", "1.2.5", showError = false)
-                        mappingSource = MappingsContainer.MappingSource.ENGIMA
-                    }
-                }
-            }
-        }
-        buildSupplier {
             cached()
 
-            buildVersion("infdev") {
-                uuid { yarrnBuildInf20100618.replaceFirst("inf", "infdev") }
-                mappings {
-                    MappingsContainer(it, name = "Yarrn").apply {
-                        loadIntermediaryFromMaven(
-                            mcVersion = yarrnBuildInf20100618.substringBefore('+'),
-                            repo = "https://maven.concern.i.ng",
-                            group = "net.textilemc.intermediary"
-                        )
-                        mappingSource = loadNamedFromMaven(
-                            yarnVersion = yarrnBuildInf20100618,
-                            repo = "https://maven.concern.i.ng",
-                            group = "net.textilemc.yarrn",
-                            id = "yarrn",
-                            showError = false
-                        )
-                    }
-                }
-            }
-            buildVersions {
-                versions { workingLegacyFabricVersions }
-                uuid { version -> "$version-${legacyFabricVersions[version]}" }
-                mappings { version ->
-                    MappingsContainer(version, name = "Yarn").apply {
-                        loadIntermediaryFromMaven(version, repo = legacyFabricMaven)
-                        mappingSource = loadNamedFromMaven(
-                            yarnVersion = legacyFabricVersions[version]!!,
-                            repo = legacyFabricMaven,
-                            showError = false
-                        )
-                    }
-                }
-            }
             buildVersion {
                 versions { yarnBuilds.keys }
                 uuid { version ->
@@ -125,63 +63,20 @@ object YarnNamespace : Namespace("yarn") {
         return versions
     }
 
-    override fun getAllVersions(): List<String> {
-        val versions = mutableListOf(
-            "infdev", "1.2.5"
-        )
-        versions.addAll(workingLegacyFabricVersions)
-        versions.addAll(yarnBuilds.keys)
-        return versions
-    }
+    override fun getAllVersions(): Sequence<String> = yarnBuilds.keys.asSequence()
 
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
 
-    override fun reloadData() {
-        runBlocking {
-            launch(Dispatchers.IO) {
-                val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
-                json.decodeFromString(ListSerializer(YarnBuild.serializer()), URL("https://meta.fabricmc.net/v2/versions/yarn").readText())
-                    .forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
-                buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.build }?.apply { yarnBuilds[version] = this } }
-            }
-            launch(Dispatchers.IO) {
-                val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
-                SAXReader().read(StringReader(pom189)).rootElement
-                    .element("versioning")
-                    .element("versions")
-                    .elementIterator("version")
-                    .asSequence()
-                    .map { it.text }
-                    .groupBy { it.substringBefore('+') }
-                    .forEach { (mcVersion, builds) ->
-                        if (legacyFabricVersions.containsKey(mcVersion)) {
-                            legacyFabricVersions[mcVersion] = builds.last()
-                        }
-                    }
-                workingLegacyFabricVersions.clear()
-                workingLegacyFabricVersions.addAll(legacyFabricVersions.asSequence()
-                    .filter { it.value != null }
-                    .map { it.key }
-                )
-            }
-            launch(Dispatchers.IO) {
-                val pomYarrn = URL("https://maven.concern.i.ng/net/textilemc/yarrn/maven-metadata.xml").readText()
-                yarrnBuildInf20100618 = SAXReader().read(StringReader(pomYarrn)).rootElement
-                    .element("versioning")
-                    .element("versions")
-                    .elementIterator("version")
-                    .asSequence()
-                    .map { it.text }
-                    .filter { it.startsWith("inf-20100618+build") }
-                    .last()
-            }
-        }
+    override suspend fun reloadData() {
+        val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
+        json.decodeFromString(ListSerializer(YarnBuild.serializer()), URL("https://meta.fabricmc.net/v2/versions/yarn").readText())
+            .forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
+        buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.build }?.apply { yarnBuilds[version] = this } }
     }
 
     override fun getDefaultVersion(channel: () -> String): String =
         when (channel()) {
-            "legacy" -> "1.2.5"
             "patchwork" -> "1.14.4"
             "snapshot" -> yarnBuilds.keys.first()
             else -> latestYarnVersion!!
@@ -191,29 +86,25 @@ object YarnNamespace : Namespace("yarn") {
         "release",
         "snapshot",
         "patchwork",
-        "legacy"
     )
 
-    private fun MappingsContainer.loadIntermediaryFromMaven(
+    suspend fun MappingsContainer.loadIntermediaryFromMaven(
         mcVersion: String,
         repo: String = "https://maven.fabricmc.net",
         group: String = "net.fabricmc.intermediary",
     ) =
         loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
 
-    fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
-        val stream = ZipInputStream(url.openStream())
-        while (true) {
-            val entry = stream.nextEntry ?: break
-            if (!entry.isDirectory && entry.name.split("/").lastOrNull() == "mappings.tiny") {
-                loadIntermediaryFromTinyInputStream(stream)
-                break
+    suspend fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
+        url.toAsyncZip().forEachEntry { path, entry ->
+            if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
+                loadIntermediaryFromTinyInputStream(entry.headerEntry.readBytes().inputStream())
             }
         }
     }
 
-    fun MappingsContainer.loadIntermediaryFromTinyFile(url: URL) {
-        loadIntermediaryFromTinyInputStream(url.openStream())
+    suspend fun MappingsContainer.loadIntermediaryFromTinyFile(url: URL) {
+        loadIntermediaryFromTinyInputStream(url.readBytes().inputStream())
     }
 
     fun MappingsContainer.loadIntermediaryFromTinyInputStream(stream: InputStream) {
@@ -268,7 +159,7 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    fun MappingsContainer.loadNamedFromMaven(
+    suspend fun MappingsContainer.loadNamedFromMaven(
         yarnVersion: String,
         repo: String = "https://maven.fabricmc.net",
         group: String = "net.fabricmc.yarn",
@@ -289,19 +180,16 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    fun MappingsContainer.loadNamedFromTinyJar(url: URL, showError: Boolean = true) {
-        ZipInputStream(url.openStream()).forEachEntry { stream, entry ->
-            if (!entry.isDirectory && entry.name.split("/").lastOrNull() == "mappings.tiny") {
-                loadNamedFromTinyInputStream(stream, showError)
-                true
-            } else {
-                false
+    suspend fun MappingsContainer.loadNamedFromTinyJar(url: URL, showError: Boolean = true) {
+        url.toAsyncZip().forEachEntry { path, entry ->
+            if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
+                loadNamedFromTinyInputStream(entry.headerEntry.readBytes().inputStream(), showError)
             }
         }
     }
 
-    fun MappingsContainer.loadNamedFromTinyFile(url: URL, showError: Boolean = true) {
-        loadNamedFromTinyInputStream(url.openStream(), showError)
+    suspend fun MappingsContainer.loadNamedFromTinyFile(url: URL, showError: Boolean = true) {
+        loadNamedFromTinyInputStream(url.readBytes().inputStream(), showError)
     }
 
     fun MappingsContainer.loadNamedFromTinyInputStream(stream: InputStream, showError: Boolean = true) {
@@ -354,23 +242,17 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
-    fun MappingsContainer.loadNamedFromGithubRepo(repo: String, branch: String, showError: Boolean = true, ignoreError: Boolean = false) =
+    suspend fun MappingsContainer.loadNamedFromGithubRepo(repo: String, branch: String, showError: Boolean = true, ignoreError: Boolean = false) =
         loadNamedFromEngimaZip(URL("https://github.com/$repo/archive/$branch.zip"), showError, ignoreError)
 
-    fun MappingsContainer.loadNamedFromEngimaZip(url: URL, showError: Boolean = true, ignoreError: Boolean = false) =
-        loadNamedFromEngimaStream(url.openStream(), showError, ignoreError)
+    suspend fun MappingsContainer.loadNamedFromEngimaZip(url: URL, showError: Boolean = true, ignoreError: Boolean = false) =
+        loadNamedFromEngimaStream(url.toAsyncZip(), showError, ignoreError)
 
-    fun MappingsContainer.loadNamedFromEngimaStream(stream: InputStream, showError: Boolean = true, ignoreError: Boolean = false) {
-        val zipInputStream = ZipInputStream(stream)
-        while (true) {
-            val entry = zipInputStream.nextEntry ?: break
-            if (!entry.isDirectory && entry.name.endsWith(".mapping")) {
-                val isr = InputStreamReader(zipInputStream)
-                val strings = ArrayList<String>()
-                val reader = BufferedReader(isr)
-                while (reader.ready())
-                    strings.add(reader.readLine())
-                val lines = strings.map { EngimaLine(it, StringUtils.countMatches(it, '\t'), MappingsType.getByString(it.replace("\t", "").split(" ")[0])) }
+    suspend fun MappingsContainer.loadNamedFromEngimaStream(zip: ZipFile, showError: Boolean = true, ignoreError: Boolean = false) {
+        zip.forEachEntry { path, entry ->
+            if (!entry.isDirectory && path.endsWith(".mapping")) {
+                val lines = entry.headerEntry.lines()
+                    .map { EngimaLine(it, it.count { it == '\t' }, MappingsType.getByString(it.replace("\t", "").split(" ")[0])) }
                 val levels = mutableListOf<Class?>()
                 repeat(lines.filter { it.type != MappingsType.UNKNOWN }.map { it.indent }.maxOrNull()!! + 1) { levels.add(null) }
                 lines.forEach { line ->

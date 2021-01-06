@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
+import com.soywiz.korio.net.URL
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -9,15 +10,15 @@ import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.utils.Version
+import me.shedaniel.linkie.utils.forEachEntry
+import me.shedaniel.linkie.utils.lines
+import me.shedaniel.linkie.utils.readText
+import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.net.URL
-import java.util.*
-import java.util.zip.ZipInputStream
 
 object MCPNamespace : Namespace("mcp") {
+    const val tmpMcpVersionsUrl = "https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json"
     private val mcpConfigSnapshots = mutableMapOf<Version, MutableList<String>>()
     private val newMcpVersions = mutableMapOf<Version, MCPVersion>()
 
@@ -26,7 +27,7 @@ object MCPNamespace : Namespace("mcp") {
             cached()
 
             buildVersions {
-                versions(::getAllBotVersions)
+                versionsSeq(::getAllBotVersions)
                 uuid {
                     "$it-${mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!}"
                 }
@@ -65,12 +66,12 @@ object MCPNamespace : Namespace("mcp") {
 
     override fun supportsFieldDescription(): Boolean = false
     override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion())
-    fun getAllBotVersions(): List<String> = mcpConfigSnapshots.keys.map { it.toString() }
-    override fun getAllVersions(): List<String> = getAllBotVersions().toMutableList().also { it.addAll(newMcpVersions.keys.map { version -> version.toString() }) }
-    override fun getDefaultVersion(channel: () -> String): String = getAllVersions().maxWithOrNull(Comparator.nullsFirst(compareBy { it.tryToVersion() }))!!
+    fun getAllBotVersions(): Sequence<String> = mcpConfigSnapshots.keys.asSequence().map { it.toString() }
+    override fun getAllVersions(): Sequence<String> = getAllBotVersions() + newMcpVersions.keys.map(Version::toString)
+    override fun getDefaultVersion(channel: () -> String): String = getAllVersions().maxWithOrNull(nullsFirst(compareBy { it.tryToVersion() }))!!
 
     override fun supportsAT(): Boolean = true
-    override fun reloadData() {
+    override suspend fun reloadData() {
         mcpConfigSnapshots.clear()
         json.parseToJsonElement(URL("http://export.mcpbot.bspk.rs/versions.json").readText()).jsonObject.forEach { mcVersion, mcpVersionsObj ->
             val list = mcpConfigSnapshots.getOrPut(mcVersion.toVersion(), { mutableListOf() })
@@ -80,36 +81,31 @@ object MCPNamespace : Namespace("mcp") {
         }
         mcpConfigSnapshots.filterValues { it.isEmpty() }.keys.toMutableList().forEach { mcpConfigSnapshots.remove(it) }
         newMcpVersions.clear()
-        json.decodeFromString(MapSerializer(String.serializer(), MCPVersion.serializer()), URL("https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json").readText()).forEach { (mcVersion, mcpVersion) ->
+        val tmpMcpVersionsJson = json.decodeFromString(MapSerializer(String.serializer(), MCPVersion.serializer()), URL(tmpMcpVersionsUrl).readText())
+        tmpMcpVersionsJson.forEach { (mcVersion, mcpVersion) ->
             newMcpVersions[mcVersion.toVersion()] = mcpVersion
         }
     }
 
-    fun MappingsContainer.loadTsrgFromURLZip(url: URL) {
-        val stream = ZipInputStream(url.openStream())
-        while (true) {
-            val entry = stream.nextEntry ?: break
-            if (!entry.isDirectory && entry.name.split("/").lastOrNull() == "joined.tsrg") {
-                loadTsrgFromInputStream(stream)
-                break
+    suspend fun MappingsContainer.loadTsrgFromURLZip(url: URL) {
+        url.toAsyncZip().forEachEntry { path, entry ->
+            if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.tsrg") {
+                loadTsrgFromInputStream(entry.headerEntry.lines())
             }
         }
     }
 
-    fun MappingsContainer.loadSrgFromURLZip(url: URL) {
-        val stream = ZipInputStream(url.openStream())
-        while (true) {
-            val entry = stream.nextEntry ?: break
-            if (!entry.isDirectory && entry.name.split("/").lastOrNull() == "joined.srg") {
-                loadSrgFromInputStream(stream)
-                break
+    suspend fun MappingsContainer.loadSrgFromURLZip(url: URL) {
+        url.toAsyncZip().forEachEntry { path, entry ->
+            if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.srg") {
+                loadSrgFromInputStream(entry.headerEntry.lines())
             }
         }
     }
 
-    private fun MappingsContainer.loadSrgFromInputStream(stream: InputStream) {
-        val lines = InputStreamReader(stream).readLines().groupBy { it.split(' ')[0] }
-        lines["CL:"]?.forEach { classLine ->
+    private fun MappingsContainer.loadSrgFromInputStream(lines: Sequence<String>) {
+        val groups = lines.groupBy { it.split(' ')[0] }
+        groups["CL:"]?.forEach { classLine ->
             val split = classLine.substring(4).split(" ")
             val obf = split[0]
             val named = split[1]
@@ -117,7 +113,7 @@ object MCPNamespace : Namespace("mcp") {
                 obfName.merged = obf
             }
         }
-        lines["FD:"]?.forEach { fieldLine ->
+        groups["FD:"]?.forEach { fieldLine ->
             val split = fieldLine.substring(4).split(" ")
             val obfClass = split[0].substring(0, split[0].lastIndexOf('/'))
             val obf = split[0].substring(obfClass.length + 1)
@@ -130,7 +126,7 @@ object MCPNamespace : Namespace("mcp") {
                 }
             }
         }
-        lines["MD:"]?.forEach { fieldLine ->
+        groups["MD:"]?.forEach { fieldLine ->
             val split = fieldLine.substring(4).split(" ")
             val obfClass = split[0].substring(0, split[0].lastIndexOf('/'))
             val obf = split[0].substring(obfClass.length + 1)
@@ -147,9 +143,9 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    private fun MappingsContainer.loadTsrgFromInputStream(stream: InputStream) {
+    private fun MappingsContainer.loadTsrgFromInputStream(lines: Sequence<String>) {
         var lastClass: String? = null
-        stream.bufferedReader().forEachLine {
+        lines.forEach {
             val split = it.trimIndent().split(" ")
             if (!it.startsWith('\t')) {
                 val obf = split[0]
@@ -159,7 +155,7 @@ object MCPNamespace : Namespace("mcp") {
                 }
                 lastClass = named
             } else {
-                val clazz = lastClass?.let(this::getOrCreateClass) ?: return@forEachLine
+                val clazz = lastClass?.let(this::getOrCreateClass) ?: return@forEach
                 when (split.size) {
                     2 -> {
                         val obf = split[0]
@@ -187,23 +183,20 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    fun MappingsContainer.loadMCPFromURLZip(url: URL) {
-        val stream = ZipInputStream(url.openStream())
-        while (true) {
-            val entry = stream.nextEntry ?: break
+    suspend fun MappingsContainer.loadMCPFromURLZip(url: URL) {
+        url.toAsyncZip().forEachEntry { path, entry ->
             if (!entry.isDirectory) {
-                when (entry.name.split("/").lastOrNull()) {
-                    "fields.csv" -> loadMCPFieldsCSVFromInputStream(stream)
-                    "methods.csv" -> loadMCPMethodsCSVFromInputStream(stream)
+                when (path.split("/").lastOrNull()) {
+                    "fields.csv" -> loadMCPFieldsCSVFromInputStream(entry.headerEntry.lines())
+                    "methods.csv" -> loadMCPMethodsCSVFromInputStream(entry.headerEntry.lines())
                 }
             }
         }
-        stream.close()
     }
 
-    private fun MappingsContainer.loadMCPFieldsCSVFromInputStream(stream: InputStream) {
+    private fun MappingsContainer.loadMCPFieldsCSVFromInputStream(lines: Sequence<String>) {
         val map = mutableMapOf<String, String>()
-        stream.bufferedReader().lineSequence().forEach {
+        lines.forEach {
             val split = it.split(',')
             map[split[0]] = split[1]
         }
@@ -217,9 +210,9 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    private fun MappingsContainer.loadMCPMethodsCSVFromInputStream(stream: InputStream) {
+    private fun MappingsContainer.loadMCPMethodsCSVFromInputStream(lines: Sequence<String>) {
         val map = mutableMapOf<String, String>()
-        stream.bufferedReader().lineSequence().forEach {
+        lines.forEach {
             val split = it.split(',')
             map[split[0]] = split[1]
         }

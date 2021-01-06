@@ -2,7 +2,10 @@ package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
 import me.shedaniel.linkie.MappingsContainer.MappingSource
-import me.shedaniel.linkie.utils.*
+import me.shedaniel.linkie.utils.info
+import me.shedaniel.linkie.utils.mapIntermediaryDescToNamed
+import me.shedaniel.linkie.utils.remapDescriptor
+import me.shedaniel.linkie.utils.singleSequenceOf
 
 interface MappingsMetadata {
     val version: String
@@ -26,8 +29,8 @@ data class MappingsContainer(
     override var mappingSource: MappingSource? = null,
     override var namespace: String = "",
 ) : MappingsMetadata, me.shedaniel.linkie.namespaces.MappingsContainerBuilder {
-    override fun build(version: String): MappingsContainer = this
-    
+    override suspend fun build(version: String): MappingsContainer = this
+
     fun toSimpleMappingsMetadata(): MappingsMetadata = SimpleMappingsMetadata(
         version = version,
         name = name,
@@ -126,22 +129,24 @@ fun Class.getFieldByObfName(obf: String): Field? {
     return null
 }
 
-inline fun buildMappings(
+suspend inline fun buildMappings(
     version: String,
     name: String,
     fillFieldDesc: Boolean = true,
     fillMethodDesc: Boolean = true,
     expendIntermediaryToMapped: Boolean = false,
-    crossinline builder: MappingsContainerBuilder.() -> Unit,
+    crossinline builder: suspend MappingsBuilder.() -> Unit,
 ): MappingsContainer =
-    MappingsContainerBuilder(
+    MappingsBuilder(
         fillFieldDesc,
         fillMethodDesc,
         expendIntermediaryToMapped,
         container = MappingsContainer(version, name = name)
-    ).also(builder).build()
+    ).also {
+        builder(it)
+    }.build()
 
-class MappingsContainerBuilder(
+class MappingsBuilder(
     val fillFieldDesc: Boolean,
     val fillMethodDesc: Boolean,
     val expendIntermediaryToMapped: Boolean,
@@ -174,7 +179,7 @@ class MappingsContainerBuilder(
         container.mappingSource = mappingSource
     }
 
-    fun edit(operator: MappingsContainer.() -> Unit) {
+    suspend fun edit(operator: suspend MappingsContainer.() -> Unit) {
         operator(container)
     }
 

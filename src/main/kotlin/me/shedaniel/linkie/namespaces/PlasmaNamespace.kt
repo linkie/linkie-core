@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
+import com.soywiz.korio.net.URL
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -9,7 +10,8 @@ import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyJar
 import me.shedaniel.linkie.simpleCachedSupplier
-import java.net.URL
+import me.shedaniel.linkie.utils.readText
+import me.shedaniel.linkie.utils.singleSequenceOf
 import kotlin.properties.Delegates
 
 object PlasmaNamespace : Namespace("plasma") {
@@ -27,8 +29,8 @@ object PlasmaNamespace : Namespace("plasma") {
     }
 
     override fun getDefaultLoadedVersions(): List<String> = listOf()
-    override fun getAllVersions(): List<String> = listOf("b1.7.3")
-    override fun reloadData() {
+    override fun getAllVersions(): Sequence<String> = singleSequenceOf("b1.7.3")
+    override suspend fun reloadData() {
         val element = json.parseToJsonElement(URL("https://api.github.com/repos/minecraft-cursed-legacy/Plasma/releases/latest").readText())
         downloadUrl = element.jsonObject["assets"]!!.jsonArray[0].jsonObject["browser_download_url"]!!.jsonPrimitive.content
         lastId = element.jsonObject["id"]!!.jsonPrimitive.long

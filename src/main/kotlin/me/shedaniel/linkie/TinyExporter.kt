@@ -1,6 +1,12 @@
 package me.shedaniel.linkie
 
-import net.fabricmc.stitch.commands.tinyv2.*
+import net.fabricmc.stitch.commands.tinyv2.TinyClass
+import net.fabricmc.stitch.commands.tinyv2.TinyField
+import net.fabricmc.stitch.commands.tinyv2.TinyFile
+import net.fabricmc.stitch.commands.tinyv2.TinyHeader
+import net.fabricmc.stitch.commands.tinyv2.TinyMethod
+import net.fabricmc.stitch.commands.tinyv2.TinyV2Writer
+import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
 import java.util.*
@@ -58,7 +64,7 @@ object TinyExporter {
                 add(tinyClass)
             }
         })
-        val tmpPath = Namespaces.cacheFolder.toPath().resolve(UUID.randomUUID().toString())
+        val tmpPath = File(Namespaces.cacheFolder.absolutePath).toPath().resolve(UUID.randomUUID().toString())
         TinyV2Writer.write(tinyFile, tmpPath)
         val bytes = Files.readAllBytes(tmpPath)
         Files.deleteIfExists(tmpPath)

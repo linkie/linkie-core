@@ -1,21 +1,24 @@
 package me.shedaniel.linkie
 
-import java.io.File
-import java.time.Duration
+import com.soywiz.klock.TimeSpan
+import com.soywiz.klock.milliseconds
+import com.soywiz.korio.file.VfsFile
+import com.soywiz.korio.file.std.localCurrentDirVfs
+import me.shedaniel.linkie.utils.div
 
-data class LinkieConfig(
-    val cacheDirectory: File,
+data class LinkieConfig constructor(
+    val cacheDirectory: VfsFile,
     val maximumLoadedVersions: Int,
     val namespaces: Iterable<Namespace>,
-    val reloadCycleDuration: Duration,
+    val reloadCycleDuration: TimeSpan,
 ) {
     companion object {
         @JvmStatic
         val DEFAULT = LinkieConfig(
-            cacheDirectory = File(System.getProperty("user.dir"), ".linkie-cache"),
+            cacheDirectory = (localCurrentDirVfs / ".linkie-cache").jail(),
             maximumLoadedVersions = 2,
             namespaces = listOf(),
-            reloadCycleDuration = Duration.ofMillis(1800000)
+            reloadCycleDuration = 1800000.milliseconds
         )
     }
 }

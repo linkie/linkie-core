@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
+import com.soywiz.korio.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -7,12 +8,12 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.*
-import me.shedaniel.linkie.MappingsContainerBuilder
 import me.shedaniel.linkie.utils.onlyClass
+import me.shedaniel.linkie.utils.readLines
+import me.shedaniel.linkie.utils.readText
+import me.shedaniel.linkie.utils.singleSequenceOf
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
-import java.io.InputStream
-import java.net.URL
 
 object MojangNamespace : Namespace("mojang") {
     val versionJsonMap = mutableMapOf<String, String>()
@@ -22,7 +23,7 @@ object MojangNamespace : Namespace("mojang") {
     override fun getDependencies(): Set<Namespace> = setOf(YarnNamespace)
 
     init {
-        fun getName(version: String): String = if (YarnNamespace.getProvider(version).isEmpty()) "Mojang" else "Mojang (via Intermediary)"
+        suspend fun getName(version: String): String = if (YarnNamespace.getProvider(version).isEmpty()) "Mojang" else "Mojang (via Intermediary)"
 
         registerSupplier(simpleCachedSupplier("1.14.4") {
             buildMappings(it, getName(it), expendIntermediaryToMapped = true) {
@@ -46,7 +47,7 @@ object MojangNamespace : Namespace("mojang") {
             if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it
         }) {
             buildMappings(it, getName(it), expendIntermediaryToMapped = true) {
-                val url = URL(versionJsonMap[it])
+                val url = URL(versionJsonMap[it]!!)
                 val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                 val downloads = versionJson["downloads"]!!.jsonObject
                 readMojangMappings(
@@ -72,10 +73,10 @@ object MojangNamespace : Namespace("mojang") {
 
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
 
-    override fun getAllVersions(): List<String> =
-        versionJsonMap.keys.toMutableList().apply { add("1.14.4") }
+    override fun getAllVersions(): Sequence<String> =
+        versionJsonMap.keys.asSequence() + singleSequenceOf("1.14.4")
 
-    override fun reloadData() {
+    override suspend fun reloadData() {
         versionJsonMap.clear()
         val versionManifest = json.parseToJsonElement(URL("https://launchermeta.mojang.com/mc/game/version_manifest.json").readText())
         val lowestVersionWithMojmap = "19w36a".toVersion()
@@ -98,22 +99,22 @@ object MojangNamespace : Namespace("mojang") {
 
     override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot")
 
-    private fun MappingsContainerBuilder.readMojangMappings(client: String, server: String) {
-        var clientBytes: ByteArray? = null
-        var serverBytes: ByteArray? = null
+    private fun MappingsBuilder.readMojangMappings(client: String, server: String) {
+        var clientMappings: Sequence<String>? = null
+        var serverMappings: Sequence<String>? = null
         runBlocking {
             launch(Dispatchers.IO) {
-                clientBytes = URL(client).readBytes()
+                clientMappings = URL(client).readLines()
             }
             launch(Dispatchers.IO) {
-                serverBytes = URL(server).readBytes()
+                serverMappings = URL(server).readLines()
             }
         }
-        readMappings(clientBytes!!.inputStream())
-        readMappings(serverBytes!!.inputStream())
+        readMappings(clientMappings!!)
+        readMappings(serverMappings!!)
     }
 
-    private fun MappingsContainerBuilder.readMappings(inputStream: InputStream) {
+    private fun MappingsBuilder.readMappings(lines: Sequence<String>) {
         fun String.toActualDescription(): String = when (this) {
             "boolean" -> "Z"
             "char" -> "C"
@@ -134,8 +135,8 @@ object MojangNamespace : Namespace("mojang") {
         }
 
         var lastClass: ClassBuilder? = null
-        inputStream.bufferedReader().forEachLine {
-            if (it.startsWith('#')) return@forEachLine
+        lines.forEach {
+            if (it.startsWith('#')) return@forEach
             if (it.startsWith("    ")) {
                 val s = it.trimIndent().split(':')
                 if (s.size >= 3 && s[0].toIntOrNull() != null && s[1].toIntOrNull() != null) {

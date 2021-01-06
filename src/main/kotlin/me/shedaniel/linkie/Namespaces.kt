@@ -1,19 +1,21 @@
 package me.shedaniel.linkie
 
+import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.ticker
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.shedaniel.linkie.utils.debug
-import java.io.File
+import me.shedaniel.linkie.utils.getMillis
 import java.util.concurrent.CopyOnWriteArrayList
 
 object Namespaces {
     lateinit var config: LinkieConfig
     val namespaces = mutableMapOf<String, Namespace>()
     val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
-    val cacheFolder: File
+    val cacheFolder: VfsFile
         get() = config.cacheDirectory
 
     private fun registerNamespace(namespace: Namespace) = namespace.also {
@@ -52,16 +54,21 @@ object Namespaces {
             registerNamespace(it)
             it.getDependencies().forEach { dependency -> registerNamespace(dependency) }
         }
-        val tickerChannel = ticker(delayMillis = config.reloadCycleDuration.toMillis(), initialDelayMillis = 0)
+        val cycleMs = config.reloadCycleDuration.millisecondsLong
+        
+        var nextDelay = getMillis() - cycleMs
         CoroutineScope(Dispatchers.Default).launch {
-            for (event in tickerChannel) {
-                cachedMappings.clear()
-                namespaces.map { (_, namespace) ->
-                    launch {
-                        namespace.reset()
-                    }
-                }.forEach { it.join() }
-                System.gc()
+            while (true) {
+                if (getMillis() > nextDelay + cycleMs) {
+                    cachedMappings.clear()
+                    namespaces.map { (_, namespace) ->
+                        launch {
+                            namespace.reset()
+                        }
+                    }.forEach { it.join() }
+                    nextDelay = getMillis()
+                }
+                delay(1000)
             }
         }
     }
