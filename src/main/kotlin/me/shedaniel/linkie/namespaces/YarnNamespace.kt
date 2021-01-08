@@ -1,20 +1,20 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.compression.zip.ZipFile
-import com.soywiz.korio.net.URL
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.Class
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
-import me.shedaniel.linkie.utils.forEachEntry
+import me.shedaniel.linkie.utils.ZipFile
+import me.shedaniel.linkie.utils.filterNotBlank
 import me.shedaniel.linkie.utils.lines
 import me.shedaniel.linkie.utils.readBytes
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.warn
 import java.io.InputStream
+import java.net.URL
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
@@ -98,7 +98,7 @@ object YarnNamespace : Namespace("yarn") {
     suspend fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
         url.toAsyncZip().forEachEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
-                loadIntermediaryFromTinyInputStream(entry.headerEntry.readBytes().inputStream())
+                loadIntermediaryFromTinyInputStream(entry.bytes.inputStream())
             }
         }
     }
@@ -107,7 +107,7 @@ object YarnNamespace : Namespace("yarn") {
         loadIntermediaryFromTinyInputStream(url.readBytes().inputStream())
     }
 
-    fun MappingsContainer.loadIntermediaryFromTinyInputStream(stream: InputStream) {
+    suspend fun MappingsContainer.loadIntermediaryFromTinyInputStream(stream: InputStream) {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         val isSplit = !mappings.namespaces.contains("official")
         mappings.classEntries.forEach { entry ->
@@ -183,7 +183,7 @@ object YarnNamespace : Namespace("yarn") {
     suspend fun MappingsContainer.loadNamedFromTinyJar(url: URL, showError: Boolean = true) {
         url.toAsyncZip().forEachEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
-                loadNamedFromTinyInputStream(entry.headerEntry.readBytes().inputStream(), showError)
+                loadNamedFromTinyInputStream(entry.bytes.inputStream(), showError)
             }
         }
     }
@@ -251,7 +251,8 @@ object YarnNamespace : Namespace("yarn") {
     suspend fun MappingsContainer.loadNamedFromEngimaStream(zip: ZipFile, showError: Boolean = true, ignoreError: Boolean = false) {
         zip.forEachEntry { path, entry ->
             if (!entry.isDirectory && path.endsWith(".mapping")) {
-                val lines = entry.headerEntry.lines()
+                val lines = entry.bytes.lines()
+                    .filterNotBlank()
                     .map { EngimaLine(it, it.count { it == '\t' }, MappingsType.getByString(it.replace("\t", "").split(" ")[0])) }
                 val levels = mutableListOf<Class?>()
                 repeat(lines.filter { it.type != MappingsType.UNKNOWN }.map { it.indent }.maxOrNull()!! + 1) { levels.add(null) }

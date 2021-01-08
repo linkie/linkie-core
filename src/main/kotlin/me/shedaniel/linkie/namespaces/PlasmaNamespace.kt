@@ -1,6 +1,5 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.net.URL
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -12,6 +11,7 @@ import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyJar
 import me.shedaniel.linkie.simpleCachedSupplier
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
+import java.net.URL
 import kotlin.properties.Delegates
 
 object PlasmaNamespace : Namespace("plasma") {

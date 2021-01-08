@@ -1,6 +1,7 @@
 package me.shedaniel.linkie.core.tests
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import me.shedaniel.linkie.LinkieConfig
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.namespaces.MCPNamespace
@@ -43,33 +44,39 @@ class LinkieTest {
     }
 
     @Test
-    suspend fun yarn() {
-        Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
-        delay(2000)
-        while (YarnNamespace.reloading) delay(100)
-        assertEquals("1.16.4", YarnNamespace.getDefaultVersion())
-        YarnNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+    fun yarn() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
+            delay(2000)
+            while (YarnNamespace.reloading) delay(100)
+            assertEquals("1.16.4", YarnNamespace.getDefaultVersion())
+            YarnNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+        }
     }
 
     @Test
-    suspend fun mcp() {
-        Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
-        delay(2000)
-        while (MCPNamespace.reloading) delay(100)
-        assertEquals("1.16.3", MCPNamespace.getDefaultVersion())
-        MCPNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+    fun mcp() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
+            delay(2000)
+            while (MCPNamespace.reloading) delay(100)
+            assertEquals("1.16.3", MCPNamespace.getDefaultVersion())
+            MCPNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+        }
     }
 
     @Test
-    suspend fun mojmap() {
-        val currentFreeRam = Runtime.getRuntime().freeMemory()
-        Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
-        delay(2000)
-        while (MojangNamespace.reloading) delay(100)
-        assertEquals("1.16.4", MojangNamespace.getDefaultVersion())
-        MojangNamespace.getDefaultProvider().mappingsContainer!!.invoke()
-        System.gc()
-        println("added memory of " + (currentFreeRam - Runtime.getRuntime().freeMemory()))
+    fun mojmap() {
+        runBlocking {
+            val currentFreeRam = Runtime.getRuntime().freeMemory()
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
+            delay(2000)
+            while (MojangNamespace.reloading) delay(100)
+            assertEquals("1.16.4", MojangNamespace.getDefaultVersion())
+            MojangNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+            System.gc()
+            println("added memory of " + (currentFreeRam - Runtime.getRuntime().freeMemory()))
+        }
     }
 
     @Test

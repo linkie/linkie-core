@@ -1,7 +1,5 @@
 package me.shedaniel.linkie.utils
 
-import com.soywiz.korio.compression.zip.ZipEntry2
-import com.soywiz.korio.compression.zip.ZipFile
 import com.soywiz.korio.file.VfsFile
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.getClassByObfName
@@ -226,11 +224,7 @@ inline fun <T, R> List<T>.getMappedOrDefaulted(index: Int, transform: (T) -> R, 
     return getOrNull(index)?.let(transform) ?: default(index)
 }
 
-suspend fun ZipFile.forEachEntry(action: suspend (path: String, entry: ZipEntry2) -> Unit) {
-    files.entries.forEach {
-        action(it.key, it.value)
-    }
-}
+fun Sequence<String>.filterNotBlank(): Sequence<String> = filterNot(String::isBlank)
 
 private class SingleSequence<T>(private var value: T?) : Iterator<T>, Sequence<T> {
     private var first = true

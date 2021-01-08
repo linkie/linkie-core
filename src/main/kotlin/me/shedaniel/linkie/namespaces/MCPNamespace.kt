@@ -1,6 +1,5 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.net.URL
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -10,12 +9,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.utils.Version
-import me.shedaniel.linkie.utils.forEachEntry
+import me.shedaniel.linkie.utils.filterNotBlank
 import me.shedaniel.linkie.utils.lines
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
+import java.net.URL
 
 object MCPNamespace : Namespace("mcp") {
     const val tmpMcpVersionsUrl = "https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json"
@@ -90,7 +90,7 @@ object MCPNamespace : Namespace("mcp") {
     suspend fun MappingsContainer.loadTsrgFromURLZip(url: URL) {
         url.toAsyncZip().forEachEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.tsrg") {
-                loadTsrgFromInputStream(entry.headerEntry.lines())
+                loadTsrgFromInputStream(entry.bytes.lines())
             }
         }
     }
@@ -98,13 +98,13 @@ object MCPNamespace : Namespace("mcp") {
     suspend fun MappingsContainer.loadSrgFromURLZip(url: URL) {
         url.toAsyncZip().forEachEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.srg") {
-                loadSrgFromInputStream(entry.headerEntry.lines())
+                loadSrgFromInputStream(entry.bytes.lines())
             }
         }
     }
 
     private fun MappingsContainer.loadSrgFromInputStream(lines: Sequence<String>) {
-        val groups = lines.groupBy { it.split(' ')[0] }
+        val groups = lines.filterNotBlank().groupBy { it.split(' ')[0] }
         groups["CL:"]?.forEach { classLine ->
             val split = classLine.substring(4).split(" ")
             val obf = split[0]
@@ -145,7 +145,7 @@ object MCPNamespace : Namespace("mcp") {
 
     private fun MappingsContainer.loadTsrgFromInputStream(lines: Sequence<String>) {
         var lastClass: String? = null
-        lines.forEach {
+        lines.filterNotBlank().forEach {
             val split = it.trimIndent().split(" ")
             if (!it.startsWith('\t')) {
                 val obf = split[0]
@@ -187,8 +187,8 @@ object MCPNamespace : Namespace("mcp") {
         url.toAsyncZip().forEachEntry { path, entry ->
             if (!entry.isDirectory) {
                 when (path.split("/").lastOrNull()) {
-                    "fields.csv" -> loadMCPFieldsCSVFromInputStream(entry.headerEntry.lines())
-                    "methods.csv" -> loadMCPMethodsCSVFromInputStream(entry.headerEntry.lines())
+                    "fields.csv" -> loadMCPFieldsCSVFromInputStream(entry.bytes.lines())
+                    "methods.csv" -> loadMCPMethodsCSVFromInputStream(entry.bytes.lines())
                 }
             }
         }
@@ -196,7 +196,7 @@ object MCPNamespace : Namespace("mcp") {
 
     private fun MappingsContainer.loadMCPFieldsCSVFromInputStream(lines: Sequence<String>) {
         val map = mutableMapOf<String, String>()
-        lines.forEach {
+        lines.filterNotBlank().forEach {
             val split = it.split(',')
             map[split[0]] = split[1]
         }
@@ -212,7 +212,7 @@ object MCPNamespace : Namespace("mcp") {
 
     private fun MappingsContainer.loadMCPMethodsCSVFromInputStream(lines: Sequence<String>) {
         val map = mutableMapOf<String, String>()
-        lines.forEach {
+        lines.filterNotBlank().forEach {
             val split = it.split(',')
             map[split[0]] = split[1]
         }

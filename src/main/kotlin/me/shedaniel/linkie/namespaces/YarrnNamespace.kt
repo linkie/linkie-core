@@ -1,6 +1,5 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.net.URL
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromMaven
@@ -8,6 +7,7 @@ import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromMaven
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
 import org.dom4j.io.SAXReader
+import java.net.URL
 
 object YarrnNamespace : Namespace("yarrn") {
     private var yarrnBuildInf20100618 = ""
@@ -43,7 +43,7 @@ object YarrnNamespace : Namespace("yarrn") {
     override fun getDefaultVersion(channel: () -> String): String = "infdev"
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
-    
+
     override suspend fun reloadData() {
         val pomYarrn = URL("https://maven.concern.i.ng/net/textilemc/yarrn/maven-metadata.xml").readText()
         yarrnBuildInf20100618 = SAXReader().read(pomYarrn.reader()).rootElement

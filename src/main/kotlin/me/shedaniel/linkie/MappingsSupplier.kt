@@ -128,10 +128,10 @@ private class CachedMappingsSupplier(
     }
 
     private suspend fun loadFromCachedFile(cachedFile: VfsFile): MappingsContainer =
-        cachedFile.readBytes().outputBuffer().readMappingsContainer()
+        cachedFile.readBytes().reader().readMappingsContainer()
 
     private suspend fun MappingsContainer.saveToCachedFile(cachedFile: VfsFile) =
-        cachedFile.writeBytes(inputBuffer().also { it.writeMappingsContainer(this) }.toByteArray())
+        cachedFile.writeBytes(writer().also { it.writeMappingsContainer(this) }.writeTo())
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: suspend () -> MappingsContainer) : MappingsSupplier {

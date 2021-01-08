@@ -1,9 +1,6 @@
 package me.shedaniel.linkie
 
 import okio.Buffer
-import okio.BufferedSink
-import okio.BufferedSource
-import kotlin.properties.Delegates
 
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
     writeNotNullString(mappingsContainer.version)
@@ -153,32 +150,32 @@ fun ByteBuffer.readMagic(original: String): String? {
     }
 }
 
-fun inputBuffer(): ByteBuffer = ByteBuffer(Buffer() as BufferedSink)
-fun outputBuffer(byteArray: ByteArray): ByteBuffer = ByteBuffer(Buffer() as BufferedSource).apply { writeByteArray(byteArray) }
-@JvmName("outputBuffer_")
-fun ByteArray.outputBuffer(): ByteBuffer = outputBuffer(this)
+fun writer(): ByteBuffer = ByteBuffer.writer()
+fun reader(byteArray: ByteArray): ByteBuffer = ByteBuffer.reader(byteArray)
+
+@JvmName("reader_")
+fun ByteArray.reader(): ByteBuffer = reader(this)
 
 @OptIn(ExperimentalUnsignedTypes::class)
 @Suppress("unused")
-class ByteBuffer {
-    var source by Delegates.notNull<BufferedSource>()
-    var sink by Delegates.notNull<BufferedSink>()
+class ByteBuffer(
+    private val buffer: Buffer,
+) {
 
-    constructor(source: BufferedSource) {
-        this.source = source
+    companion object {
+        fun writer(): ByteBuffer = ByteBuffer(Buffer())
+        fun reader(byteArray: ByteArray): ByteBuffer = ByteBuffer(Buffer()).apply { 
+            writeByteArray(byteArray)
+        }
     }
 
-    constructor(sink: BufferedSink) {
-        this.sink = sink
-    }
-
-    fun writeByte(byte: Byte) = sink.writeByte(byte.toInt())
-    fun writeByteArray(array: ByteArray) = sink.write(array)
-    fun writeBoolean(boolean: Boolean) = sink.writeByte(if (boolean) 1 else 0)
-    fun writeShort(short: Short) = sink.writeShort(short.toInt())
+    fun writeByte(byte: Byte) = buffer.writeByte(byte.toInt())
+    fun writeByteArray(array: ByteArray) = buffer.write(array)
+    fun writeBoolean(boolean: Boolean) = buffer.writeByte(if (boolean) 1 else 0)
+    fun writeShort(short: Short) = buffer.writeShort(short.toInt())
     fun writeUnsignedShort(short: UShort) = writeShort(short.toShort())
-    fun writeInt(int: Int) = sink.writeInt(int)
-    fun writeLong(long: Long) = sink.writeLong(long)
+    fun writeInt(int: Int) = buffer.writeInt(int)
+    fun writeLong(long: Long) = buffer.writeLong(long)
     fun writeFloat(float: Float) = writeInt(float.toBits())
     fun writeDouble(double: Double) = writeLong(double.toBits())
     fun writeChar(char: Char) = writeByte(char.toByte())
@@ -188,18 +185,18 @@ class ByteBuffer {
         collection.forEach { writer(this, it) }
     }
 
-    fun toByteArray(): ByteArray = source.readByteArray()
+    fun writeTo(): ByteArray = buffer.inputStream().readAllBytes()
 
-    fun readByte(): Byte = source.readByte()
-    fun readByteArray(length: Int): ByteArray = source.readByteArray(length.toLong())
-    fun readBoolean(): Boolean = source.readByte().toInt() == 1
-    fun readShort(): Short = source.readShort()
-    fun readUnsignedShort(): UShort = source.readShort().toUShort()
-    fun readInt(): Int = source.readInt()
-    fun readLong(): Long = source.readLong()
-    fun readFloat(): Float = Float.fromBits(source.readInt())
-    fun readDouble(): Double = Double.fromBits(source.readLong())
-    fun readChar(): Char = source.readByte().toChar()
+    fun readByte(): Byte = buffer.readByte()
+    fun readByteArray(length: Int): ByteArray = buffer.readByteArray(length.toLong())
+    fun readBoolean(): Boolean = buffer.readByte().toInt() == 1
+    fun readShort(): Short = buffer.readShort()
+    fun readUnsignedShort(): UShort = buffer.readShort().toUShort()
+    fun readInt(): Int = buffer.readInt()
+    fun readLong(): Long = buffer.readLong()
+    fun readFloat(): Float = Float.fromBits(buffer.readInt())
+    fun readDouble(): Double = Double.fromBits(buffer.readLong())
+    fun readChar(): Char = buffer.readByte().toChar()
 
     inline fun <T> readCollection(crossinline reader: ByteBuffer.() -> T): List<T> {
         val size = readInt()
@@ -220,13 +217,13 @@ class ByteBuffer {
 
     fun writeNotNullString(string: String) {
         writeUnsignedShort((string.length + 1).toUShort())
-        sink.writeUtf8(string)
+        buffer.writeUtf8(string)
     }
 
     fun readStringOrNull(): String? {
         val length = readUnsignedShort().toLong()
         if (length == 0L) return null
-        return source.readUtf8(length - 1)
+        return buffer.readUtf8(length - 1)
     }
 
     fun readNotNullString(): String = readStringOrNull()!!

@@ -1,6 +1,5 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -14,6 +13,7 @@ import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
+import java.net.URL
 
 object MojangNamespace : Namespace("mojang") {
     val versionJsonMap = mutableMapOf<String, String>()

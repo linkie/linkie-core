@@ -1,6 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.net.URL
+import java.net.URL
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromMaven
