@@ -42,7 +42,7 @@ dependencies {
     compile("com.github.Chocohead:Tiny-Mappings-Parser:d96d4070293d9e7054693c21552eb1eb2b149679")
     compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.4.21")
     compile("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.1")
-    compile("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1")
+    compile("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
     compile("org.jetbrains.kotlin:kotlin-reflect:1.4.21")
     compile("ch.qos.logback:logback-classic:1.2.3")
     compile("org.dom4j:dom4j:2.1.3")
