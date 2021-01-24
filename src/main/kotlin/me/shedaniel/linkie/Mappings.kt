@@ -217,9 +217,6 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
             clazz.intermediaryName = replacement.intermediaryName
 
             clazz.methods.removeIf { method ->
-                if (clazz.obfName.merged == "ceg\$c") {
-                    println("a")
-                }
                 val replacementMethod = replacement.getMethodByObf(obf2intermediary, method.obfName.merged!!, method.getObfMergedDesc(this))
                 if (replacementMethod != null) {
                     method.intermediaryName = replacementMethod.intermediaryName
