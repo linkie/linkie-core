@@ -210,7 +210,7 @@ class MappingsBuilder(
 
 fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer, removeUnfound: Boolean = false) {
     val classO2I = mutableMapOf<String, Class>()
-    obf2intermediary.classes.forEach { _, clazz -> clazz.obfName.merged?.also { classO2I[it] = clazz } }
+    obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfName.merged?.also { classO2I[it] = clazz } }
     classes.values.removeIf { clazz ->
         val replacement = classO2I[clazz.obfName.merged]
         if (replacement != null) {
