@@ -54,13 +54,13 @@ object MappingsQuery {
         val onlyClass = searchKey.onlyClass()
 
         throw when {
-            onlyClass.firstOrNull()?.isDigit() == true && !onlyClass.isValidJavaIdentifier() ->
+            onlyClass.firstOrNull()?.isDigit()?.not() == true && !onlyClass.isValidJavaIdentifier() ->
                 NullPointerException("No results found! `$onlyClass` is not a valid java identifier!")
             type != METHOD && (searchKey.startsWith("func_") || searchKey.startsWith("method_")) ->
                 NullPointerException("No results found! `$searchKey` looks like a method!")
             type != FIELD && searchKey.startsWith("field_") ->
                 NullPointerException("No results found! `$searchKey` looks like a field!")
-            type != CLASS && !searchKey.startsWith("class_") && searchKey.firstOrNull()?.isLowerCase() == true ->
+            type == CLASS && !searchKey.startsWith("class_") && searchKey.firstOrNull()?.isLowerCase() == true ->
                 NullPointerException("No results found! `$searchKey` doesn't look like a class!")
             else -> NullPointerException("No results found!")
         }
