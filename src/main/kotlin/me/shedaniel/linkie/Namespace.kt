@@ -40,7 +40,7 @@ abstract class Namespace(val id: String) {
                 GlobalScope.launch {
                     val provider = getProvider(it)
                     if (provider.isEmpty().not() && provider.cached != true)
-                        provider.mappingsContainer!!.invoke().also {
+                        provider.get().also {
                             Namespaces.cachedMappings.remove(it)
                         }
                 }
@@ -310,25 +310,9 @@ abstract class Namespace(val id: String) {
         }
     }
 
-    operator fun get(version: String): MappingsContainer? = Namespaces.cachedMappings.firstOrNull { it.namespace == id && it.version == version.toLowerCase() }
-
-    suspend fun create(version: String): MappingsContainer? {
-        return mappingsSuppliers.firstOrNull { it.isApplicable(version) }?.applyVersion(version)
-    }
-
-    suspend fun createAndAdd(version: String): MappingsContainer? =
-        create(version)?.also { Namespaces.addMappingsContainer(it) }
-
-    suspend fun getOrCreate(version: String): MappingsContainer? =
-        get(version) ?: createAndAdd(version)
-
     suspend fun getProvider(version: String): MappingsProvider {
-        val container = get(version)
-        if (container != null) {
-            return MappingsProvider.of(this, version, container)
-        }
         val entry = mappingsSuppliers.firstOrNull { it.isApplicable(version) } ?: return MappingsProvider.empty(this)
-        return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version).also { Namespaces.addMappingsContainer(it) } }
+        return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version) }
     }
 
     suspend fun getDefaultProvider(channel: () -> String = this::getDefaultMappingChannel): MappingsProvider {

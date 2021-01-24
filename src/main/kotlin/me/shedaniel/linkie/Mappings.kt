@@ -150,13 +150,13 @@ class MappingsBuilder(
     val fillFieldDesc: Boolean,
     val fillMethodDesc: Boolean,
     val expendIntermediaryToMapped: Boolean,
-    var lockFill: Boolean = false,
+    var doNotFill: Boolean = false,
     var container: MappingsContainer,
 ) {
     fun build(): MappingsContainer = container.also { fill() }
 
     fun fill() {
-        if (lockFill) return
+        if (doNotFill) return
         container.fillMappedDescViaIntermediary(fillFieldDesc, fillMethodDesc)
         container.fillObfDescViaIntermediary(fillFieldDesc, fillMethodDesc)
 
@@ -187,8 +187,8 @@ class MappingsBuilder(
         container = operator(container)
     }
 
-    fun lockFill(lockFill: Boolean = true) {
-        this.lockFill = lockFill
+    fun doNotFill(doNotFill: Boolean = true) {
+        this.doNotFill = doNotFill
     }
 
     fun clazz(
@@ -222,6 +222,9 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
             clazz.intermediaryName = replacement.intermediaryName
 
             clazz.methods.removeIf { method ->
+                if (clazz.obfName.merged == "ceg\$c") {
+                    println("a")
+                }
                 val replacementMethod = replacement.getMethodByObf(method.obfName.merged!!, method.obfDesc.merged!!)
                 if (replacementMethod != null) {
                     method.intermediaryName = replacementMethod.intermediaryName

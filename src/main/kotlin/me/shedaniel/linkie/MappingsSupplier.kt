@@ -6,6 +6,7 @@ import com.soywiz.korio.file.VfsFile
 import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
+import java.util.concurrent.locks.ReentrantLock
 
 interface MappingsSupplier {
     fun isApplicable(version: String): Boolean
@@ -72,9 +73,25 @@ fun Namespace.multipleCachedSupplier(
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
-    override suspend fun applyVersion(version: String): MappingsContainer = super.applyVersion(version).also {
-        it.namespace = namespace.id
+    private val lock = ReentrantLock()
+    override suspend fun applyVersion(version: String): MappingsContainer {
+        lock.lock()
+        try {
+            return getCachedVersion(version) ?: super.applyVersion(version).also {
+                it.namespace = namespace.id
+                Namespaces.addMappingsContainer(it)
+            }
+        } finally {
+            lock.unlock()
+        }
     }
+
+    override suspend fun isCached(version: String): Boolean {
+        return getCachedVersion(version) != null || super.isCached(version)
+    }
+    
+    private fun getCachedVersion(version: String): MappingsContainer? =
+        Namespaces.cachedMappings.firstOrNull { it.namespace == namespace.id && it.version == version.toLowerCase() }
 }
 
 private class LoggingMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
@@ -82,7 +99,7 @@ private class LoggingMappingsSupplier(val namespace: Namespace, mappingsSupplier
         info("Loading $version in $namespace")
         val start = System.currentTimeMillis()
         return super.applyVersion(version).also {
-            info("Loaded $version in $namespace within ${System.currentTimeMillis() - start}ms")
+            info("Loaded $version [${it.name}] in $namespace within ${System.currentTimeMillis() - start}ms")
         }
     }
 }

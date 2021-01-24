@@ -1,6 +1,11 @@
 package me.shedaniel.linkie
 
-data class MappingsProvider(var namespace: Namespace, var version: String?, var cached: Boolean?, var mappingsContainer: (suspend () -> MappingsContainer)?) {
+data class MappingsProvider(
+    var namespace: Namespace,
+    var version: String?,
+    var cached: Boolean?,
+    private var mappingsContainer: (suspend () -> MappingsContainer)?,
+) {
     fun isEmpty(): Boolean = version == null || cached == null || mappingsContainer == null
 
     fun injectDefaultVersion(mappingsProvider: MappingsProvider) {

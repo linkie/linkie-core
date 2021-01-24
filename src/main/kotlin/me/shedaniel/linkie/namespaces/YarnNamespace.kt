@@ -56,11 +56,7 @@ object YarnNamespace : Namespace("yarn") {
     }
 
     override fun getDefaultLoadedVersions(): List<String> {
-        val versions = mutableListOf<String>()
-        val latestVersion = getDefaultVersion()
-        latestYarnVersion?.takeIf { it != latestVersion }?.also { versions.add(it) }
-        latestVersion.also { versions.add(it) }
-        return versions
+        return latestYarnVersion?.let(::listOf) ?: listOf()
     }
 
     override fun getAllVersions(): Sequence<String> = yarnBuilds.keys.asSequence()

@@ -13,7 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 object Namespaces {
     lateinit var config: LinkieConfig
-    val namespaces = mutableMapOf<String, Namespace>()
+    val namespaces = LinkedHashMap<String, Namespace>()
     val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
     val cacheFolder: VfsFile
         get() = config.cacheDirectory
@@ -49,11 +49,12 @@ object Namespaces {
     fun init(
         config: LinkieConfig,
     ) {
-        Namespaces.config = config
-        config.namespaces.forEach {
-            registerNamespace(it)
-            it.getDependencies().forEach { dependency -> registerNamespace(dependency) }
+        fun registerNamespace(namespace: Namespace) {
+            namespace.getDependencies().forEach { registerNamespace(it) }
+            Namespaces.registerNamespace(namespace)
         }
+        Namespaces.config = config
+        config.namespaces.forEach { registerNamespace(it) }
         val cycleMs = config.reloadCycleDuration.millisecondsLong
         
         var nextDelay = getMillis() - cycleMs

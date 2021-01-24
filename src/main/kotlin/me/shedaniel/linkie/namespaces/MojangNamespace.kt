@@ -37,9 +37,9 @@ object MojangNamespace : Namespace("mojang") {
                 if (!yarn.isEmpty()) {
                     fill()
                     edit {
-                        rewireIntermediaryFrom(yarn.mappingsContainer!!.invoke())
+                        rewireIntermediaryFrom(yarn.get())
                     }
-                    lockFill()
+                    doNotFill()
                 }
             }
         })
@@ -60,9 +60,9 @@ object MojangNamespace : Namespace("mojang") {
                 if (!yarn.isEmpty()) {
                     fill()
                     edit {
-                        rewireIntermediaryFrom(yarn.mappingsContainer!!.invoke())
+                        rewireIntermediaryFrom(yarn.get())
                     }
-                    lockFill()
+                    doNotFill()
                 }
             }
         })
@@ -136,7 +136,7 @@ object MojangNamespace : Namespace("mojang") {
 
         var lastClass: ClassBuilder? = null
         lines.forEach {
-            if (it.startsWith('#')) return@forEach
+            if (it.startsWith('#') || it.isBlank()) return@forEach
             if (it.startsWith("    ")) {
                 val s = it.trimIndent().split(':')
                 if (s.size >= 3 && s[0].toIntOrNull() != null && s[1].toIntOrNull() != null) {

@@ -49,8 +49,8 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            assertEquals("1.16.4", YarnNamespace.getDefaultVersion())
-            YarnNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+            assertEquals("1.16.5", YarnNamespace.getDefaultVersion())
+            YarnNamespace.getDefaultProvider().get()
         }
     }
 
@@ -61,21 +61,18 @@ class LinkieTest {
             delay(2000)
             while (MCPNamespace.reloading) delay(100)
             assertEquals("1.16.3", MCPNamespace.getDefaultVersion())
-            MCPNamespace.getDefaultProvider().mappingsContainer!!.invoke()
+            MCPNamespace.getDefaultProvider().get()
         }
     }
 
     @Test
     fun mojmap() {
         runBlocking {
-            val currentFreeRam = Runtime.getRuntime().freeMemory()
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            assertEquals("1.16.4", MojangNamespace.getDefaultVersion())
-            MojangNamespace.getDefaultProvider().mappingsContainer!!.invoke()
-            System.gc()
-            println("added memory of " + (currentFreeRam - Runtime.getRuntime().freeMemory()))
+            assertEquals("1.16.5", MojangNamespace.getDefaultVersion())
+            var container = MojangNamespace.getDefaultProvider().get()
         }
     }
 
