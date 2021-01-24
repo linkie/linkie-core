@@ -72,7 +72,7 @@ class LinkieTest {
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
             assertEquals("1.16.5", MojangNamespace.getDefaultVersion())
-            var container = MojangNamespace.getDefaultProvider().get()
+            MojangNamespace.getDefaultProvider().get()
         }
     }
 

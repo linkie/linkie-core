@@ -6,7 +6,7 @@ fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
     writeNotNullString(mappingsContainer.version)
     writeNotNullString(mappingsContainer.name)
     writeStringOrNull(mappingsContainer.mappingSource?.name)
-    writeCollection(mappingsContainer.classes) { writeClass(it) }
+    writeCollection(mappingsContainer.classes.values) { writeClass(it) }
 }
 
 fun ByteBuffer.writeClass(aClass: Class) {
@@ -21,18 +21,14 @@ fun ByteBuffer.writeMethod(method: Method) {
     writeNotNullString(method.intermediaryName)
     writeNotNullString(method.intermediaryDesc)
     writeMagicObf(method.intermediaryName, method.obfName)
-    writeMagicObf(method.intermediaryDesc, method.obfDesc)
     writeMagic(method.intermediaryName, method.mappedName)
-    writeMagic(method.intermediaryDesc, method.mappedDesc)
 }
 
 fun ByteBuffer.writeField(field: Field) {
     writeNotNullString(field.intermediaryName)
     writeNotNullString(field.intermediaryDesc)
     writeMagicObf(field.intermediaryName, field.obfName)
-    writeMagicObf(field.intermediaryDesc, field.obfDesc)
     writeMagic(field.intermediaryName, field.mappedName)
-    writeMagic(field.intermediaryDesc, field.mappedDesc)
 }
 
 fun ByteBuffer.writeMagic(original: String, string: String?) {
@@ -81,7 +77,9 @@ fun ByteBuffer.readMappingsContainer(): MappingsContainer {
     val name = readNotNullString()
     val mappingSource = readStringOrNull()?.let { MappingsContainer.MappingSource.valueOf(it) }
     val mappingsContainer = MappingsContainer(version, name = name, mappingSource = mappingSource)
-    mappingsContainer.classes.addAll(readCollection { readClass() })
+    readCollection { readClass() }.forEach {
+        mappingsContainer.classes[it.intermediaryName] = it
+    }
     return mappingsContainer
 }
 
@@ -99,20 +97,16 @@ fun ByteBuffer.readMethod(): Method {
     val intermediaryName = readNotNullString()
     val intermediaryDesc = readNotNullString()
     val obfName = readMagicObf(intermediaryName)
-    val obfDesc = readMagicObf(intermediaryDesc)
     val mappedName = readMagic(intermediaryName)
-    val mappedDesc = readMagic(intermediaryDesc)
-    return Method(intermediaryName, intermediaryDesc, obfName, obfDesc, mappedName, mappedDesc)
+    return Method(intermediaryName, intermediaryDesc, obfName, mappedName)
 }
 
 fun ByteBuffer.readField(): Field {
     val intermediaryName = readNotNullString()
     val intermediaryDesc = readNotNullString()
     val obfName = readMagicObf(intermediaryName)
-    val obfDesc = readMagicObf(intermediaryDesc)
     val mappedName = readMagic(intermediaryName)
-    val mappedDesc = readMagic(intermediaryDesc)
-    return Field(intermediaryName, intermediaryDesc, obfName, obfDesc, mappedName, mappedDesc)
+    return Field(intermediaryName, intermediaryDesc, obfName, mappedName)
 }
 
 fun ByteBuffer.readObf(): Obf {

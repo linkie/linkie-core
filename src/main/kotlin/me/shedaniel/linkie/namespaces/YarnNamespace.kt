@@ -124,12 +124,9 @@ object YarnNamespace : Namespace("yarn") {
                         val serverTriple = entry["server"]
                         obfName.client = clientTriple?.name
                         obfName.server = serverTriple?.name
-                        obfDesc.client = clientTriple?.desc
-                        obfDesc.server = serverTriple?.desc
                     } else {
                         val officialTriple = entry["official"]
                         obfName.merged = officialTriple?.name
-                        obfDesc.merged = officialTriple?.desc
                     }
                 }
             }
@@ -143,12 +140,9 @@ object YarnNamespace : Namespace("yarn") {
                         val serverTriple = entry["server"]
                         obfName.client = clientTriple?.name
                         obfName.server = serverTriple?.name
-                        obfDesc.client = clientTriple?.desc
-                        obfDesc.server = serverTriple?.desc
                     } else {
                         val officialTriple = entry["official"]
                         obfName.merged = officialTriple?.name
-                        obfDesc.merged = officialTriple?.desc
                     }
                 }
             }
@@ -213,8 +207,6 @@ object YarnNamespace : Namespace("yarn") {
                     val namedTriple = entry["named"]
                     if (mappedName == null)
                         mappedName = namedTriple?.name
-                    if (mappedDesc == null)
-                        mappedDesc = namedTriple?.desc
                 }
             }
         }
@@ -231,8 +223,6 @@ object YarnNamespace : Namespace("yarn") {
                     val namedTriple = entry["named"]
                     if (mappedName == null)
                         mappedName = namedTriple?.name
-                    if (mappedDesc == null)
-                        mappedDesc = namedTriple?.desc
                 }
             }
         }

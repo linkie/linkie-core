@@ -27,7 +27,7 @@ object TinyExporter {
         obfClient?.also { namespaces.add(it) }
         obfServer?.also { namespaces.add(it) }
         val tinyFile = TinyFile(TinyHeader(namespaces, 2, 0, mapOf()), buildList {
-            container.classes.forEach { clazz ->
+            container.classes.forEach { (_, clazz) ->
                 val tinyClass = TinyClass(buildList {
                     add(clazz.intermediaryName)
                     named?.also { add(clazz.mappedName ?: clazz.intermediaryName) }

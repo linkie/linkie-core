@@ -122,7 +122,6 @@ object MCPNamespace : Namespace("mcp") {
             getClass(namedClass)?.apply {
                 getOrCreateField(intermediary, "").apply {
                     obfName.merged = obf
-                    obfDesc.merged = ""
                 }
             }
         }
@@ -130,14 +129,12 @@ object MCPNamespace : Namespace("mcp") {
             val split = fieldLine.substring(4).split(" ")
             val obfClass = split[0].substring(0, split[0].lastIndexOf('/'))
             val obf = split[0].substring(obfClass.length + 1)
-            val obfDesc = split[1]
             val namedClass = split[2].substring(0, split[2].lastIndexOf('/'))
             val intermediary = split[2].substring(namedClass.length + 1)
             val namedDesc = split[3]
             getClass(namedClass)?.apply {
                 getOrCreateMethod(intermediary, namedDesc).also { method ->
                     method.obfName.merged = obf
-                    method.obfDesc.merged = obfDesc
                 }
             }
         }
@@ -163,18 +160,15 @@ object MCPNamespace : Namespace("mcp") {
                         clazz.apply {
                             getOrCreateField(tsrg, "").apply {
                                 obfName.merged = obf
-                                obfDesc.merged = ""
                             }
                         }
                     }
                     3 -> {
                         val obf = split[0]
-                        val obfDesc = split[1]
                         val tsrg = split[2]
                         clazz.apply {
                             getOrCreateMethod(tsrg, "").also { method ->
                                 method.obfName.merged = obf
-                                method.obfDesc.merged = obfDesc
                             }
                         }
                     }
@@ -200,11 +194,10 @@ object MCPNamespace : Namespace("mcp") {
             val split = it.split(',')
             map[split[0]] = split[1]
         }
-        classes.forEach {
+        classes.forEach { (_, it) ->
             it.fields.forEach { field ->
                 map[field.intermediaryName]?.apply {
                     field.mappedName = this
-                    field.mappedDesc = ""
                 }
             }
         }
@@ -216,11 +209,10 @@ object MCPNamespace : Namespace("mcp") {
             val split = it.split(',')
             map[split[0]] = split[1]
         }
-        classes.forEach {
+        classes.forEach { (_, it) ->
             it.methods.forEach { method ->
                 map[method.intermediaryName]?.apply {
                     method.mappedName = this
-                    method.mappedDesc = ""
                 }
             }
         }

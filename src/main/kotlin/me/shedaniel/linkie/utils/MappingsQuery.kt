@@ -84,11 +84,11 @@ object MappingsQuery {
         val mappings = context.provider.get()
 
         val results: Sequence<ResultHolder<Class>> = if (isSearchKeyWildcard) {
-            mappings.classes.asSequence()
+            mappings.classes.values.asSequence()
                 .sortedBy { it.intermediaryName }
                 .mapIndexed { index, entry -> entry hold (mappings.classes.size - index + 1) * 100.0 }
         } else {
-            mappings.classes.asSequence()
+            mappings.classes.values.asSequence()
                 .map { c ->
                     c.search(searchKey)?.let { c hold it.selfTerm.similarity(it.matchStr) }
                 }
@@ -117,7 +117,7 @@ object MappingsQuery {
         val isFieldKeyWildcard = fieldKey == "*"
         val mappings = context.provider.get()
 
-        val members: Sequence<MemberResultMore<T>> = mappings.classes.asSequence().flatMap { c ->
+        val members: Sequence<MemberResultMore<T>> = mappings.classes.values.asSequence().flatMap { c ->
             val queryDefinition: QueryDefinition? = if (!hasClassFilter || isClassKeyWildcard) QueryDefinition.WILDCARD else c.searchDefinition(classKey)
             queryDefinition?.let { parentDef ->
                 if (isFieldKeyWildcard) {
