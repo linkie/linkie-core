@@ -179,7 +179,7 @@ class ByteBuffer(
         collection.forEach { writer(this, it) }
     }
 
-    fun writeTo(): ByteArray = buffer.inputStream().readAllBytes()
+    fun writeTo(): ByteArray = buffer.inputStream().readBytes()
 
     fun readByte(): Byte = buffer.readByte()
     fun readByteArray(length: Int): ByteArray = buffer.readByteArray(length.toLong())
