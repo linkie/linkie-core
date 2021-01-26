@@ -121,15 +121,6 @@ fun String?.containsOrMatchWildcardOrNull(searchTerm: String, definition: QueryD
 data class MatchResult(val matchStr: String, val selfTerm: String)
 data class MatchResultWithDefinition(val matchStr: String, val selfTerm: String, val definition: QueryDefinition)
 
-fun String.mapIntermediaryDescToNamed(mappingsContainer: MappingsContainer): String =
-    remapDescriptor { mappingsContainer.getClass(it)?.optimumName ?: it }
-
-fun String.mapObfDescToNamed(mappingsContainer: MappingsContainer): String =
-    remapDescriptor { mappingsContainer.getClassByObfName(it)?.optimumName ?: it }
-
-fun String.mapObfDescToIntermediary(container: MappingsContainer): String =
-    remapDescriptor { container.getClassByObfName(it)?.intermediaryName ?: it }
-
 fun String.remapDescriptor(classMappings: (String) -> String): String {
     val reader = StringReader(this)
     return buildString {

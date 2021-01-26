@@ -1,5 +1,6 @@
 package me.shedaniel.linkie
 
+import me.shedaniel.linkie.utils.StringPool
 import okio.Buffer
 
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
@@ -155,7 +156,8 @@ fun ByteArray.reader(): ByteBuffer = reader(this)
 class ByteBuffer(
     private val buffer: Buffer,
 ) {
-
+    private val pool = StringPool()
+    
     companion object {
         fun writer(): ByteBuffer = ByteBuffer(Buffer())
         fun reader(byteArray: ByteArray): ByteBuffer = ByteBuffer(Buffer()).apply { 
@@ -217,7 +219,7 @@ class ByteBuffer(
     fun readStringOrNull(): String? {
         val length = readUnsignedShort().toLong()
         if (length == 0L) return null
-        return buffer.readUtf8(length - 1)
+        return pool[buffer.readUtf8(length - 1)]
     }
 
     fun readNotNullString(): String = readStringOrNull()!!

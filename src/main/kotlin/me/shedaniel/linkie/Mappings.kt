@@ -2,8 +2,8 @@ package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
 import me.shedaniel.linkie.MappingsContainer.MappingSource
+import me.shedaniel.linkie.utils.StringPool
 import me.shedaniel.linkie.utils.info
-import me.shedaniel.linkie.utils.mapIntermediaryDescToNamed
 import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.singleSequenceOf
 
@@ -152,13 +152,37 @@ class MappingsBuilder(
     var doNotFill: Boolean = false,
     var container: MappingsContainer,
 ) {
-    fun build(): MappingsContainer = container.also { fill() }
+    val pool = StringPool()
+
+    fun build(): MappingsContainer = container.also {
+        fill()
+
+        fun clean(entry: MappingsEntry) {
+            entry.intermediaryName = pool[entry.intermediaryName]
+            entry.mappedName = pool[entry.mappedName]
+            if (entry.obfName.isMerged()) {
+                entry.obfMergedName = pool[entry.obfMergedName]
+            } else {
+                entry.obfClientName = pool[entry.obfClientName]
+                entry.obfServerName = pool[entry.obfServerName]
+            }
+            if (entry is MappingsMember) {
+                entry.intermediaryDesc = pool[entry.intermediaryDesc]
+            }
+        }
+
+        container.classes.forEach { (_, clazz) ->
+            val members = clazz.methods.asSequence() + clazz.fields.asSequence()
+            members.forEach(::clean)
+            clean(clazz)
+        }
+    }
 
     fun fill() {
         if (doNotFill) return
 
         if (expendIntermediaryToMapped) {
-            container.classes.forEach { _, clazz ->
+            container.classes.forEach { (_, clazz) ->
                 clazz.mappedName = clazz.mappedName ?: clazz.intermediaryName
                 clazz.fields.forEach { field ->
                     field.mappedName = field.mappedName ?: field.intermediaryName
@@ -191,7 +215,7 @@ class MappingsBuilder(
         obf: String? = null,
         mapped: String? = null,
     ): ClassBuilder =
-        ClassBuilder(container.getOrCreateClass(intermediaryName)).apply {
+        ClassBuilder(container.getOrCreateClass(pool[intermediaryName])).apply {
             obfClass(obf)
             mapClass(mapped)
         }
@@ -202,7 +226,7 @@ class MappingsBuilder(
         mapped: String? = null,
         crossinline builder: ClassBuilder.() -> Unit,
     ): ClassBuilder =
-        ClassBuilder(container.getOrCreateClass(intermediaryName)).also(builder).apply {
+        ClassBuilder(container.getOrCreateClass(pool[intermediaryName])).also(builder).apply {
             obfClass(obf)
             mapClass(mapped)
         }

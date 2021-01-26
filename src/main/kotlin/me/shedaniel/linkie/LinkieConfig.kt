@@ -6,7 +6,7 @@ import com.soywiz.korio.file.VfsFile
 import com.soywiz.korio.file.std.localCurrentDirVfs
 import me.shedaniel.linkie.utils.div
 
-data class LinkieConfig constructor(
+data class LinkieConfig(
     val cacheDirectory: VfsFile,
     val maximumLoadedVersions: Int,
     val namespaces: Iterable<Namespace>,
