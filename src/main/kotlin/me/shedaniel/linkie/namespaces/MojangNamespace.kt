@@ -130,7 +130,7 @@ object MojangNamespace : Namespace("mojang") {
         }
 
         fun getActualDescription(body: String, returnType: String): String {
-            val splitClass = body.trimStart('(').trimEnd(')').split(',')
+            val splitClass = body.trimStart('(').trimEnd(')').splitToSequence(',')
             return "(${splitClass.joinToString("") { it.toActualDescription() }})${returnType.toActualDescription()}"
         }
 
@@ -138,21 +138,21 @@ object MojangNamespace : Namespace("mojang") {
         lines.forEach {
             if (it.startsWith('#') || it.isBlank()) return@forEach
             if (it.startsWith("    ")) {
-                val s = it.trimIndent().split(':')
-                if (s.size >= 3 && s[0].toIntOrNull() != null && s[1].toIntOrNull() != null) {
-                    val split = s.drop(2).joinToString(":").split(' ').toMutableList()
-                    split.remove("->")
+                val trim = it.trimIndent().substringAfterLast(':')
+                val obf = trim.substringAfterLast(" -> ")
+                val type = trim.substringBefore(' ')
+                val self = trim.substring((type.length + 1) until (trim.length - 4 - obf.length))
+                if (trim.contains('(') && trim.contains(')')) {
                     lastClass!!.apply {
-                        val methodName = split[1].substring(0, split[1].indexOf('('))
-                        method(methodName, getActualDescription(split[1].substring(methodName.length), split[0])) {
-                            obfMethod(split[2])
+                        val methodName = self.substringBefore('(')
+                        method(intermediaryName = methodName, intermediaryDesc = getActualDescription(self.substring(methodName.length), type)) {
+                            obfMethod(obf)
                         }
                     }
                 } else {
-                    val split = it.trimIndent().replace(" -> ", " ").split(' ')
                     lastClass!!.apply {
-                        field(split[1], split[0].toActualDescription()) {
-                            obfField(split[2])
+                        field(intermediaryName = self, intermediaryDesc = type.toActualDescription()) {
+                            obfField(obf)
                         }
                     }
                 }
@@ -161,7 +161,10 @@ object MojangNamespace : Namespace("mojang") {
                 val className = split[0].replace('.', '/')
                 val obf = split[1]
                 if (className.onlyClass() != "package-info") {
-                    lastClass = clazz(className, obf)
+                    lastClass = clazz(
+                        intermediaryName = className,
+                        obfName = obf
+                    )
                 }
             }
         }

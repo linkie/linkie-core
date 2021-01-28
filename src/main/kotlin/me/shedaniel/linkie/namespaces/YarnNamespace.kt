@@ -200,7 +200,7 @@ object YarnNamespace : Namespace("yarn") {
             if (clazz == null) {
                 if (showError) warn("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
             } else clazz.apply {
-                val method = getMethod(intermediaryTriple.name)
+                val method = getMethod(intermediaryTriple.name, intermediaryTriple.desc)
                 if (method == null) {
                     if (showError) warn("Method ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
                 } else method.apply {
@@ -261,7 +261,7 @@ object YarnNamespace : Namespace("yarn") {
                                 val method = when {
                                     line.split[1] == "<init>" -> Method("<init>", line.split.last()).also { methods.add(it) }
                                     ignoreError -> getOrCreateMethod(line.split[1], line.split.last())
-                                    else -> getMethod(line.split[1])
+                                    else -> getMethod(line.split[1], line.split.last())
                                 }
                                 if (method == null && showError) {
                                     warn("Method ${line.split[1]} in ${levels[line.indent - 1]!!.intermediaryName} does not have intermediary name! Skipping!")

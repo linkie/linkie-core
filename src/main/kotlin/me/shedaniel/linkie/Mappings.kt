@@ -212,36 +212,36 @@ class MappingsBuilder(
 
     fun clazz(
         intermediaryName: String,
-        obf: String? = null,
-        mapped: String? = null,
+        obfName: String? = null,
+        mappedName: String? = null,
     ): ClassBuilder =
         ClassBuilder(container.getOrCreateClass(pool[intermediaryName])).apply {
-            obfClass(obf)
-            mapClass(mapped)
+            obfClass(obfName)
+            mapClass(mappedName)
         }
 
     inline fun clazz(
         intermediaryName: String,
-        obf: String? = null,
-        mapped: String? = null,
+        obfName: String? = null,
+        mappedName: String? = null,
         crossinline builder: ClassBuilder.() -> Unit,
     ): ClassBuilder =
         ClassBuilder(container.getOrCreateClass(pool[intermediaryName])).also(builder).apply {
-            obfClass(obf)
-            mapClass(mapped)
+            obfClass(obfName)
+            mapClass(mappedName)
         }
 }
 
 fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer, removeUnfound: Boolean = false) {
     val classO2I = mutableMapOf<String, Class>()
-    obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfName.merged?.also { classO2I[it] = clazz } }
+    obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfMergedName?.also { classO2I[it] = clazz } }
     classes.values.removeIf { clazz ->
         val replacement = classO2I[clazz.obfName.merged]
         if (replacement != null) {
             clazz.intermediaryName = replacement.intermediaryName
 
             clazz.methods.removeIf { method ->
-                val replacementMethod = replacement.getMethodByObf(obf2intermediary, method.obfName.merged!!, method.getObfMergedDesc(this))
+                val replacementMethod = replacement.getMethodByObf(obf2intermediary, method.obfMergedName!!, method.getObfMergedDesc(this))
                 if (replacementMethod != null) {
                     method.intermediaryName = replacementMethod.intermediaryName
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
@@ -249,7 +249,7 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
                 replacementMethod == null && removeUnfound
             }
             clazz.fields.removeIf { field ->
-                val replacementField = replacement.getFieldByObfName(field.obfName.merged!!)
+                val replacementField = replacement.getFieldByObfName(field.obfMergedName!!)
                 if (replacementField != null) {
                     field.intermediaryName = replacementField.intermediaryName
                     field.intermediaryDesc = replacementField.intermediaryDesc
@@ -258,6 +258,12 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
             }
         }
         replacement == null && removeUnfound
+    }
+
+    val list = classes.values.toMutableList()
+    classes.clear()
+    list.forEach { clazz ->
+        classes[clazz.intermediaryName] = clazz
     }
 }
 
@@ -274,7 +280,7 @@ inline class ClassBuilder(val clazz: Class) {
         intermediaryName: String,
         intermediaryDesc: String? = null,
     ): FieldBuilder =
-        FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).apply {
+        FieldBuilder(clazz.getOrCreateField(intermediaryName, intermediaryDesc ?: "")).apply {
             intermediaryDesc(intermediaryDesc)
         }
 
@@ -283,7 +289,7 @@ inline class ClassBuilder(val clazz: Class) {
         intermediaryDesc: String? = null,
         crossinline builder: FieldBuilder.() -> Unit,
     ): FieldBuilder =
-        FieldBuilder(clazz.getOrCreateField(intermediaryName, "")).also(builder).apply {
+        FieldBuilder(clazz.getOrCreateField(intermediaryName, intermediaryDesc ?: "")).also(builder).apply {
             intermediaryDesc(intermediaryDesc)
         }
 
@@ -291,7 +297,7 @@ inline class ClassBuilder(val clazz: Class) {
         intermediaryName: String,
         intermediaryDesc: String? = null,
     ): MethodBuilder =
-        MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).apply {
+        MethodBuilder(clazz.getOrCreateMethod(intermediaryName, intermediaryDesc ?: "")).apply {
             intermediaryDesc(intermediaryDesc)
         }
 
@@ -300,7 +306,7 @@ inline class ClassBuilder(val clazz: Class) {
         intermediaryDesc: String? = null,
         crossinline builder: MethodBuilder.() -> Unit,
     ): MethodBuilder =
-        MethodBuilder(clazz.getOrCreateMethod(intermediaryName, "")).also(builder).apply {
+        MethodBuilder(clazz.getOrCreateMethod(intermediaryName, intermediaryDesc ?: "")).also(builder).apply {
             intermediaryDesc(intermediaryDesc)
         }
 }
@@ -381,11 +387,13 @@ data class Class(
     val members: Sequence<MappingsMember>
         get() = methods.asSequence() + fields.asSequence()
 
-    fun getMethod(intermediaryName: String): Method? =
-        methods.firstOrNull { it.intermediaryName == intermediaryName }
+    fun getMethod(intermediaryName: String, intermediaryDesc: String): Method? =
+        methods.firstOrNull {
+            it.intermediaryName == intermediaryName && it.intermediaryDesc == intermediaryDesc
+        }
 
     fun getOrCreateMethod(intermediaryName: String, intermediaryDesc: String): Method =
-        getMethod(intermediaryName) ?: Method(intermediaryName, intermediaryDesc).also { methods.add(it) }
+        getMethod(intermediaryName, intermediaryDesc) ?: Method(intermediaryName, intermediaryDesc).also { methods.add(it) }
 
     fun getField(intermediaryName: String): Field? =
         fields.firstOrNull { it.intermediaryName == intermediaryName }
