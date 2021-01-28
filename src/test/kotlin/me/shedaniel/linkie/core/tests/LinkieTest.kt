@@ -60,8 +60,9 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
             delay(2000)
             while (MCPNamespace.reloading) delay(100)
-            assertEquals("1.16.3", MCPNamespace.getDefaultVersion())
-            MCPNamespace.getDefaultProvider().get()
+            assertEquals("1.16.5", MCPNamespace.getDefaultVersion())
+            val container = MCPNamespace.getDefaultProvider().get()
+            container
         }
     }
 
@@ -72,7 +73,8 @@ class LinkieTest {
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
             assertEquals("1.16.5", MojangNamespace.getDefaultVersion())
-            MojangNamespace.getDefaultProvider().get()
+            val container = MojangNamespace.getDefaultProvider().get()
+            container
         }
     }
 

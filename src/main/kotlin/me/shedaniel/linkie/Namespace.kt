@@ -269,10 +269,9 @@ abstract class Namespace(val id: String) {
             name: String,
             fillFieldDesc: Boolean = true,
             fillMethodDesc: Boolean = true,
-            expendIntermediaryToMapped: Boolean = false,
             crossinline builder: suspend MappingsBuilder.() -> Unit,
         ) {
-            mappings(me.shedaniel.linkie.buildMappings(version, name, fillFieldDesc, fillMethodDesc, expendIntermediaryToMapped, builder))
+            mappings(me.shedaniel.linkie.buildMappings(version, name, fillFieldDesc, fillMethodDesc, builder))
         }
 
         fun version(version: String) {

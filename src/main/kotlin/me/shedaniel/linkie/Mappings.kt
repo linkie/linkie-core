@@ -133,13 +133,11 @@ suspend inline fun buildMappings(
     name: String,
     fillFieldDesc: Boolean = true,
     fillMethodDesc: Boolean = true,
-    expendIntermediaryToMapped: Boolean = false,
     crossinline builder: suspend MappingsBuilder.() -> Unit,
 ): MappingsContainer =
     MappingsBuilder(
         fillFieldDesc,
         fillMethodDesc,
-        expendIntermediaryToMapped,
         container = MappingsContainer(version, name = name)
     ).also {
         builder(it)
@@ -148,15 +146,11 @@ suspend inline fun buildMappings(
 class MappingsBuilder(
     val fillFieldDesc: Boolean,
     val fillMethodDesc: Boolean,
-    val expendIntermediaryToMapped: Boolean,
-    var doNotFill: Boolean = false,
     var container: MappingsContainer,
 ) {
     val pool = StringPool()
 
     fun build(): MappingsContainer = container.also {
-        fill()
-
         fun clean(entry: MappingsEntry) {
             entry.intermediaryName = pool[entry.intermediaryName]
             entry.mappedName = pool[entry.mappedName]
@@ -178,22 +172,6 @@ class MappingsBuilder(
         }
     }
 
-    fun fill() {
-        if (doNotFill) return
-
-        if (expendIntermediaryToMapped) {
-            container.classes.forEach { (_, clazz) ->
-                clazz.mappedName = clazz.mappedName ?: clazz.intermediaryName
-                clazz.fields.forEach { field ->
-                    field.mappedName = field.mappedName ?: field.intermediaryName
-                }
-                clazz.methods.forEach { method ->
-                    method.mappedName = method.mappedName ?: method.intermediaryName
-                }
-            }
-        }
-    }
-
     fun source(mappingSource: MappingSource?) {
         container.mappingSource = mappingSource
     }
@@ -204,10 +182,6 @@ class MappingsBuilder(
 
     fun replace(operator: MappingsContainer.() -> MappingsContainer) {
         container = operator(container)
-    }
-
-    fun doNotFill(doNotFill: Boolean = true) {
-        this.doNotFill = doNotFill
     }
 
     fun clazz(
@@ -238,11 +212,13 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
     classes.values.removeIf { clazz ->
         val replacement = classO2I[clazz.obfName.merged]
         if (replacement != null) {
+            clazz.mappedName = clazz.intermediaryName
             clazz.intermediaryName = replacement.intermediaryName
 
             clazz.methods.removeIf { method ->
                 val replacementMethod = replacement.getMethodByObf(obf2intermediary, method.obfMergedName!!, method.getObfMergedDesc(this))
                 if (replacementMethod != null) {
+                    method.mappedName = method.intermediaryName
                     method.intermediaryName = replacementMethod.intermediaryName
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
                 }
@@ -251,6 +227,7 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
             clazz.fields.removeIf { field ->
                 val replacementField = replacement.getFieldByObfName(field.obfMergedName!!)
                 if (replacementField != null) {
+                    field.mappedName = field.intermediaryName
                     field.intermediaryName = replacementField.intermediaryName
                     field.intermediaryDesc = replacementField.intermediaryDesc
                 }

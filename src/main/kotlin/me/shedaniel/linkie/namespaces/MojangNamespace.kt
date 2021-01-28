@@ -26,7 +26,7 @@ object MojangNamespace : Namespace("mojang") {
         suspend fun getName(version: String): String = if (YarnNamespace.getProvider(version).isEmpty()) "Mojang" else "Mojang (via Intermediary)"
 
         registerSupplier(simpleCachedSupplier("1.14.4") {
-            buildMappings(it, getName(it), expendIntermediaryToMapped = true) {
+            buildMappings(it, getName(it)) {
                 readMojangMappings(
                     client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
                     server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
@@ -35,18 +35,16 @@ object MojangNamespace : Namespace("mojang") {
 
                 val yarn = YarnNamespace.getProvider(it)
                 if (!yarn.isEmpty()) {
-                    fill()
                     edit {
                         rewireIntermediaryFrom(yarn.get())
                     }
-                    doNotFill()
                 }
             }
         })
         registerSupplier(multipleCachedSupplier({ versionJsonMap.keys }, {
             if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it
         }) {
-            buildMappings(it, getName(it), expendIntermediaryToMapped = true) {
+            buildMappings(it, getName(it)) {
                 val url = URL(versionJsonMap[it]!!)
                 val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                 val downloads = versionJson["downloads"]!!.jsonObject
@@ -58,11 +56,9 @@ object MojangNamespace : Namespace("mojang") {
 
                 val yarn = YarnNamespace.getProvider(it)
                 if (!yarn.isEmpty()) {
-                    fill()
                     edit {
                         rewireIntermediaryFrom(yarn.get())
                     }
-                    doNotFill()
                 }
             }
         })

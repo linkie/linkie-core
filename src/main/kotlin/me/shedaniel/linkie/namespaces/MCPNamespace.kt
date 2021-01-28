@@ -7,18 +7,21 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.obfMergedName
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.filterNotBlank
 import me.shedaniel.linkie.utils.lines
 import me.shedaniel.linkie.utils.readText
+import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
 import java.net.URL
 
 object MCPNamespace : Namespace("mcp") {
-    const val tmpMcpVersionsUrl = "https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/037c5ac977da967e0aab8766b78ea425bec1e8f6/mcp_versions.json"
+    const val tmpMcpVersionsUrl = "https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/mcp_versions.json"
     private val mcpConfigSnapshots = mutableMapOf<Version, MutableList<String>>()
     private val newMcpVersions = mutableMapOf<Version, MCPVersion>()
 
@@ -134,13 +137,16 @@ object MCPNamespace : Namespace("mcp") {
             val namedDesc = split[3]
             getClass(namedClass)?.apply {
                 getOrCreateMethod(intermediary, namedDesc).also { method ->
-                    method.obfName.merged = obf
+                    method.obfMergedName = obf
                 }
             }
         }
     }
 
     private fun MappingsContainer.loadTsrgFromInputStream(lines: Sequence<String>) {
+        val toMap = mutableMapOf<Method, String>()
+        val obfMap = mutableMapOf<String, String>()
+        var i = 0
         var lastClass: String? = null
         lines.filterNotBlank().forEach {
             val split = it.trimIndent().split(" ")
@@ -148,7 +154,8 @@ object MCPNamespace : Namespace("mcp") {
                 val obf = split[0]
                 val named = split[1]
                 getOrCreateClass(named).apply {
-                    obfName.merged = obf
+                    obfMergedName = obf
+                    obfMap[obf] = named
                 }
                 lastClass = named
             } else {
@@ -158,22 +165,27 @@ object MCPNamespace : Namespace("mcp") {
                         val obf = split[0]
                         val tsrg = split[1]
                         clazz.apply {
-                            getOrCreateField(tsrg, "").apply {
-                                obfName.merged = obf
+                            getOrCreateField(tsrg, "").also { field ->
+                                field.obfMergedName = obf
                             }
                         }
                     }
                     3 -> {
                         val obf = split[0]
+                        val obfDesc = split[1]
                         val tsrg = split[2]
                         clazz.apply {
-                            getOrCreateMethod(tsrg, "").also { method ->
-                                method.obfName.merged = obf
+                            getOrCreateMethod(tsrg, (i++).toString()).also { method ->
+                                toMap[method] = obfDesc
+                                method.obfMergedName = obf
                             }
                         }
                     }
                 }
             }
+        }
+        toMap.forEach { (method, obfDesc) ->
+            method.intermediaryDesc = obfDesc.remapDescriptor { obfClassName -> obfMap[obfClassName] ?: obfClassName }
         }
     }
 
