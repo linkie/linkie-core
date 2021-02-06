@@ -1,28 +1,56 @@
 package me.shedaniel.linkie.utils
 
 import com.soywiz.korio.file.VfsFile
-import me.shedaniel.linkie.MappingsContainer
-import me.shedaniel.linkie.getClassByObfName
-import me.shedaniel.linkie.optimumName
 import java.io.StringReader
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =
     asSequence().drop(drop).take(take)
 
-fun <T, R> Iterable<T>.firstMapped(filterTransform: (entry: T) -> R?): R? {
+inline fun <T, R> Iterable<T>.firstMapped(filterTransform: (entry: T) -> R?): R? {
     for (entry in this) {
         return filterTransform(entry) ?: continue
     }
     return null
 }
 
-fun <T, R> Sequence<T>.firstMapped(filterTransform: (entry: T) -> R?): R? {
-    for (entry in this) {
-        return filterTransform(entry) ?: continue
+inline fun <T, R> Sequence<T>.firstMapped(filterTransform: (entry: T) -> R?): R? = asIterable().firstMapped(filterTransform)
+
+inline fun <T, R : Comparable<R>> Iterable<T>.maxOfIgnoreNull(filterTransform: (entry: T) -> R?): R? {
+    val iterator = iterator()
+    if (!iterator.hasNext()) return null
+    var maxValue = filterTransform(iterator.next())
+    while (iterator.hasNext()) {
+        val v = filterTransform(iterator.next())
+        maxValue = when {
+            maxValue == null -> v
+            v == null -> maxValue
+            else -> maxOf(maxValue, v)
+        }
     }
-    return null
+    return maxValue
 }
+
+inline fun <T, R : Comparable<R>> Sequence<T>.maxOfIgnoreNull(filterTransform: (entry: T) -> R?): R? = asIterable().maxOfIgnoreNull(filterTransform)
+
+inline fun <T, R : Comparable<R>> Iterable<T>.maxOfIgnoreNullSelf(filterTransform: (entry: T) -> R?): T? {
+    val iterator = iterator()
+    if (!iterator.hasNext()) return null
+    var max = iterator.next()
+    var maxValue = filterTransform(max)
+    while (iterator.hasNext()) {
+        val next = iterator.next()
+        val v = filterTransform(next)
+
+        if (v != null && (maxValue == null || v > maxValue)) {
+            maxValue = v
+            max = next
+        }
+    }
+    return if (maxValue == null) null else max
+}
+
+inline fun <T, R : Comparable<R>> Sequence<T>.maxOfIgnoreNullSelf(filterTransform: (entry: T) -> R?): R? = asIterable().maxOfIgnoreNull(filterTransform)
 
 private fun editDistance(s11: String, s22: String): Int {
     val costs = IntArray(s22.length + 1)
@@ -71,12 +99,22 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
     return if (indexOf < 0) null else substring(indexOf + 1)
 }
 
-fun String?.doesContainsOrMatchWildcard(searchTerm: String): Boolean {
-    if (this == null) return false
-    return if (searchTerm.onlyClassOrNull() != null) {
-        contains(searchTerm, true)
+fun String?.matchWithSimilarity(searchTerm: String): Double? {
+    if (this == null) return null
+    val searchOnlyClass = searchTerm.onlyClassOrNull()
+    return if (searchOnlyClass != null) {
+        if (contains(searchTerm, true)) {
+            this.similarity(searchTerm)
+        } else {
+            null
+        }
     } else {
-        onlyClass().contains(searchTerm, true)
+        val onlyClass = onlyClass()
+        if (onlyClass.contains(searchTerm, true)) {
+            this.similarity(searchTerm)
+        } else {
+            null
+        }
     }
 }
 

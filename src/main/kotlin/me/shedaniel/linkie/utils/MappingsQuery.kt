@@ -67,7 +67,7 @@ object MappingsQuery {
     }
 
     fun MappingsEntry.searchDefinition(classKey: String): QueryDefinition? {
-        return QueryDefinition.allProper.firstOrNull { it(this).doesContainsOrMatchWildcard(classKey) }
+        return QueryDefinition.allProper.maxOfIgnoreNullSelf { it(this).matchWithSimilarity(classKey) }
     }
 
     fun MappingsEntry.searchWithDefinition(classKey: String): MatchResultWithDefinition? {
@@ -76,6 +76,10 @@ object MappingsQuery {
 
     fun MappingsEntry.search(classKey: String): MatchResult? {
         return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey) }
+    }
+
+    fun MappingsEntry.searchWithSimilarity(classKey: String): Double? {
+        return QueryDefinition.allProper.maxOfIgnoreNull { it(this).matchWithSimilarity(classKey) }
     }
 
     suspend fun queryClasses(context: QueryContext): QueryResult<MappingsContainer, ClassResultSequence> {
@@ -90,7 +94,7 @@ object MappingsQuery {
         } else {
             mappings.classes.values.asSequence()
                 .map { c ->
-                    c.search(searchKey)?.let { c hold it.selfTerm.similarity(it.matchStr) }
+                    c.searchWithSimilarity(searchKey)?.let { c hold it }
                 }
                 .filterNotNull()
         }.sortedWith(compareByDescending<ResultHolder<Class>> { it.score }
