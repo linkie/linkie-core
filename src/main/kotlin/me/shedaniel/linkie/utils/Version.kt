@@ -43,7 +43,7 @@ val preReleaseRegex = " Pre-[Rr]elease ".toRegex()
 
 private val versionCache = mutableMapOf<String, Version?>()
 
-fun String.toVersion(): Version = tryToVersion()!!
+fun String.toVersion(): Version = tryToVersion() ?: throw IllegalArgumentException("$this is not a valid version!")
 fun String.tryToVersion(): Version? = versionCache.getOrPut(this) { this.innerToVersion() }
 
 private const val YEAR_GROUP = 1
