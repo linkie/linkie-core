@@ -44,7 +44,7 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
                             }
                         }
                         rearrangeClassMap()
-                        rewireIntermediaryFrom(MCPNamespace.getProvider(it).get())
+                        rewireIntermediaryFrom(MCPNamespace.getProvider(it).get(), mapClassNames = false)
                     }
                 }
             }

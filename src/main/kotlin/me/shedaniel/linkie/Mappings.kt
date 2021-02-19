@@ -214,13 +214,21 @@ fun MappingsContainer.rearrangeClassMap() {
     }
 }
 
-fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer, removeUnfound: Boolean = false) {
+fun MappingsContainer.rewireIntermediaryFrom(
+    obf2intermediary: MappingsContainer,
+    removeUnfound: Boolean = false,
+    mapClassNames: Boolean = true,
+) {
     val classO2I = mutableMapOf<String, Class>()
     obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfMergedName?.also { classO2I[it] = clazz } }
     classes.values.removeIf { clazz ->
         val replacement = classO2I[clazz.obfName.merged]
         if (replacement != null) {
-            clazz.mappedName = clazz.intermediaryName
+            if (mapClassNames) {
+                clazz.mappedName = clazz.intermediaryName
+            } else {
+                clazz.mappedName = null
+            }
             clazz.intermediaryName = replacement.intermediaryName
 
             clazz.methods.removeIf { method ->
