@@ -74,6 +74,7 @@ object MCPNamespace : Namespace("mcp") {
     override fun getDefaultVersion(channel: () -> String): String = getAllVersions().maxWithOrNull(nullsFirst(compareBy { it.tryToVersion() }))!!
 
     override fun supportsAT(): Boolean = true
+    override fun supportsMixin(): Boolean = true
     override suspend fun reloadData() {
         mcpConfigSnapshots.clear()
         json.parseToJsonElement(URL("http://export.mcpbot.bspk.rs/versions.json").readText()).jsonObject.forEach { mcVersion, mcpVersionsObj ->

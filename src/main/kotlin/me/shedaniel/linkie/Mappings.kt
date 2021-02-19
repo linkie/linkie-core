@@ -206,6 +206,14 @@ class MappingsBuilder(
         }
 }
 
+fun MappingsContainer.rearrangeClassMap() {
+    val list = classes.values.toMutableList()
+    classes.clear()
+    list.forEach { clazz ->
+        classes[clazz.intermediaryName] = clazz
+    }
+}
+
 fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer, removeUnfound: Boolean = false) {
     val classO2I = mutableMapOf<String, Class>()
     obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfMergedName?.also { classO2I[it] = clazz } }
@@ -237,11 +245,7 @@ fun MappingsContainer.rewireIntermediaryFrom(obf2intermediary: MappingsContainer
         replacement == null && removeUnfound
     }
 
-    val list = classes.values.toMutableList()
-    classes.clear()
-    list.forEach { clazz ->
-        classes[clazz.intermediaryName] = clazz
-    }
+    rearrangeClassMap()
 }
 
 inline class ClassBuilder(val clazz: Class) {

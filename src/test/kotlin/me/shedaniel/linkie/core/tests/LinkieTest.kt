@@ -6,6 +6,7 @@ import me.shedaniel.linkie.LinkieConfig
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.namespaces.MCPNamespace
 import me.shedaniel.linkie.namespaces.MojangNamespace
+import me.shedaniel.linkie.namespaces.MojangSrgNamespace
 import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.localiseFieldDesc
@@ -74,6 +75,18 @@ class LinkieTest {
             while (MojangNamespace.reloading) delay(100)
             assertEquals("1.16.5", MojangNamespace.getDefaultVersion())
             val container = MojangNamespace.getDefaultProvider().get()
+            container
+        }
+    }
+
+    @Test
+    fun mojmapSrg() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangSrgNamespace)))
+            delay(2000)
+            while (MojangSrgNamespace.reloading) delay(100)
+            assertEquals("1.16.5", MojangSrgNamespace.getDefaultVersion())
+            val container = MojangSrgNamespace.getDefaultProvider().get()
             container
         }
     }
