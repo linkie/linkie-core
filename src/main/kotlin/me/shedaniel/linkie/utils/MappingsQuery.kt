@@ -40,6 +40,16 @@ enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?) {
     }
 }
 
+data class MatchAccuracy(val accuracy: Double) {
+    companion object {
+        val Exact = MatchAccuracy(1.0)
+        val Fuzzy = MatchAccuracy(0.5)
+    }
+}
+
+fun MatchAccuracy.isExact(): Boolean = this == MatchAccuracy.Exact
+fun MatchAccuracy.isNotExact(): Boolean = this != MatchAccuracy.Exact
+
 object MappingsQuery {
     private data class MemberResultMore<T : MappingsMember>(
         val parent: Class,
@@ -66,8 +76,8 @@ object MappingsQuery {
         }
     }
 
-    fun MappingsEntry.searchDefinition(classKey: String): QueryDefinition? {
-        return QueryDefinition.allProper.maxOfIgnoreNullSelf { it(this).matchWithSimilarity(classKey) }
+    fun MappingsEntry.searchDefinition(classKey: String, accuracy: MatchAccuracy): QueryDefinition? {
+        return QueryDefinition.allProper.maxOfIgnoreNullSelf { it(this).matchWithSimilarity(classKey, accuracy) }
     }
 
     fun MappingsEntry.searchWithDefinition(classKey: String): MatchResultWithDefinition? {
@@ -78,8 +88,8 @@ object MappingsQuery {
         return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey) }
     }
 
-    fun MappingsEntry.searchWithSimilarity(classKey: String): Double? {
-        return QueryDefinition.allProper.maxOfIgnoreNull { it(this).matchWithSimilarity(classKey) }
+    fun MappingsEntry.searchWithSimilarity(classKey: String, accuracy: MatchAccuracy): Double? {
+        return QueryDefinition.allProper.maxOfIgnoreNull { it(this).matchWithSimilarity(classKey, accuracy) }
     }
 
     suspend fun queryClasses(context: QueryContext): QueryResult<MappingsContainer, ClassResultSequence> {
@@ -94,7 +104,7 @@ object MappingsQuery {
         } else {
             mappings.classes.values.asSequence()
                 .map { c ->
-                    c.searchWithSimilarity(searchKey)?.let { c hold it }
+                    c.searchWithSimilarity(searchKey, context.accuracy)?.let { c hold it }
                 }
                 .filterNotNull()
         }.sortedWith(compareByDescending<ResultHolder<Class>> { it.score }
@@ -122,14 +132,14 @@ object MappingsQuery {
         val mappings = context.provider.get()
 
         val members: Sequence<MemberResultMore<T>> = mappings.classes.values.asSequence().flatMap { c ->
-            val queryDefinition: QueryDefinition? = if (!hasClassFilter || isClassKeyWildcard) QueryDefinition.WILDCARD else c.searchDefinition(classKey)
+            val queryDefinition: QueryDefinition? = if (!hasClassFilter || isClassKeyWildcard) QueryDefinition.WILDCARD else c.searchDefinition(classKey, context.accuracy)
             queryDefinition?.let { parentDef ->
                 if (isFieldKeyWildcard) {
                     memberGetter(c)
                         .map { MemberResultMore(c, it, parentDef, QueryDefinition.WILDCARD) }
                 } else {
                     memberGetter(c)
-                        .map { f -> f.searchDefinition(fieldKey)?.let { MemberResultMore(c, f, parentDef, it) } }
+                        .map { f -> f.searchDefinition(fieldKey, context.accuracy)?.let { MemberResultMore(c, f, parentDef, it) } }
                         .filterNotNull()
                 }
             } ?: emptySequence()
@@ -179,6 +189,7 @@ infix fun <T> T.hold(score: Double): ResultHolder<T> = ResultHolder(this, score)
 data class QueryContext(
     val provider: MappingsProvider,
     val searchKey: String,
+    val accuracy: MatchAccuracy = MatchAccuracy.Exact
 )
 
 fun <T> QueryResult<MappingsContainer, T>.toSimpleMappingsMetadata(): QueryResult<MappingsMetadata, T> =

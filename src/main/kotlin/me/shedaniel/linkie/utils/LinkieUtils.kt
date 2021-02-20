@@ -99,22 +99,21 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
     return if (indexOf < 0) null else substring(indexOf + 1)
 }
 
-fun String?.matchWithSimilarity(searchTerm: String): Double? {
+fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy): Double? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
-    return if (searchOnlyClass != null) {
-        if (contains(searchTerm, true)) {
-            this.similarity(searchTerm)
-        } else {
-            null
+    var similarity = -1.0
+    fun getSimilarity(): Double {
+        if (similarity == -1.0) {
+            similarity = this.similarity(searchTerm)
         }
+        return similarity
+    }
+    return if (searchOnlyClass != null) {
+        getSimilarity().takeIf { contains(searchTerm, true) || (accuracy.isNotExact() && it >= accuracy.accuracy) }
     } else {
         val onlyClass = onlyClass()
-        if (onlyClass.contains(searchTerm, true)) {
-            this.similarity(searchTerm)
-        } else {
-            null
-        }
+        getSimilarity().takeIf { onlyClass.contains(searchTerm, true) || (accuracy.isNotExact() && it >= accuracy.accuracy) }
     }
 }
 
