@@ -122,14 +122,14 @@ private class CachedMappingsSupplier(
     override suspend fun isCached(version: String): Boolean {
         val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdir() }
         val uuid = uuidGetter(version)
-        val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie4"
+        val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie5"
         return cachedFile.exists()
     }
 
     override suspend fun applyVersion(version: String): MappingsContainer {
         val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdir() }
         val uuid = uuidGetter(version)
-        val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie4"
+        val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie5"
         if (cachedFile.exists()) {
             try {
                 return loadFromCachedFile(cachedFile)
@@ -145,10 +145,10 @@ private class CachedMappingsSupplier(
     }
 
     private suspend fun loadFromCachedFile(cachedFile: VfsFile): MappingsContainer =
-        cachedFile.readBytes().reader().readMappingsContainer()
+        cachedFile.readBytes().swimmingPoolReader().readMappingsContainer()
 
     private suspend fun MappingsContainer.saveToCachedFile(cachedFile: VfsFile) =
-        cachedFile.writeBytes(writer().also { it.writeMappingsContainer(this) }.writeTo())
+        cachedFile.writeBytes(swimmingPoolWriter().also { it.writeMappingsContainer(this) }.writeTo())
 }
 
 private class SimpleMappingsSupplier(val version: String, val supplier: suspend () -> MappingsContainer) : MappingsSupplier {

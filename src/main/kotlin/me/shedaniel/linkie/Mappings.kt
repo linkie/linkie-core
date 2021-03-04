@@ -1,7 +1,6 @@
 package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
-import me.shedaniel.linkie.MappingsContainer.MappingSource
 import me.shedaniel.linkie.utils.StringPool
 import me.shedaniel.linkie.utils.info
 import me.shedaniel.linkie.utils.remapDescriptor
@@ -10,14 +9,14 @@ import me.shedaniel.linkie.utils.singleSequenceOf
 interface MappingsMetadata {
     val version: String
     val name: String
-    var mappingSource: MappingSource?
+    var mappingsSource: MappingsSource?
     var namespace: String
 }
 
 data class SimpleMappingsMetadata(
     override val version: String,
     override val name: String,
-    override var mappingSource: MappingSource? = null,
+    override var mappingsSource: MappingsSource? = null,
     override var namespace: String = "",
 ) : MappingsMetadata
 
@@ -26,7 +25,7 @@ data class MappingsContainer(
     override val version: String,
     val classes: MutableMap<String, Class> = mutableMapOf(),
     override val name: String,
-    override var mappingSource: MappingSource? = null,
+    override var mappingsSource: MappingsSource? = null,
     override var namespace: String = "",
 ) : MappingsMetadata, me.shedaniel.linkie.namespaces.MappingsContainerBuilder {
     override suspend fun build(version: String): MappingsContainer = this
@@ -34,7 +33,7 @@ data class MappingsContainer(
     fun toSimpleMappingsMetadata(): MappingsMetadata = SimpleMappingsMetadata(
         version = version,
         name = name,
-        mappingSource = mappingSource,
+        mappingsSource = mappingsSource,
         namespace = namespace
     )
 
@@ -62,20 +61,6 @@ data class MappingsContainer(
                 }
             }
         }.also { info(it) }
-    }
-
-    @Serializable
-    @Suppress("unused")
-    enum class MappingSource {
-        MCP_SRG,
-        MCP_TSRG,
-        MOJANG,
-        YARN_V1,
-        YARN_V2,
-        SPIGOT,
-        ENGIMA;
-
-        override fun toString(): String = name.toLowerCase().split("_").joinToString(" ") { it.capitalize() }
     }
 }
 
@@ -115,17 +100,15 @@ fun Class.getMethodByObf(container: MappingsContainer, obf: String, desc: String
     }
 }
 
-fun Class.getFieldByObfName(obf: String): Field? {
-    fields.forEach {
+fun Class.getFieldByObfName(obf: String, ignoreCase: Boolean = false): Field? {
+    return fields.firstOrNull {
         if (it.obfName.isMerged()) {
-            if (it.obfName.merged.equals(obf, ignoreCase = false))
-                return it
-        } else if (it.obfName.client.equals(obf, ignoreCase = false))
-            return it
-        else if (it.obfName.server.equals(obf, ignoreCase = false))
-            return it
+            it.obfMergedName.equals(obf, ignoreCase = ignoreCase)
+        } else {
+            it.obfClientName.equals(obf, ignoreCase = ignoreCase)
+                    || it.obfServerName.equals(obf, ignoreCase = ignoreCase)
+        }
     }
-    return null
 }
 
 suspend inline fun buildMappings(
@@ -172,8 +155,8 @@ class MappingsBuilder(
         }
     }
 
-    fun source(mappingSource: MappingSource?) {
-        container.mappingSource = mappingSource
+    fun source(mappingsSource: MappingsSource?) {
+        container.mappingsSource = mappingsSource
     }
 
     suspend fun edit(operator: suspend MappingsContainer.() -> Unit) {
@@ -257,8 +240,16 @@ fun MappingsContainer.rewireIntermediaryFrom(
 }
 
 inline class ClassBuilder(val clazz: Class) {
+    fun obfClient(obf: String?) {
+        clazz.obfClientName = obf
+    }
+
+    fun obfServer(obf: String?) {
+        clazz.obfServerName = obf
+    }
+
     fun obfClass(obf: String?) {
-        clazz.obfName.merged = obf
+        clazz.obfMergedName = obf
     }
 
     fun mapClass(mapped: String?) {
@@ -305,8 +296,16 @@ inline class FieldBuilder(val field: Field) {
         field.intermediaryDesc = it
     }
 
+    fun obfClient(obf: String?) {
+        field.obfClientName = obf
+    }
+
+    fun obfServer(obf: String?) {
+        field.obfServerName = obf
+    }
+
     fun obfField(obfName: String?) {
-        field.obfName.merged = obfName
+        field.obfMergedName = obfName
     }
 
     fun mapField(mappedName: String?) {
@@ -319,8 +318,16 @@ inline class MethodBuilder(val method: Method) {
         method.intermediaryDesc = it
     }
 
+    fun obfClient(obf: String?) {
+        method.obfClientName = obf
+    }
+
+    fun obfServer(obf: String?) {
+        method.obfServerName = obf
+    }
+
     fun obfMethod(obfName: String?) {
-        method.obfName.merged = obfName
+        method.obfMergedName = obfName
     }
 
     fun mapMethod(mappedName: String?) {
@@ -377,9 +384,7 @@ data class Class(
         get() = methods.asSequence() + fields.asSequence()
 
     fun getMethod(intermediaryName: String, intermediaryDesc: String): Method? =
-        methods.firstOrNull {
-            it.intermediaryName == intermediaryName && it.intermediaryDesc == intermediaryDesc
-        }
+        methods.firstOrNull { it.intermediaryName == intermediaryName && it.intermediaryDesc == intermediaryDesc }
 
     fun getOrCreateMethod(intermediaryName: String, intermediaryDesc: String): Method =
         getMethod(intermediaryName, intermediaryDesc) ?: Method(intermediaryName, intermediaryDesc).also { methods.add(it) }

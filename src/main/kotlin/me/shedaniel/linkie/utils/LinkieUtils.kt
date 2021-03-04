@@ -92,6 +92,9 @@ fun String.similarity(other: String): Double {
     } else (longerLength - editDistance(longer, shorter)) / longerLength.toDouble()
 }
 
+val String.indentCount: Int
+    get() = indexOfFirst { !it.isWhitespace() }
+
 fun String.onlyClass(c: Char = '/'): String = onlyClassOrNull(c) ?: this
 
 fun String.onlyClassOrNull(c: Char = '/'): String? {

@@ -1,12 +1,13 @@
 package me.shedaniel.linkie
 
 import me.shedaniel.linkie.utils.StringPool
+import me.shedaniel.linkie.utils.StringSwimmingPool
 import okio.Buffer
 
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: MappingsContainer) {
     writeNotNullString(mappingsContainer.version)
     writeNotNullString(mappingsContainer.name)
-    writeStringOrNull(mappingsContainer.mappingSource?.name)
+    writeStringOrNull(mappingsContainer.mappingsSource?.name)
     writeCollection(mappingsContainer.classes.values) { writeClass(it) }
 }
 
@@ -76,8 +77,8 @@ fun ByteBuffer.writeMagicObf(original: String, obf: Obf) {
 fun ByteBuffer.readMappingsContainer(): MappingsContainer {
     val version = readNotNullString()
     val name = readNotNullString()
-    val mappingSource = readStringOrNull()?.let { MappingsContainer.MappingSource.valueOf(it) }
-    val mappingsContainer = MappingsContainer(version, name = name, mappingSource = mappingSource)
+    val mappingSource = readStringOrNull()?.let { MappingsSource.valueOf(it) }
+    val mappingsContainer = MappingsContainer(version, name = name, mappingsSource = mappingSource)
     readCollection { readClass() }.forEach {
         mappingsContainer.classes[it.intermediaryName] = it
     }
@@ -148,24 +149,31 @@ fun ByteBuffer.readMagic(original: String): String? {
 fun writer(): ByteBuffer = ByteBuffer.writer()
 fun reader(byteArray: ByteArray): ByteBuffer = ByteBuffer.reader(byteArray)
 
+fun swimmingPoolWriter(): SwimmingPoolByteBuffer = SwimmingPoolByteBuffer.writer()
+fun swimmingPoolReader(byteArray: ByteArray): SwimmingPoolByteBuffer = SwimmingPoolByteBuffer.reader(byteArray)
+
 @JvmName("reader_")
 fun ByteArray.reader(): ByteBuffer = reader(this)
 
+@JvmName("swimmingPoolReader_")
+fun ByteArray.swimmingPoolReader(): SwimmingPoolByteBuffer = swimmingPoolReader(this)
+
 @OptIn(ExperimentalUnsignedTypes::class)
 @Suppress("unused")
-class ByteBuffer(
-    private val buffer: Buffer,
+open class ByteBuffer(
+    val buffer: Buffer,
 ) {
-    private val pool = StringPool()
-    
+    protected val pool = StringPool()
+
     companion object {
         fun writer(): ByteBuffer = ByteBuffer(Buffer())
-        fun reader(byteArray: ByteArray): ByteBuffer = ByteBuffer(Buffer()).apply { 
+        fun reader(byteArray: ByteArray): ByteBuffer = ByteBuffer(Buffer()).apply {
             writeByteArray(byteArray)
         }
     }
 
     fun writeByte(byte: Byte) = buffer.writeByte(byte.toInt())
+    fun writeByte(byte: Int) = buffer.writeByte(byte)
     fun writeByteArray(array: ByteArray) = buffer.write(array)
     fun writeBoolean(boolean: Boolean) = buffer.writeByte(if (boolean) 1 else 0)
     fun writeShort(short: Short) = buffer.writeShort(short.toInt())
@@ -181,7 +189,7 @@ class ByteBuffer(
         collection.forEach { writer(this, it) }
     }
 
-    fun writeTo(): ByteArray = buffer.inputStream().readBytes()
+    open fun writeTo(): ByteArray = buffer.inputStream().readBytes()
 
     fun readByte(): Byte = buffer.readByte()
     fun readByteArray(length: Int): ByteArray = buffer.readByteArray(length.toLong())
@@ -203,7 +211,7 @@ class ByteBuffer(
         return list
     }
 
-    fun writeStringOrNull(string: String?) {
+    open fun writeStringOrNull(string: String?) {
         if (string != null) {
             writeNotNullString(string)
         } else {
@@ -211,16 +219,34 @@ class ByteBuffer(
         }
     }
 
-    fun writeNotNullString(string: String) {
+    open fun writeNotNullString(string: String) {
         writeUnsignedShort((string.length + 1).toUShort())
         buffer.writeUtf8(string)
     }
 
-    fun readStringOrNull(): String? {
+    open fun readStringOrNull(): String? {
         val length = readUnsignedShort().toLong()
         if (length == 0L) return null
         return pool[buffer.readUtf8(length - 1)]
     }
 
     fun readNotNullString(): String = readStringOrNull()!!
+}
+
+class SwimmingPoolByteBuffer(buffer: Buffer) : ByteBuffer(buffer) {
+    val swimmingPool = StringSwimmingPool()
+
+    companion object {
+        fun writer(): SwimmingPoolByteBuffer = SwimmingPoolByteBuffer(Buffer())
+        fun reader(byteArray: ByteArray): SwimmingPoolByteBuffer = SwimmingPoolByteBuffer(Buffer()).apply {
+            writeByteArray(byteArray)
+            swimmingPool.read(this)
+        }
+    }
+
+    override fun writeTo(): ByteArray = swimmingPool.write(ByteBuffer.writer()).writeTo() + super.writeTo()
+
+    override fun writeNotNullString(string: String) = writeStringOrNull(string)
+    override fun writeStringOrNull(string: String?) = swimmingPool.writeString(this, string)
+    override fun readStringOrNull(): String? = swimmingPool.readString(this)
 }

@@ -3,13 +3,13 @@ package me.shedaniel.linkie.namespaces
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.Class
+import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.utils.ZipFile
 import me.shedaniel.linkie.utils.filterNotBlank
 import me.shedaniel.linkie.utils.lines
-import me.shedaniel.linkie.utils.readBytes
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.warn
@@ -48,7 +48,7 @@ object YarnNamespace : Namespace("yarn") {
                     MappingsContainer(it, name = "Yarn").apply {
                         loadIntermediaryFromMaven(version)
                         val yarnMaven = yarnBuilds[version]!!.maven
-                        mappingSource = loadNamedFromMaven(yarnMaven.substring(yarnMaven.lastIndexOf(':') + 1), showError = false)
+                        mappingsSource = loadNamedFromMaven(yarnMaven.substring(yarnMaven.lastIndexOf(':') + 1), showError = false)
                     }
                 }
             }
@@ -155,17 +155,17 @@ object YarnNamespace : Namespace("yarn") {
         group: String = "net.fabricmc.yarn",
         id: String = "yarn",
         showError: Boolean = true,
-    ): MappingsContainer.MappingSource {
+    ): MappingsSource {
         return if (id == "yarn" && YarnV2BlackList.blacklist.contains(yarnVersion)) {
             loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/$id-$yarnVersion.jar"), showError)
-            MappingsContainer.MappingSource.YARN_V1
+            MappingsSource.YARN_V1
         } else {
             try {
                 loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/$id-$yarnVersion-v2.jar"), showError)
-                MappingsContainer.MappingSource.YARN_V2
+                MappingsSource.YARN_V2
             } catch (ignored: Throwable) {
                 loadNamedFromTinyJar(URL("$repo/${group.replace('.', '/')}/$yarnVersion/$id-$yarnVersion.jar"), showError)
-                MappingsContainer.MappingSource.YARN_V1
+                MappingsSource.YARN_V1
             }
         }
     }

@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
+import me.shedaniel.linkie.MappingsSource
 import java.net.URL
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
@@ -32,7 +33,7 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
                     MappingsContainer(it, name = "Yarn").apply {
                         loadIntermediaryFromTinyFile(URL(intermediary125))
                         loadNamedFromGithubRepo("Blayyke/yarn", "1.2.5", showError = false)
-                        mappingSource = MappingsContainer.MappingSource.ENGIMA
+                        mappingsSource = MappingsSource.ENGIMA
                     }
                 }
             }
@@ -46,7 +47,7 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
                 mappings { version ->
                     MappingsContainer(version, name = "Legacy Yarn").apply {
                         loadIntermediaryFromMaven(version, repo = legacyFabricMaven)
-                        mappingSource = loadNamedFromMaven(
+                        mappingsSource = loadNamedFromMaven(
                             yarnVersion = legacyFabricVersions[version]!!,
                             repo = legacyFabricMaven,
                             showError = false

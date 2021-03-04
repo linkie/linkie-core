@@ -2,6 +2,7 @@ package me.shedaniel.linkie
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import me.shedaniel.linkie.namespaces.MappingsContainerBuilder
 import me.shedaniel.linkie.namespaces.MappingsVersion
@@ -111,7 +112,7 @@ abstract class Namespace(val id: String) {
 
         fun buildVersion(version: String, spec: VersionSpec.(String) -> Unit) {
             buildVersions {
-                versions(version)
+                version(version)
                 spec(version)
             }
         }
@@ -240,7 +241,7 @@ abstract class Namespace(val id: String) {
     }
 
     inner class VersionSpec(
-        private var uuidGetter: (String) -> String = { it },
+        private var uuidGetter: suspend (String) -> String = { it },
         private var mappingsGetter: MappingsContainerBuilder? = null,
         internal var versions: (() -> Iterable<String>)? = null,
     ) {
@@ -248,7 +249,7 @@ abstract class Namespace(val id: String) {
             uuid { uuid }
         }
 
-        fun uuid(uuid: (String) -> String) {
+        fun uuid(uuid: suspend (String) -> String) {
             uuidGetter = uuid
         }
 
@@ -264,14 +265,32 @@ abstract class Namespace(val id: String) {
             mappingsGetter = toBuilder(mappings)
         }
 
-        suspend inline fun buildMappings(
+        fun buildMappings(
             version: String,
             name: String,
             fillFieldDesc: Boolean = true,
             fillMethodDesc: Boolean = true,
-            crossinline builder: suspend MappingsBuilder.() -> Unit,
+            builder: suspend MappingsBuilder.() -> Unit,
         ) {
-            mappings(me.shedaniel.linkie.buildMappings(version, name, fillFieldDesc, fillMethodDesc, builder))
+            mappings { me.shedaniel.linkie.buildMappings(version, name, fillFieldDesc, fillMethodDesc, builder) }
+        }
+
+        fun buildMappings(
+            name: String,
+            fillFieldDesc: Boolean = true,
+            fillMethodDesc: Boolean = true,
+            builder: suspend MappingsBuilder.(version: String) -> Unit,
+        ) {
+            mappings { me.shedaniel.linkie.buildMappings(it, name, fillFieldDesc, fillMethodDesc) { builder(it) } }
+        }
+
+        fun buildMappings(
+            name: suspend (version: String) -> String,
+            fillFieldDesc: Boolean = true,
+            fillMethodDesc: Boolean = true,
+            builder: suspend MappingsBuilder.(version: String) -> Unit,
+        ) {
+            mappings { me.shedaniel.linkie.buildMappings(it, name(it), fillFieldDesc, fillMethodDesc) { builder(it) } }
         }
 
         fun version(version: String) {
@@ -304,7 +323,7 @@ abstract class Namespace(val id: String) {
             mappingsGetter!!
 
             return MappingsVersionBuilder {
-                ofVersion(uuidGetter(it), mappingsGetter!!)
+                ofVersion(runBlocking { uuidGetter(it) }, mappingsGetter!!)
             }
         }
     }

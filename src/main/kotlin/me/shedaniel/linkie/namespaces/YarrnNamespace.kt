@@ -25,7 +25,7 @@ object YarrnNamespace : Namespace("yarrn") {
                             repo = "https://maven.concern.i.ng",
                             group = "net.textilemc.intermediary"
                         )
-                        mappingSource = loadNamedFromMaven(
+                        mappingsSource = loadNamedFromMaven(
                             yarnVersion = yarrnBuildInf20100618,
                             repo = "https://maven.concern.i.ng",
                             group = "net.textilemc.yarrn",

@@ -25,43 +25,48 @@ object MojangNamespace : Namespace("mojang") {
     init {
         suspend fun getName(version: String): String = if (YarnNamespace.getProvider(version).isEmpty()) "Mojang" else "Mojang (via Intermediary)"
 
-        registerSupplier(simpleCachedSupplier("1.14.4") {
-            buildMappings(it, getName(it)) {
-                readMojangMappings(
-                    client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
-                    server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
-                )
-                source(MappingsContainer.MappingSource.MOJANG)
+        buildSupplier {
+            cached()
 
-                val yarn = YarnNamespace.getProvider(it)
-                if (!yarn.isEmpty()) {
-                    edit {
-                        rewireIntermediaryFrom(yarn.get())
+            buildVersion("1.14.4") {
+                buildMappings(name = ::getName) {
+                    readMojangMappings(
+                        client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
+                        server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
+                    )
+                    source(MappingsSource.MOJANG)
+
+                    val yarn = YarnNamespace.getProvider(it)
+                    if (!yarn.isEmpty()) {
+                        edit {
+                            rewireIntermediaryFrom(yarn.get())
+                        }
                     }
                 }
             }
-        })
-        registerSupplier(multipleCachedSupplier({ versionJsonMap.keys }, {
-            if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it
-        }) {
-            buildMappings(it, getName(it)) {
-                val url = URL(versionJsonMap[it]!!)
-                val versionJson = json.parseToJsonElement(url.readText()).jsonObject
-                val downloads = versionJson["downloads"]!!.jsonObject
-                readMojangMappings(
-                    client = downloads["client_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content,
-                    server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
-                )
-                source(MappingsContainer.MappingSource.MOJANG)
+            buildVersions {
+                versions { versionJsonMap.keys }
+                uuid { if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it }
 
-                val yarn = YarnNamespace.getProvider(it)
-                if (!yarn.isEmpty()) {
-                    edit {
-                        rewireIntermediaryFrom(yarn.get())
+                buildMappings(name = ::getName) {
+                    val url = URL(versionJsonMap[it]!!)
+                    val versionJson = json.parseToJsonElement(url.readText()).jsonObject
+                    val downloads = versionJson["downloads"]!!.jsonObject
+                    readMojangMappings(
+                        client = downloads["client_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content,
+                        server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                    )
+                    source(MappingsSource.MOJANG)
+
+                    val yarn = YarnNamespace.getProvider(it)
+                    if (!yarn.isEmpty()) {
+                        edit {
+                            rewireIntermediaryFrom(yarn.get())
+                        }
                     }
                 }
             }
-        })
+        }
     }
 
     override fun supportsMixin(): Boolean = true

@@ -4,6 +4,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
@@ -23,7 +24,7 @@ object PlasmaNamespace : Namespace("plasma") {
             MappingsContainer(it, name = "Plasma").apply {
                 loadIntermediaryFromTinyFile(URL("https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/Beta%201.7.3%20Merge.tiny"))
                 loadNamedFromTinyJar(URL(downloadUrl), showError = false)
-                mappingSource = MappingsContainer.MappingSource.YARN_V1
+                mappingsSource = MappingsSource.YARN_V1
             }
         })
     }
