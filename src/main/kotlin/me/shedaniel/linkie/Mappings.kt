@@ -241,19 +241,19 @@ fun MappingsContainer.rewireIntermediaryFrom(
 
 inline class ClassBuilder(val clazz: Class) {
     fun obfClient(obf: String?) {
-        clazz.obfClientName = obf
+        clazz.obfClientName = clazz.obfClientName ?: obf
     }
 
     fun obfServer(obf: String?) {
-        clazz.obfServerName = obf
+        clazz.obfServerName = clazz.obfServerName ?: obf
     }
 
     fun obfClass(obf: String?) {
-        clazz.obfMergedName = obf
+        clazz.obfMergedName = clazz.obfMergedName ?: obf
     }
 
     fun mapClass(mapped: String?) {
-        clazz.mappedName = mapped
+        clazz.mappedName = clazz.mappedName ?: mapped
     }
 
     fun field(
@@ -293,45 +293,45 @@ inline class ClassBuilder(val clazz: Class) {
 
 inline class FieldBuilder(val field: Field) {
     fun intermediaryDesc(intermediaryDesc: String?) = intermediaryDesc?.also {
-        field.intermediaryDesc = it
+        field.intermediaryDesc = field.intermediaryDesc ?: it
     }
 
     fun obfClient(obf: String?) {
-        field.obfClientName = obf
+        field.obfClientName = field.obfClientName ?: obf
     }
 
     fun obfServer(obf: String?) {
-        field.obfServerName = obf
+        field.obfServerName = field.obfServerName ?: obf
     }
 
     fun obfField(obfName: String?) {
-        field.obfMergedName = obfName
+        field.obfMergedName = field.obfMergedName ?: obfName
     }
 
     fun mapField(mappedName: String?) {
-        field.mappedName = mappedName
+        field.mappedName = field.mappedName ?: mappedName
     }
 }
 
 inline class MethodBuilder(val method: Method) {
     fun intermediaryDesc(intermediaryDesc: String?) = intermediaryDesc?.also {
-        method.intermediaryDesc = it
+        method.intermediaryDesc = method.intermediaryDesc ?: it
     }
 
     fun obfClient(obf: String?) {
-        method.obfClientName = obf
+        method.obfClientName = method.obfClientName ?: obf
     }
 
     fun obfServer(obf: String?) {
-        method.obfServerName = obf
+        method.obfServerName = method.obfServerName ?: obf
     }
 
     fun obfMethod(obfName: String?) {
-        method.obfMergedName = obfName
+        method.obfMergedName = method.obfMergedName ?: obfName
     }
 
     fun mapMethod(mappedName: String?) {
-        method.mappedName = mappedName
+        method.mappedName = method.mappedName ?: mappedName
     }
 }
 

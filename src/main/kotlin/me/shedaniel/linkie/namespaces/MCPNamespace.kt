@@ -105,14 +105,14 @@ object MCPNamespace : Namespace("mcp") {
     private fun MappingsBuilder.loadSrgFromInputStream(content: String) {
         apply(srg(content),
             obfMerged = "obf",
-            intermediary = "srg"
+            intermediary = "srg",
         )
     }
 
     private fun MappingsBuilder.loadTsrgFromInputStream(content: String) {
         apply(tsrg(content),
             obfMerged = "obf",
-            intermediary = "srg"
+            intermediary = "srg",
         )
     }
 
