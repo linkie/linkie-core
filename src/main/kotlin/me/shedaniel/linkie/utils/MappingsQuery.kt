@@ -12,20 +12,19 @@ import me.shedaniel.linkie.MappingsMember
 import me.shedaniel.linkie.MappingsMetadata
 import me.shedaniel.linkie.MappingsProvider
 import me.shedaniel.linkie.Method
-import me.shedaniel.linkie.getClassByObfName
 import me.shedaniel.linkie.optimumName
 
 typealias ClassResultSequence = Sequence<ResultHolder<Class>>
 typealias FieldResultSequence = Sequence<ResultHolder<Pair<Class, Field>>>
 typealias MethodResultSequence = Sequence<ResultHolder<Pair<Class, Method>>>
 
-enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?) {
-    MAPPED({ mappedName }),
-    INTERMEDIARY({ intermediaryName }),
-    OBF_MERGED({ obfName.merged }),
-    OBF_CLIENT({ obfName.client }),
-    OBF_SERVER({ obfName.server }),
-    WILDCARD({ throw IllegalStateException("Cannot get definition of type WILDCARD!") });
+enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?, val multiplier: Double) {
+    MAPPED({ mappedName }, 1.0),
+    INTERMEDIARY({ intermediaryName }, 1.0 - Double.MIN_VALUE),
+    OBF_MERGED({ obfName.merged }, 1.0 - Double.MIN_VALUE - Double.MIN_VALUE),
+    OBF_CLIENT({ obfName.client }, 1.0 - Double.MIN_VALUE - Double.MIN_VALUE),
+    OBF_SERVER({ obfName.server }, 1.0 - Double.MIN_VALUE - Double.MIN_VALUE),
+    WILDCARD({ throw IllegalStateException("Cannot get definition of type WILDCARD!") }, 1.0);
 
     operator fun invoke(entry: MappingsEntry): String? = toDefinition(entry)
 
@@ -77,19 +76,11 @@ object MappingsQuery {
     }
 
     fun MappingsEntry.searchDefinition(classKey: String, accuracy: MatchAccuracy): QueryDefinition? {
-        return QueryDefinition.allProper.maxOfIgnoreNullSelf { it(this).matchWithSimilarity(classKey, accuracy) }
-    }
-
-    fun MappingsEntry.searchWithDefinition(classKey: String): MatchResultWithDefinition? {
-        return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey, it) }
-    }
-
-    fun MappingsEntry.search(classKey: String): MatchResult? {
-        return QueryDefinition.allProper.firstMapped { it(this).containsOrMatchWildcardOrNull(classKey) }
+        return QueryDefinition.allProper.maxOfIgnoreNullSelf { it(this).matchWithSimilarity(classKey, accuracy)?.times(it.multiplier) }
     }
 
     fun MappingsEntry.searchWithSimilarity(classKey: String, accuracy: MatchAccuracy): Double? {
-        return QueryDefinition.allProper.maxOfIgnoreNull { it(this).matchWithSimilarity(classKey, accuracy) }
+        return QueryDefinition.allProper.maxOfIgnoreNull { it(this).matchWithSimilarity(classKey, accuracy)?.times(it.multiplier) }
     }
 
     suspend fun queryClasses(context: QueryContext): QueryResult<MappingsContainer, ClassResultSequence> {
@@ -103,10 +94,7 @@ object MappingsQuery {
                 .mapIndexed { index, entry -> entry hold (mappings.classes.size - index + 1) * 100.0 }
         } else {
             mappings.classes.values.asSequence()
-                .map { c ->
-                    c.searchWithSimilarity(searchKey, context.accuracy)?.let { c hold it }
-                }
-                .filterNotNull()
+                .mapNotNull { c -> c.searchWithSimilarity(searchKey, context.accuracy)?.let { c hold it } }
         }.sortedWith(compareByDescending<ResultHolder<Class>> { it.score }
             .thenBy { it.value.optimumName.onlyClass() })
 
@@ -119,58 +107,57 @@ object MappingsQuery {
     suspend fun queryMethods(context: QueryContext): QueryResult<MappingsContainer, MethodResultSequence> =
         queryMember(context) { it.methods.asSequence() }
 
+    suspend fun <T>  queryClassFilter(context: QueryContext, classKey: String, action: (Class, QueryDefinition) -> T): Sequence<T> {
+        val mappings = context.provider.get()
+        val hasClassFilter = classKey.isNotBlank()
+        val isClassKeyWildcard = classKey == "*"
+        return mappings.classes.values.asSequence().mapNotNull { c ->
+            when {
+                !hasClassFilter || isClassKeyWildcard -> QueryDefinition.WILDCARD
+                else -> c.searchDefinition(classKey, context.accuracy)
+            }?.let { action(c, it) }
+        }
+    }
+
     suspend fun <T : MappingsMember> queryMember(
         context: QueryContext,
         memberGetter: (Class) -> Sequence<T>,
     ): QueryResult<MappingsContainer, Sequence<ResultHolder<Pair<Class, T>>>> {
         val searchKey = context.searchKey
         val hasClassFilter = searchKey.contains('/')
-        val classKey = if (hasClassFilter) searchKey.substring(0, searchKey.lastIndexOf('/')) else ""
+        val classKey = if (hasClassFilter) searchKey.substringBeforeLast('/') else ""
         val fieldKey = searchKey.onlyClass()
         val isClassKeyWildcard = classKey == "*"
         val isFieldKeyWildcard = fieldKey == "*"
         val mappings = context.provider.get()
-
-        val members: Sequence<MemberResultMore<T>> = mappings.classes.values.asSequence().flatMap { c ->
-            val queryDefinition: QueryDefinition? = if (!hasClassFilter || isClassKeyWildcard) QueryDefinition.WILDCARD else c.searchDefinition(classKey, context.accuracy)
-            queryDefinition?.let { parentDef ->
-                if (isFieldKeyWildcard) {
-                    memberGetter(c)
-                        .map { MemberResultMore(c, it, parentDef, QueryDefinition.WILDCARD) }
-                } else {
-                    memberGetter(c)
-                        .map { f -> f.searchDefinition(fieldKey, context.accuracy)?.let { MemberResultMore(c, f, parentDef, it) } }
-                        .filterNotNull()
-                }
-            } ?: emptySequence()
-        }.distinctBy { it.field }
+        
+        val members: Sequence<MemberResultMore<T>> =  queryClassFilter(context, classKey) { c, parentDef ->
+            if (isFieldKeyWildcard) {
+                memberGetter(c).map { MemberResultMore(c, it, parentDef, QueryDefinition.WILDCARD) }
+            } else {
+                memberGetter(c).mapNotNull { f -> f.searchDefinition(fieldKey, context.accuracy)?.let { MemberResultMore(c, f, parentDef, it) } }
+            }
+        }.flatMap { it }.distinctBy { it.field }
 
         val sortedMembers: Sequence<ResultHolder<Pair<Class, T>>> = when {
-            fieldKey == "*" && (!hasClassFilter || isClassKeyWildcard) -> {
-                // Class and field both wildcard
+            // Class and field both wildcard
+            isFieldKeyWildcard && (!hasClassFilter || isClassKeyWildcard) -> {
                 members.sortedWith(
                     compareBy<MemberResultMore<T>> { it.parent.optimumName.onlyClass() }
                         .thenBy { it.field.intermediaryName }
                         .reversed()
                 ).mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1.0) }
             }
-            fieldKey == "*" -> {
-                // Only field wildcard
-                members.map { it.toSimplePair() hold it.parentDef(it.parent).similarityOnNull(classKey) }
-            }
-            hasClassFilter && !isClassKeyWildcard -> {
-                // has class
-                members.sortedWith(
-                    compareByDescending<MemberResultMore<T>> { it.fieldDef(it.field)!!.onlyClass().similarity(fieldKey) }
-                        .thenBy { it.parent.optimumName.onlyClass() }
-                        .reversed()
-                ).mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1.0) }
-            }
-            else -> {
-                members.map {
-                        it.toSimplePair() hold it.fieldDef(it.field)!!.onlyClass().similarity(fieldKey)
-                    }
-            }
+            // Only field wildcard
+            isFieldKeyWildcard -> members.map { it.toSimplePair() hold it.parentDef(it.parent).similarityOnNull(classKey) }
+            // Has class filter
+            hasClassFilter && !isClassKeyWildcard -> members.sortedWith(
+                compareByDescending<MemberResultMore<T>> { it.fieldDef(it.field)!!.similarity(fieldKey) }
+                    .thenByDescending { it.parentDef(it.parent).similarityOnNull(classKey) }
+                    .reversed()
+            ).mapIndexed { index, entry -> entry.toSimplePair() hold (index + 1.0) }
+            // Simple search
+            else -> members.map { it.toSimplePair() hold it.fieldDef(it.field)!!.similarity(fieldKey) }
         }.sortedWith(compareByDescending<ResultHolder<Pair<Class, T>>> { it.score }
             .thenBy { it.value.first.optimumName.onlyClass() }
             .thenBy { it.value.second.intermediaryName })
@@ -189,7 +176,7 @@ infix fun <T> T.hold(score: Double): ResultHolder<T> = ResultHolder(this, score)
 data class QueryContext(
     val provider: MappingsProvider,
     val searchKey: String,
-    val accuracy: MatchAccuracy = MatchAccuracy.Exact
+    val accuracy: MatchAccuracy = MatchAccuracy.Exact,
 )
 
 fun <T> QueryResult<MappingsContainer, T>.toSimpleMappingsMetadata(): QueryResult<MappingsMetadata, T> =
