@@ -3,6 +3,7 @@ package me.shedaniel.linkie
 import kotlinx.serialization.Serializable
 import me.shedaniel.linkie.utils.StringPool
 import me.shedaniel.linkie.utils.info
+import me.shedaniel.linkie.utils.onlyClass
 import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.singleSequenceOf
 
@@ -29,6 +30,8 @@ data class MappingsContainer(
     override var namespace: String = "",
 ) : MappingsMetadata, me.shedaniel.linkie.namespaces.MappingsContainerBuilder {
     override suspend fun build(version: String): MappingsContainer = this
+    val allClasses: MutableCollection<Class>
+        get() = classes.values
 
     fun toSimpleMappingsMetadata(): MappingsMetadata = SimpleMappingsMetadata(
         version = version,
@@ -353,6 +356,9 @@ interface MappingsMember : MappingsEntry {
 
 val MappingsEntry.optimumName: String
     get() = mappedName ?: intermediaryName
+
+val Class.optimumSimpleName: String
+    get() = optimumName.onlyClass()
 
 var MappingsEntry.obfClientName: String?
     get() = obfName.client

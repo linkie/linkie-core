@@ -75,15 +75,23 @@ private fun editDistance(s11: String, s22: String): Int {
     return costs[s22.length]
 }
 
-fun String?.similarityOnNull(other: String?): Double = if (this == null || other == null) 0.0 else similarity(other)
+fun String?.similarityOnNull(other: String?, onlyClass: Boolean = true): Double = if (this == null || other == null) 0.0 else similarity(other, onlyClass)
 
-fun String.similarity(other: String): Double {
-    val s11 = this.onlyClass().toLowerCase()
-    val s22 = other.onlyClass().toLowerCase()
+fun String.similarity(other: String, onlyClass: Boolean = true): Double {
+    val s11 = if (onlyClass) this.onlyClass() else this
+    val s12 = s11.toLowerCase()
+    val s21 = if (onlyClass) other.onlyClass() else other
+    val s22 = s21.toLowerCase()
+    return if (s11 != s12 || s21 != s22) {
+        (innerSimilarity(s11, s21) + innerSimilarity(s12, s22)) / 2.0
+    } else innerSimilarity(s11, s21)
+}
+
+private fun innerSimilarity(s11: String, s21: String): Double {
     var longer = s11
-    var shorter = s22
-    if (s11.length < s22.length) { // longer should always have greater length
-        longer = s22
+    var shorter = s21
+    if (s11.length < s21.length) { // longer should always have greater length
+        longer = s21
         shorter = s11
     }
     val longerLength = longer.length
@@ -102,13 +110,13 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
     return if (indexOf < 0) null else substring(indexOf + 1)
 }
 
-fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy): Double? {
+fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
     var similarity = -1.0
     fun getSimilarity(): Double {
         if (similarity == -1.0) {
-            similarity = this.similarity(searchTerm)
+            similarity = this.similarity(searchTerm, onlyClass)
         }
         return similarity
     }

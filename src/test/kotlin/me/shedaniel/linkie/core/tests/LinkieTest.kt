@@ -1,15 +1,31 @@
 package me.shedaniel.linkie.core.tests
 
+import com.soywiz.korio.util.toStringDecimal
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import me.shedaniel.linkie.Class
+import me.shedaniel.linkie.Field
 import me.shedaniel.linkie.LinkieConfig
+import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsEntry
+import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.namespaces.MCPNamespace
 import me.shedaniel.linkie.namespaces.MojangNamespace
 import me.shedaniel.linkie.namespaces.MojangSrgNamespace
 import me.shedaniel.linkie.namespaces.YarnNamespace
+import me.shedaniel.linkie.obfMergedName
+import me.shedaniel.linkie.utils.ClassResultList
+import me.shedaniel.linkie.utils.FieldResultList
+import me.shedaniel.linkie.utils.MappingsQuery
+import me.shedaniel.linkie.utils.MatchAccuracy
+import me.shedaniel.linkie.utils.MethodResultList
+import me.shedaniel.linkie.utils.QueryContext
+import me.shedaniel.linkie.utils.ResultHolder
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.localiseFieldDesc
+import me.shedaniel.linkie.utils.onlyClass
 import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
@@ -124,5 +140,175 @@ class LinkieTest {
         assertEquals("Lkotlin/IceCream;", "Ljava/util/Comparator;".remapDescriptor(remapper))
         assertEquals("[Lkotlin/IceCream;", "[Ljava/util/Comparator;".remapDescriptor(remapper))
         assertEquals("[J", "[J".remapDescriptor(remapper))
+    }
+
+    @Test
+    fun mappingsQuery() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
+            delay(2000)
+            while (YarnNamespace.reloading) delay(100)
+            val container = YarnNamespace.getProvider("1.16.5").get()
+            mappingsTester(container) {
+                assertClassIntermediary("MinecraftClient", "class_310")
+                assertClassIntermediary("MinecraftCli", "class_310")
+                assertMethodIntermediary("drawSlot", "method_2385")
+                assertClassIntermediary("Screen", "class_437")
+                assertFieldIntermediary("DrawableHelper.zOffset", "field_22734")
+                assertFieldIntermediary("field_9360", "field_9360")
+                assertFieldIntermediary("9360", "field_9360")
+                assertFieldIntermediary("field_13176", "field_13176")
+                assertMethodIntermediary("saveRecipe", "method_10425")
+                assertClassIntermediary("Slot", "class_1735")
+                assertMethodIntermediary("MinecraftClient.openScreen", "method_1507")
+
+                assertClassIntermediary("net/minecraft/recipe/ShapelessRecipe", "class_1867")
+                assertClassIntermediary("net/minecraft/data/server/recipe/ShapelessRecipeJsonFactory\$ShapelessRecipeJsonProvider", "class_2450\$class_2451")
+                assertClassIntermediary("recipe/ShapelessRec", "class_1867")
+                assertClassIntermediary("nbt/Tag", "class_2520")
+                assertFieldIntermediary("recipe/ShapelessR.inp", "field_9047")
+
+                assertClassIntermediary("MinecraffClient", "class_310", true)
+                assertFieldIntermediary("ShapelesssRecipe.inputs", "field_9047", true)
+                assertFieldIntermediary("GhastMaveContr.willCollde", "field_9047", true)
+            }
+        }
+    }
+
+    private inline fun mappingsTester(container: MappingsContainer, function: MappingsTester.() -> Unit) {
+        MappingsTester(container).also(function)
+    }
+
+    private class MappingsTester(val container: MappingsContainer) {
+        fun assertClassIntermediary(query: String, expectedIntermediary: String, fuzzy: Boolean = false) {
+            assertClass(query, fuzzy, "a class with intermediary named \"$expectedIntermediary\"") {
+                it.intermediaryName.onlyClass() == expectedIntermediary
+            }
+        }
+
+        fun assertMethodIntermediary(query: String, expectedIntermediary: String, fuzzy: Boolean = false) {
+            assertMethod(query, fuzzy, "a method with intermediary named \"$expectedIntermediary\"") {
+                it.intermediaryName == expectedIntermediary
+            }
+        }
+
+        fun assertFieldIntermediary(query: String, expectedIntermediary: String, fuzzy: Boolean = false) {
+            assertField(query, fuzzy, "a field with intermediary named \"$expectedIntermediary\"") {
+                it.intermediaryName == expectedIntermediary
+            }
+        }
+
+        fun List<ResultHolder<*>>.offerList(): String = offerList(this)
+
+        @JvmName("offerList_")
+        fun offerList(list: List<ResultHolder<*>>): String = buildString {
+            for (holder in list.asSequence().take(15)) {
+                appendLine()
+                append("- ")
+                append(holder.score.toStringDecimal(4).padStart(6))
+                append(' ')
+                val member: MappingsEntry = if (holder.value is Class) {
+                    holder.value as Class
+                } else (holder.value as Pair<Class, Any>).second as MappingsEntry
+                append(member.javaClass.simpleName)
+                append(' ')
+                append(member.obfMergedName)
+                append(" -> ")
+                append(member.intermediaryName)
+                if (member.mappedName != null) {
+                    append(" -> ")
+                    append(member.mappedName)
+                }
+            }
+        }
+
+        inline fun assertClass(query: String, fuzzy: Boolean, expected: String, value: (clazz: Class) -> Boolean) {
+            val list = query(query, fuzzy)
+            assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
+            assert(list.first().value is Class) { "Query \"$query\" did not return a class! ${list.offerList()}" }
+            assert(value(list.first().value as Class)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            println("\n$query -> $expected" + list.offerList())
+        }
+
+        inline fun assertMethod(query: String, fuzzy: Boolean, expected: String, value: (method: Method) -> Boolean) {
+            val list = query(query, fuzzy)
+            assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
+            assert(list.first().value is Pair<*, *>
+                    && (list.first().value as Pair<*, *>).second is Method) { "Query \"$query\" did not return a method! ${list.offerList()}" }
+            assert(value((list.first().value as Pair<*, *>).second as Method)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            println("\n$query -> $expected" + list.offerList())
+        }
+
+        inline fun assertField(query: String, fuzzy: Boolean, expected: String, value: (field: Field) -> Boolean) {
+            val list = query(query, fuzzy)
+            assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
+            assert(list.first().value is Pair<*, *>
+                    && (list.first().value as Pair<*, *>).second is Field) { "Query \"$query\" did not return a field! ${list.offerList()}" }
+            assert(value((list.first().value as Pair<*, *>).second as Field)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            println("\n$query -> $expected" + list.offerList())
+        }
+
+        fun query(query: String, fuzzy: Boolean): List<ResultHolder<*>> {
+            val context = QueryContext(
+                provider = { container },
+                searchKey = query.replace('.', '/'),
+            )
+            val result: MutableList<ResultHolder<*>> = mutableListOf()
+            var classes: ClassResultList? = null
+            var methods: MethodResultList? = null
+            var fields: FieldResultList? = null
+            runBlocking {
+                launch {
+                    try {
+                        classes = MappingsQuery.queryClasses(context).value
+                    } catch (ignore: NullPointerException) {
+                    }
+                }
+                launch {
+                    try {
+                        methods = MappingsQuery.queryMethods(context).value
+                    } catch (ignore: NullPointerException) {
+                    }
+                }
+                launch {
+                    try {
+                        fields = MappingsQuery.queryFields(context).value
+                    } catch (ignore: NullPointerException) {
+                    }
+                }
+            }
+            classes?.also(result::addAll)
+            methods?.also(result::addAll)
+            fields?.also(result::addAll)
+            result.sortByDescending { it.score }
+
+            if (result.isEmpty() && fuzzy) {
+                runBlocking {
+                    launch {
+                        try {
+                            classes = MappingsQuery.queryClasses(context.copy(accuracy = MatchAccuracy.Fuzzy)).value
+                        } catch (ignore: NullPointerException) {
+                        }
+                    }
+                    launch {
+                        try {
+                            methods = MappingsQuery.queryMethods(context.copy(accuracy = MatchAccuracy.Fuzzy)).value
+                        } catch (ignore: NullPointerException) {
+                        }
+                    }
+                    launch {
+                        try {
+                            fields = MappingsQuery.queryFields(context.copy(accuracy = MatchAccuracy.Fuzzy)).value
+                        } catch (ignore: NullPointerException) {
+                        }
+                    }
+                }
+                classes?.also(result::addAll)
+                methods?.also(result::addAll)
+                fields?.also(result::addAll)
+                result.sortByDescending { it.score }
+            }
+            return result
+        }
     }
 }
