@@ -152,6 +152,7 @@ class LinkieTest {
             mappingsTester(container) {
                 assertClassIntermediary("MinecraftClient", "class_310")
                 assertClassIntermediary("MinecraftCli", "class_310")
+                assertFieldIntermediary("minecraftCli", "field_26868")
                 assertMethodIntermediary("drawSlot", "method_2385")
                 assertClassIntermediary("Screen", "class_437")
                 assertFieldIntermediary("DrawableHelper.zOffset", "field_22734")
@@ -170,7 +171,7 @@ class LinkieTest {
 
                 assertClassIntermediary("MinecraffClient", "class_310", true)
                 assertFieldIntermediary("ShapelesssRecipe.inputs", "field_9047", true)
-                assertFieldIntermediary("GhastMaveContr.willCollde", "field_9047", true)
+                assertMethodIntermediary("GhastMoveContr.willCollide", "method_7051", true)
             }
         }
     }

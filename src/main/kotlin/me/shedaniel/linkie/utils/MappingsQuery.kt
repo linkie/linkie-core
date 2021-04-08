@@ -51,7 +51,8 @@ data class MatchAccuracy(val accuracy: Double) {
 fun MatchAccuracy.isExact(): Boolean = this == MatchAccuracy.Exact
 fun MatchAccuracy.isNotExact(): Boolean = this != MatchAccuracy.Exact
 
-private val classPower = 0.6
+private val classPower = 0.9
+private val parentPower = 0.6
 
 object MappingsQuery {
     private data class MemberResultMore<T : MappingsMember>(
@@ -156,13 +157,13 @@ object MappingsQuery {
             ).mapIndexed { index, entry -> entry.toSimplePair() hold 1.0 - index * Double.MIN_VALUE }
             // Only member wildcard
             isMemberWildcard -> members.map {
-                it.toSimplePair() hold it.parentDef(it.parent)!!.similarity(classKey, !isClassKeyPackageSpecific).pow(classPower)
+                it.toSimplePair() hold it.parentDef(it.parent)!!.similarity(classKey, !isClassKeyPackageSpecific).pow(parentPower)
             }
             // Has class filter
             classKey.isNotBlank() && !isClassWildcard -> members
                 .map {
                     it.toSimplePair() hold it.memberDef(it.member)!!.similarity(memberKey) *
-                            it.parentDef(it.parent)!!.similarity(classKey, !isClassKeyPackageSpecific).pow(classPower)
+                            it.parentDef(it.parent)!!.similarity(classKey, !isClassKeyPackageSpecific).pow(parentPower)
                 }
             // Simple search
             else -> members.map { it.toSimplePair() hold it.memberDef(it.member)!!.similarity(memberKey) }
