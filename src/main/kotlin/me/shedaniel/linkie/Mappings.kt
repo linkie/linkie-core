@@ -223,8 +223,11 @@ fun MappingsContainer.rewireIntermediaryFrom(
                     method.mappedName = method.intermediaryName
                     method.intermediaryName = replacementMethod.intermediaryName
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
+                } else if (!removeUnfound || name.startsWith('<')) {
+                    method.intermediaryDesc = method.intermediaryDesc
+                        .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }
                 }
-                replacementMethod == null && removeUnfound
+                replacementMethod == null && removeUnfound && !name.startsWith('<')
             }
             clazz.fields.removeIf { field ->
                 val replacementField = replacement.getFieldByObfName(field.obfMergedName!!)
@@ -232,6 +235,9 @@ fun MappingsContainer.rewireIntermediaryFrom(
                     field.mappedName = field.intermediaryName
                     field.intermediaryName = replacementField.intermediaryName
                     field.intermediaryDesc = replacementField.intermediaryDesc
+                } else if (!removeUnfound) {
+                    field.intermediaryDesc = field.intermediaryDesc
+                        .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }
                 }
                 replacementField == null && removeUnfound
             }
