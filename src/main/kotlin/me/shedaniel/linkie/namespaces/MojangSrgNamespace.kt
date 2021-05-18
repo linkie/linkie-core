@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
+import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsSource.MOJANG_TSRG
 import me.shedaniel.linkie.MappingsMember
 import me.shedaniel.linkie.Namespace
@@ -26,51 +27,33 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
         buildSupplier {
             cached()
 
-            buildVersion("1.16.5-N") {
-                mappings {
-                    val mojmap = MojangNamespace.getProvider(it).get()
-                    mojmap.copy(version = it, name = "Mojang (via TSRGv2)", mappingsSource = MOJANG_TSRG).apply {
-                        val stripIntermediary: MappingsMember.() -> Unit = {
-                            if (mappedName != null && (intermediaryName.startsWith("method_") || intermediaryName.startsWith("field_"))) {
-                                intermediaryName = mappedName!!
-                                intermediaryDesc = getMappedDesc(this@apply)
-                            }
-                        }
-                        for (`class` in classes.values) {
-                            `class`.members.forEach(stripIntermediary)
-                            `class`.fields.forEach(stripIntermediary)
-                            if (`class`.mappedName != null && `class`.intermediaryName.startsWith("net/minecraft/class_")) {
-                                `class`.intermediaryName = `class`.mappedName!!
-                            }
-                        }
-                        rearrangeClassMap()
-                        rewireIntermediaryFrom(MCPNamespace.getProvider(it).get(), mapClassNames = false)
-                    }
-                }
-            }
             buildVersions {
                 versionsSeq(::getAllVersions)
                 mappings {
                     val mojmap = MojangNamespace.getProvider(it).get()
-                    mojmap.copy(version = it, name = "Mojang (via TSRG)", mappingsSource = MOJANG_TSRG).apply {
-                        val stripIntermediary: MappingsMember.() -> Unit = {
-                            if (mappedName != null && (intermediaryName.startsWith("method_") || intermediaryName.startsWith("field_"))) {
-                                intermediaryName = mappedName!!
-                                intermediaryDesc = getMappedDesc(this@apply)
-                            }
-                        }
-                        for (`class` in classes.values) {
-                            `class`.members.forEach(stripIntermediary)
-                            `class`.fields.forEach(stripIntermediary)
-                            if (`class`.mappedName != null && `class`.intermediaryName.startsWith("net/minecraft/class_")) {
-                                `class`.intermediaryName = `class`.mappedName!!
-                            }
-                        }
-                        rearrangeClassMap()
-                        rewireIntermediaryFrom(MCPNamespace.getProvider(it).get(), mapClassNames = false)
+                    mojmap.clone().copy(version = it, name = "Mojang (via TSRG)", mappingsSource = MOJANG_TSRG).apply {
+                        make(it)
                     }
                 }
             }
         }
+    }
+
+    private suspend fun MappingsContainer.make(version: String) {
+        val stripIntermediary: MappingsMember.() -> Unit = {
+            if (mappedName != null) {
+                intermediaryName = mappedName!!
+            }
+            intermediaryDesc = getMappedDesc(this@make)
+        }
+        for (clazz in classes.values) {
+            clazz.members.forEach(stripIntermediary)
+            clazz.fields.forEach(stripIntermediary)
+            if (clazz.mappedName != null) {
+                clazz.intermediaryName = clazz.mappedName!!
+            }
+        }
+        rearrangeClassMap()
+        rewireIntermediaryFrom(MCPNamespace.getProvider(version).get(), mapClassNames = false)
     }
 }
