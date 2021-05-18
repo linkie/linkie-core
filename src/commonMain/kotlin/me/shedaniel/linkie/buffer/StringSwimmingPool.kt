@@ -1,6 +1,4 @@
-package me.shedaniel.linkie.utils
-
-import me.shedaniel.linkie.ByteBuffer
+package me.shedaniel.linkie.buffer
 
 class StringSwimmingPool {
     private val pool = mutableMapOf<String?, Int>()

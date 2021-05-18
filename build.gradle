@@ -1,100 +1,94 @@
 plugins {
-    id("org.jetbrains.kotlin.jvm") version("1.4.21")
-    id("org.jetbrains.kotlin.plugin.serialization") version("1.4.21")
-    id("java")
-    id("maven-publish")
-    id("maven")
-    id("signing")
+    id "org.jetbrains.kotlin.multiplatform" version "$kotlin_version"
+    id "org.jetbrains.kotlin.plugin.serialization" version "$kotlin_version"
 }
 
 group "me.shedaniel"
 version = "1.0." + (System.getenv("GITHUB_RUN_NUMBER") == null ? "9999" : System.getenv("GITHUB_RUN_NUMBER"))
 
-sourceCompatibility = targetCompatibility = 1.8
-
-test {
-    useJUnitPlatform()
-}
-
-tasks.test {
-    filter {
-        includeTestsMatching("me.shedaniel.linkie.core.tests.*")
-    }
-}
-
 repositories {
     mavenCentral()
-    maven { 
+    maven { url "https://dl.bintray.com/suparnatural/kotlin-multiplatform" }
+    maven {
         url "https://maven.fabricmc.net"
-        metadataSources {
-            it.mavenPom()
-            it.ignoreGradleMetadataRedirection()
+        content {
+            includeGroup "net.fabricmc"
         }
     }
-    maven { url "https://jitpack.io" }
-    maven { url "https://dl.bintray.com/korlibs/korlibs/" }
 }
 
-dependencies {
-    compile("com.github.Chocohead:Tiny-Mappings-Parser:d96d4070293d9e7054693c21552eb1eb2b149679")
-    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.4.21")
-    compile("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.1")
-    compile("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
-    compile("org.jetbrains.kotlin:kotlin-reflect:1.4.21")
-    compile("ch.qos.logback:logback-classic:1.2.3")
-    compile("org.dom4j:dom4j:2.1.3")
-    compile("net.fabricmc:stitch:0.5.1+build.77") {
-        exclude group: "net.fabricmc", module: "tiny-mappings-parser"
-    }
-
-    testCompile("org.junit.jupiter:junit-jupiter:5.6.2")
-    testCompile("org.jetbrains.kotlin:kotlin-test-junit5:1.4.21")
-
-    compile("com.soywiz.korlibs.korio:korio:$korlibs_version")
-    compile("com.squareup.okio:okio-multiplatform:$okio_version")
-}
-
-compileKotlin {
-    kotlinOptions.suppressWarnings = true
-    kotlinOptions.jvmTarget = "1.8"
-    kotlinOptions {
-        freeCompilerArgs = ["-Xinline-classes", "-Xopt-in=kotlin.RequiresOptIn"]
-    }
-}
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier("sources")
-    from sourceSets.main.allSource
-}
-
-task javadocs(type: Javadoc) {
-    source = sourceSets.main.allJava
-}
-
-task javadocsJar(type: Jar, dependsOn: javadocs) {
-    classifier("javadocs")
-    javadocs.failOnError false
-    from javadocs.destinationDir
-}
-
-publishing {
-    publications {
-        publication(MavenPublication) {
-            from components.java
-            artifact(sourcesJar)
-            artifact(javadocsJar)
-        }
-    }
-
-    repositories {
-        if (System.getenv("MAVEN_PASS") != null) {
-            maven {
-                url = "https://deploy.shedaniel.me/"
-                credentials {
-                    username = "shedaniel"
-                    password = System.getenv("MAVEN_PASS")
-                }
+kotlin {
+    targets.all {
+        compilations.all {
+            kotlinOptions {
+                freeCompilerArgs = ["-Xopt-in=kotlin.RequiresOptIn"]
+                suppressWarnings = true
             }
         }
     }
+    jvm {
+        compilations.all {
+            kotlinOptions.jvmTarget = "1.8"
+        }
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+    def hostOs = System.getProperty("os.name")
+    def nativeTarget
+    if (hostOs == "Mac OS X") nativeTarget = macosX64("native")
+    else if (hostOs == "Linux") nativeTarget = linuxX64("native")
+    else if (hostOs.startsWith("Windows")) nativeTarget = mingwX64("native")
+    else throw new GradleException("Host OS is not supported in Kotlin/Native.")
+
+    nativeTarget.tap {
+        compilations.main {
+            cinterops {
+            }
+        }
+    }
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlin_serialization_version"
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_version"
+                implementation "com.soywiz.korlibs.korio:korio:$korlibs_version"
+                implementation "io.github.microutils:kotlin-logging:$kotlin_logging_version"
+                implementation "com.squareup.okio:okio-multiplatform:$okio_version"
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation kotlin("test-common")
+                implementation kotlin("test-annotations-common")
+            }
+        }
+        jvmMain {
+            dependencies {
+                implementation "net.fabricmc:stitch:0.4.6+build.74:all"
+                implementation "org.dom4j:dom4j:2.1.3"
+            }
+        }
+        jvmTest {
+            dependencies {
+                implementation kotlin("test-junit5")
+                implementation "org.junit.jupiter:junit-jupiter-api:5.6.0"
+                runtimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
+            }
+        }
+        nativeMain {
+            dependencies {
+                implementation "io.ktor:ktor-client-core:$ktor_version"
+                implementation "io.ktor:ktor-client-curl:$ktor_version"
+            }
+        }
+        nativeTest {
+        }
+        all {
+            languageSettings.enableLanguageFeature("InlineClasses")
+        }
+    }
+    
+    
 }

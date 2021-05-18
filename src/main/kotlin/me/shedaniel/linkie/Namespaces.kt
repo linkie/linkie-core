@@ -4,25 +4,24 @@ import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ObsoleteCoroutinesApi
-import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.shedaniel.linkie.utils.CopyOnWriteList
 import me.shedaniel.linkie.utils.debug
 import me.shedaniel.linkie.utils.getMillis
-import java.util.concurrent.CopyOnWriteArrayList
 
 object Namespaces {
     lateinit var config: LinkieConfig
-    val namespaces = LinkedHashMap<String, Namespace>()
-    val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
+    val namespacesMap = LinkedHashMap<String, Namespace>()
+    val cachedMappings = CopyOnWriteList<MappingsContainer>()
     val cacheFolder: VfsFile
         get() = config.cacheDirectory
 
     private fun registerNamespace(namespace: Namespace) = namespace.also {
-        namespaces[it.id] = it
+        namespacesMap[it.id] = it
     }
 
-    operator fun get(id: String) = namespaces[id]!!
+    operator fun get(id: String) = namespacesMap[id]!!
 
     fun getMaximumCachedVersion(): Int = config.maximumLoadedVersions
 
@@ -62,7 +61,7 @@ object Namespaces {
             while (true) {
                 if (getMillis() > nextDelay + cycleMs) {
                     cachedMappings.clear()
-                    namespaces.map { (_, namespace) ->
+                    namespacesMap.map { (_, namespace) ->
                         launch {
                             namespace.reset()
                         }

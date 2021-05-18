@@ -3,18 +3,22 @@ package me.shedaniel.linkie.namespaces
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.Class
-import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.utils.URL
 import me.shedaniel.linkie.utils.ZipFile
+import me.shedaniel.linkie.utils.bytes
 import me.shedaniel.linkie.utils.filterNotBlank
+import me.shedaniel.linkie.utils.forEachZipEntry
+import me.shedaniel.linkie.utils.isDirectory
 import me.shedaniel.linkie.utils.lines
+import me.shedaniel.linkie.utils.readBytes
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.warn
 import java.io.InputStream
-import java.net.URL
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
@@ -92,7 +96,7 @@ object YarnNamespace : Namespace("yarn") {
         loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
 
     suspend fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
-        url.toAsyncZip().forEachEntry { path, entry ->
+        url.forEachZipEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
                 loadIntermediaryFromTinyInputStream(entry.bytes.inputStream())
             }
@@ -171,7 +175,7 @@ object YarnNamespace : Namespace("yarn") {
     }
 
     suspend fun MappingsContainer.loadNamedFromTinyJar(url: URL, showError: Boolean = true) {
-        url.toAsyncZip().forEachEntry { path, entry ->
+        url.forEachZipEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
                 loadNamedFromTinyInputStream(entry.bytes.inputStream(), showError)
             }

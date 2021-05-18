@@ -6,10 +6,7 @@ import com.soywiz.korio.stream.AsyncInputStream
 import com.soywiz.korio.stream.AsyncStream
 import com.soywiz.korio.stream.openAsync
 import com.soywiz.korio.stream.readAvailable
-import okio.BufferedSource
-import java.net.URL
 import java.util.zip.ZipInputStream
-import kotlin.io.readText
 
 val httpClient = createHttpClient()
 val defaultRequestConfig = HttpClient.RequestConfig(
@@ -17,18 +14,19 @@ val defaultRequestConfig = HttpClient.RequestConfig(
     throwErrors = true
 )
 
+data class URL(val url: String)
+
 suspend fun AsyncInputStream.readText(): String = readBytes().decodeToString()
 suspend fun AsyncInputStream.lines(): Sequence<String> = readText().lineSequence()
 suspend fun AsyncInputStream.readBytes() = readAvailable()
-suspend fun URL.readText() = readText(Charsets.UTF_8)
-suspend fun URL.readLines() = readText().lineSequence()
+suspend fun URL.readText() = readBytes().decodeToString()
+suspend fun URL.readLines() = readBytes().lines()
 suspend fun ByteArray.lines() = decodeToString().lineSequence()
 suspend fun URL.toAsyncZip(): ZipFile = toAsyncStream().zip()
+suspend fun URL.forEachZipEntry(action: suspend (path: String, entry: ZipEntry) -> Unit) = toAsyncZip().forEachEntry(action)
+suspend fun URL.readBytes(): ByteArray = runCatching { java.net.URL(url).readBytes() }.getOrThrow()
 suspend fun URL.toAsyncStream(): AsyncStream = readBytes().openAsync()
 suspend fun AsyncStream.zip(): ZipFile = ZipFile(readBytes())
-
-inline fun BufferedSource.forEachLine(consumer: (String) -> Unit) = readUtf8().lineSequence().forEach(consumer)
-fun BufferedSource.lines() = readUtf8().lines()
 
 fun getMillis(): Long = System.currentTimeMillis()
 
@@ -48,10 +46,10 @@ class ZipFile(val bytes: ByteArray) {
 
 data class ZipEntry(
     val path: String,
-    private val bytesProvider: () -> ByteArray,
-) {
-    val isDirectory: Boolean
-        get() = path.endsWith("/")
-    val bytes: ByteArray
-        get() = bytesProvider()
-}
+    val bytesProvider: () -> ByteArray,
+)
+
+inline val ZipEntry.isDirectory: Boolean
+    get() = path.endsWith("/")
+inline val ZipEntry.bytes: ByteArray
+    get() = bytesProvider()

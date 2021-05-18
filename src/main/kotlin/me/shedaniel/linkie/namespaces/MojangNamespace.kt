@@ -13,7 +13,7 @@ import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
-import java.net.URL
+import me.shedaniel.linkie.utils.URL
 
 object MojangNamespace : Namespace("mojang") {
     val versionJsonMap = mutableMapOf<String, String>()

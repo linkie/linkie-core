@@ -1,13 +1,13 @@
 package me.shedaniel.linkie.namespaces
 
 import me.shedaniel.linkie.MappingsSource
-import java.net.URL
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromMaven
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromGithubRepo
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromMaven
+import me.shedaniel.linkie.utils.URL
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
 import me.shedaniel.linkie.utils.toVersion

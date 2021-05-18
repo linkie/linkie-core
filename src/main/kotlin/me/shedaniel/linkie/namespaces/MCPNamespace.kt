@@ -12,15 +12,16 @@ import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.parser.apply
 import me.shedaniel.linkie.parser.srg
 import me.shedaniel.linkie.parser.tsrg
-import me.shedaniel.linkie.parser.visitor
+import me.shedaniel.linkie.utils.URL
 import me.shedaniel.linkie.utils.Version
+import me.shedaniel.linkie.utils.bytes
 import me.shedaniel.linkie.utils.filterNotBlank
+import me.shedaniel.linkie.utils.forEachZipEntry
+import me.shedaniel.linkie.utils.isDirectory
 import me.shedaniel.linkie.utils.lines
 import me.shedaniel.linkie.utils.readText
-import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
-import java.net.URL
 
 object MCPNamespace : Namespace("mcp") {
     const val tmpMcpVersionsUrl = "https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/mcp_versions.json"
@@ -87,7 +88,7 @@ object MCPNamespace : Namespace("mcp") {
     }
 
     suspend fun MappingsBuilder.loadTsrgFromURLZip(url: URL) {
-        url.toAsyncZip().forEachEntry { path, entry ->
+        url.forEachZipEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.tsrg") {
                 loadTsrgFromInputStream(entry.bytes.decodeToString())
             }
@@ -95,7 +96,7 @@ object MCPNamespace : Namespace("mcp") {
     }
 
     suspend fun MappingsBuilder.loadSrgFromURLZip(url: URL) {
-        url.toAsyncZip().forEachEntry { path, entry ->
+        url.forEachZipEntry { path, entry ->
             if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.srg") {
                 loadSrgFromInputStream(entry.bytes.decodeToString())
             }
@@ -103,21 +104,23 @@ object MCPNamespace : Namespace("mcp") {
     }
 
     private fun MappingsBuilder.loadSrgFromInputStream(content: String) {
-        apply(srg(content),
+        apply(
+            srg(content),
             obfMerged = "obf",
             intermediary = "srg",
         )
     }
 
     private fun MappingsBuilder.loadTsrgFromInputStream(content: String) {
-        apply(tsrg(content),
+        apply(
+            tsrg(content),
             obfMerged = "obf",
             intermediary = "srg",
         )
     }
 
     suspend fun MappingsBuilder.loadMCPFromURLZip(url: URL) {
-        url.toAsyncZip().forEachEntry { path, entry ->
+        url.forEachZipEntry { path, entry ->
             if (!entry.isDirectory) {
                 when (path.split("/").lastOrNull()) {
                     "fields.csv" -> loadMCPFieldsCSVFromInputStream(entry.bytes.lines())

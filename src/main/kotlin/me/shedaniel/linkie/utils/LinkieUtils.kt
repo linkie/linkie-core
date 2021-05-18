@@ -1,7 +1,7 @@
 package me.shedaniel.linkie.utils
 
 import com.soywiz.korio.file.VfsFile
-import java.io.StringReader
+import kotlin.NoSuchElementException
 import kotlin.math.min
 
 fun <T> Iterable<T>.dropAndTake(drop: Int, take: Int): Sequence<T> =
@@ -77,11 +77,11 @@ private fun editDistance(s11: String, s22: String): Int {
 
 fun String?.similarityOnNull(other: String?, onlyClass: Boolean = true): Double = if (this == null || other == null) 0.0 else similarity(other, onlyClass)
 
-fun String.similarity(other: String, onlyClass: Boolean = true): Double {
-    val s11 = if (onlyClass) this.onlyClass() else this
-    val s12 = s11.toLowerCase()
-    val s21 = if (onlyClass) other.onlyClass() else other
-    val s22 = s21.toLowerCase()
+fun String.similarity(other: String, doesOnlyClass: Boolean = true): Double {
+    val s11 = if (doesOnlyClass) this.onlyClass() else this
+    val s12 = s11.lowercase()
+    val s21 = if (doesOnlyClass) other.onlyClass() else other
+    val s22 = s21.lowercase()
     return if (s11 != s12 || s21 != s22) {
         (innerSimilarity(s11, s21) + innerSimilarity(s12, s22)) / 2.0
     } else innerSimilarity(s11, s21)
@@ -110,13 +110,13 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
     return if (indexOf < 0) null else substring(indexOf + 1)
 }
 
-fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy, doesOnlyClass: Boolean): Double? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
     var similarity = -1.0
     fun getSimilarity(): Double {
         if (similarity == -1.0) {
-            similarity = this.similarity(searchTerm, onlyClass)
+            similarity = this.similarity(searchTerm, doesOnlyClass)
         }
         return similarity
     }
@@ -175,26 +175,25 @@ fun String.remapDescriptor(classMappings: (String) -> String): String {
         var insideClassName = false
         val className = StringBuilder()
         while (true) {
-            val c: Int = reader.read()
-            if (c == -1) {
-                break
-            }
-            if (c == ';'.toInt()) {
+            val c: Char = reader.read() ?: break
+            if (c == ';') {
                 insideClassName = false
                 append(classMappings(className.toString()))
             }
             if (insideClassName) {
-                className.append(c.toChar())
+                className.append(c)
             } else {
-                append(c.toChar())
+                append(c)
             }
-            if (!insideClassName && c == 'L'.toInt()) {
+            if (!insideClassName && c == 'L') {
                 insideClassName = true
                 className.setLength(0)
             }
         }
     }
 }
+
+fun String.capitalize() = replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
 fun String.localiseFieldDesc(): String {
     if (isEmpty()) return this

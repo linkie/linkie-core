@@ -1,7 +1,7 @@
 package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
-import java.util.*
+import me.shedaniel.linkie.utils.capitalize
 
 @Serializable
 @Suppress("unused")
@@ -24,5 +24,5 @@ enum class MappingsSource {
     SPIGOT,
     ENGIMA;
 
-    override fun toString(): String = name.toLowerCase(Locale.ROOT).split("_").joinToString(" ") { it.capitalize() }
+    override fun toString(): String = name.lowercase().splitToSequence("_").joinToString(" ") { it.capitalize() }
 }

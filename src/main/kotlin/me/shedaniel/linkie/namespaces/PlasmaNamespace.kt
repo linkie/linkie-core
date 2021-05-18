@@ -12,7 +12,7 @@ import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyJar
 import me.shedaniel.linkie.simpleCachedSupplier
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
-import java.net.URL
+import me.shedaniel.linkie.utils.URL
 import kotlin.properties.Delegates
 
 object PlasmaNamespace : Namespace("plasma") {

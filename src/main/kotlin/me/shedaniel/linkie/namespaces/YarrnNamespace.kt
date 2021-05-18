@@ -7,7 +7,7 @@ import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromMaven
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
 import org.dom4j.io.SAXReader
-import java.net.URL
+import me.shedaniel.linkie.utils.URL
 
 object YarrnNamespace : Namespace("yarrn") {
     private var yarrnBuildInf20100618 = ""
