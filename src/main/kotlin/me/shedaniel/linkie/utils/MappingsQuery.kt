@@ -146,7 +146,7 @@ object MappingsQuery {
                         ?.let { MemberResultMore(c, f, parentDef, it) }
                 }
             }
-        }.flatMap { it }.distinctBy { it.member }.toList()
+        }.flatMap { it }.distinctTwoBy({ it.member }, { it.parent }).toList()
 
         val sortedMembers: List<ResultHolder<Pair<Class, T>>> = when {
             // Class and member both wildcard
@@ -172,6 +172,44 @@ object MappingsQuery {
             .thenBy { it.value.second.intermediaryName })
 
         return QueryResult(mappings, sortedMembers)
+    }
+}
+
+private fun <T, K, V> Sequence<T>.distinctTwoBy(selector: (T) -> K, secondKeySelector: (T) -> V): Sequence<T> {
+    return DistinctTwoSequence(this, selector, secondKeySelector)
+}
+
+private class DistinctTwoSequence<T, K, V>(
+    private val source: Sequence<T>,
+    private val keySelector: (T) -> K,
+    private val secondKeySelector: (T) -> V,
+) : Sequence<T> {
+    override fun iterator(): Iterator<T> = DistinctTwoIterator(source.iterator(), keySelector, secondKeySelector)
+}
+
+private class DistinctTwoIterator<T, K, V>(
+    private val source: Iterator<T>,
+    private val keySelector: (T) -> K,
+    private val secondKeySelector: (T) -> V,
+) : AbstractIterator<T>() {
+    private val observed = HashSet<K>()
+    private val observedSecond = HashSet<V>()
+
+    override fun computeNext() {
+        while (source.hasNext()) {
+            val next = source.next()
+            val key = keySelector(next)
+            val secondKey = secondKeySelector(next)
+            val b1 = observed.add(key)
+            val b2 = observedSecond.add(secondKey)
+
+            if (b1 || b2) {
+                setNext(next)
+                return
+            }
+        }
+
+        done()
     }
 }
 
