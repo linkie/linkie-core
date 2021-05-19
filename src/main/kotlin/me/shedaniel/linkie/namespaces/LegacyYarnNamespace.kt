@@ -66,7 +66,7 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
     override fun supportsAW(): Boolean = true
 
     override suspend fun reloadData() {
-        val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
+        val pom189 = URL("$legacyFabricMaven/net/fabricmc/yarn/maven-metadata.xml").readText()
         SAXReader().read(pom189.reader()).rootElement
             .element("versioning")
             .element("versions")
