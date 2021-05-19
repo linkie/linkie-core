@@ -15,7 +15,7 @@ import org.dom4j.io.SAXReader
 
 object LegacyYarnNamespace : Namespace("legacy-yarn") {
     const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
-    const val legacyFabricMaven = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven"
+    const val legacyFabricMaven = "https://maven.legacyfabric.net"
     val legacyFabricVersions = mutableMapOf<String, String?>(
         "1.6.4" to null,
         "1.7.10" to null,
