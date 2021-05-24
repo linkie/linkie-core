@@ -62,18 +62,21 @@ class ProguardParser(content: String) : AbstractParser<ArrayEntryComplex>(::Arra
         visitor.visitEnd()
     }
 
-    fun String.delocalizeDescriptorType(): String = when (this) {
-        "boolean" -> "Z"
-        "char" -> "C"
-        "byte" -> "B"
-        "short" -> "S"
-        "int" -> "I"
-        "float" -> "F"
-        "long" -> "J"
-        "double" -> "D"
-        "void" -> "V"
-        "" -> ""
-        else -> "L${replace('.', '/')};"
+    fun String.delocalizeDescriptorType(): String {
+        if (endsWith("[]")) return substring(0, length - 2).delocalizeDescriptorType()
+        return when (this) {
+            "boolean" -> "Z"
+            "char" -> "C"
+            "byte" -> "B"
+            "short" -> "S"
+            "int" -> "I"
+            "float" -> "F"
+            "long" -> "J"
+            "double" -> "D"
+            "void" -> "V"
+            "" -> ""
+            else -> "L${replace('.', '/')};"
+        }
     }
 
     fun getActualDescription(body: String, returnType: String): String {

@@ -17,7 +17,7 @@ import me.shedaniel.linkie.utils.xml.parseXml
 
 object LegacyYarnNamespace : Namespace("legacy-yarn") {
     const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
-    const val legacyFabricMaven = "https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven"
+    const val legacyFabricMaven = "https://maven.legacyfabric.net"
     val legacyFabricVersions = mutableMapOf<String, String?>(
         "1.6.4" to null,
         "1.7.10" to null,
@@ -71,7 +71,7 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
     )
 
     override suspend fun reloadData() {
-        val pom189 = URL("https://dl.bintray.com/legacy-fabric/Legacy-Fabric-Maven/net/fabricmc/yarn/maven-metadata.xml").readText()
+        val pom189 = URL("$legacyFabricMaven/net/fabricmc/yarn/maven-metadata.xml").readText()
         parseXml(pom189)["versioning"]["versions"].getAll("version")
             .map { it.text }
             .groupBy { it.substringBefore('+') }
