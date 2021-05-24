@@ -8,7 +8,6 @@ version = "1.0." + (System.getenv("GITHUB_RUN_NUMBER") == null ? "9999" : System
 
 repositories {
     mavenCentral()
-    maven { url "https://dl.bintray.com/suparnatural/kotlin-multiplatform" }
     maven {
         url "https://maven.fabricmc.net"
         content {
