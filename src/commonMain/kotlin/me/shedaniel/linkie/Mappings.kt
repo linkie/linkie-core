@@ -67,6 +67,16 @@ data class Mappings(
             }
         }.also { info(it) }
     }
+
+    fun clone(): Mappings {
+        return Mappings(
+            version,
+            classes.mapValues { it.value.clone() }.toMutableMap(),
+            name,
+            mappingsSource,
+            namespace,
+        )
+    }
 }
 
 fun Mappings.getClassByObfName(obf: String, ignoreCase: Boolean = false): Class? {
@@ -210,7 +220,7 @@ fun Mappings.rewireIntermediaryFrom(
     val classO2I = mutableMapOf<String, Class>()
     obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfMergedName?.also { classO2I[it] = clazz } }
     classes.values.removeAll { clazz ->
-        val replacement = classO2I[clazz.obfName.merged]
+        val replacement = classO2I[clazz.obfMergedName]
         if (replacement != null) {
             if (mapClassNames) {
                 clazz.mappedName = clazz.intermediaryName
@@ -403,6 +413,14 @@ data class Class(
 
     fun getOrCreateField(intermediaryName: String, intermediaryDesc: String): Field =
         getField(intermediaryName) ?: Field(intermediaryName, intermediaryDesc).also(fields::add)
+
+    fun clone(): Class = Class(
+        intermediaryName,
+        obfName.copy(),
+        mappedName,
+        methods.asSequence().map(Method::clone).toMutableList(),
+        fields.asSequence().map(Field::clone).toMutableList(),
+    )
 }
 
 @Serializable
@@ -411,7 +429,14 @@ data class Method(
     override var intermediaryDesc: String,
     override val obfName: Obf = Obf(),
     override var mappedName: String? = null,
-) : MappingsMember
+) : MappingsMember {
+    fun clone(): Method = Method(
+        intermediaryName,
+        intermediaryDesc,
+        obfName.copy(),
+        mappedName,
+    )
+}
 
 @Serializable
 data class Field(
@@ -419,7 +444,14 @@ data class Field(
     override var intermediaryDesc: String,
     override val obfName: Obf = Obf(),
     override var mappedName: String? = null,
-) : MappingsMember
+) : MappingsMember {
+    fun clone(): Field = Field(
+        intermediaryName,
+        intermediaryDesc,
+        obfName.copy(),
+        mappedName,
+    )
+}
 
 fun MappingsMember.getMappedDesc(container: Mappings): String =
     intermediaryDesc.remapDescriptor { container.getClass(it)?.mappedName ?: it }
