@@ -116,18 +116,21 @@ object MojangNamespace : Namespace("mojang") {
     }
 
     private fun MappingsBuilder.readMappings(lines: Sequence<String>) {
-        fun String.toActualDescription(): String = when (this) {
-            "boolean" -> "Z"
-            "char" -> "C"
-            "byte" -> "B"
-            "short" -> "S"
-            "int" -> "I"
-            "float" -> "F"
-            "long" -> "J"
-            "double" -> "D"
-            "void" -> "V"
-            "" -> ""
-            else -> "L${replace('.', '/')};"
+        fun String.toActualDescription(): String {
+            if (endsWith("[]")) return substring(0, length - 2).toActualDescription()
+            return when (this) {
+                "boolean" -> "Z"
+                "char" -> "C"
+                "byte" -> "B"
+                "short" -> "S"
+                "int" -> "I"
+                "float" -> "F"
+                "long" -> "J"
+                "double" -> "D"
+                "void" -> "V"
+                "" -> ""
+                else -> "L${replace('.', '/')};"
+            }
         }
 
         fun getActualDescription(body: String, returnType: String): String {
