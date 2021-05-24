@@ -2,24 +2,18 @@ package me.shedaniel.linkie.namespaces
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
-import me.shedaniel.linkie.Class
 import me.shedaniel.linkie.Mappings
 import me.shedaniel.linkie.MappingsSource
-import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.buildSupplier
 import me.shedaniel.linkie.json
 import me.shedaniel.linkie.namespace.NamespaceMetadata
 import me.shedaniel.linkie.utils.URL
 import me.shedaniel.linkie.utils.bytes
-import me.shedaniel.linkie.utils.filterNotBlank
-import me.shedaniel.linkie.utils.io.ZipFile
 import me.shedaniel.linkie.utils.io.bytes
-import me.shedaniel.linkie.utils.io.forEachEntry
 import me.shedaniel.linkie.utils.io.forEachZipEntry
 import me.shedaniel.linkie.utils.io.isDirectory
 import me.shedaniel.linkie.utils.io.readZip
-import me.shedaniel.linkie.utils.lines
 import me.shedaniel.linkie.utils.loadNamedFromEngimaStream
 import me.shedaniel.linkie.utils.readBytes
 import me.shedaniel.linkie.utils.readText
@@ -44,11 +38,9 @@ object YarnNamespace : Namespace("yarn") {
         get() = yarnBuilds.keys.firstOrNull { it.contains('.') && !it.contains('-') }
 
     init {
-        buildSupplier {
-            cached()
-
-            buildVersion {
-                versions { yarnBuilds.keys }
+        buildSupplier(cached = true) {
+            versions {
+                versions(yarnBuilds.keys)
                 uuid { version ->
                     yarnBuilds[version]!!.maven.let { it.substring(it.lastIndexOf(':') + 1) }
                 }

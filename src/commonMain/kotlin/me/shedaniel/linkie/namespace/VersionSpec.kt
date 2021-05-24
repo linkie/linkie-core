@@ -1,97 +1,84 @@
 package me.shedaniel.linkie.namespace
 
 import com.soywiz.korio.async.runBlockingNoJs
-import me.shedaniel.linkie.Mappings
-import me.shedaniel.linkie.MappingsConstructingBuilder
+import me.shedaniel.linkie.buildMappings
+import me.shedaniel.linkie.namespaces.ConstructingMappingsBuilder
+import me.shedaniel.linkie.namespaces.ConstructingVersionedMappingsBuilder
 import me.shedaniel.linkie.namespaces.MappingsBuilder
 import me.shedaniel.linkie.namespaces.MappingsVersionBuilder
+import me.shedaniel.linkie.namespaces.UuidGetter
 import me.shedaniel.linkie.namespaces.ofVersion
-import me.shedaniel.linkie.namespaces.toBuilder
 
 class VersionSpec(
-    private var uuidGetter: suspend (String) -> String = { it },
-    private var mappingsGetter: MappingsBuilder? = null,
-    internal var versions: (() -> Iterable<String>)? = null,
+    var uuidGetter: UuidGetter = UuidGetter { it },
+    var mappingsGetter: MappingsBuilder? = null,
+    var versions: (() -> Iterable<String>)? = null,
 ) {
     fun uuid(uuid: String) {
         uuid { uuid }
     }
 
-    fun uuid(uuid: suspend (String) -> String) {
+    fun uuid(uuid: UuidGetter) {
         uuidGetter = uuid
-    }
-
-    fun mappings(mappings: Mappings) {
-        mappings { mappings }
     }
 
     fun mappings(mappings: MappingsBuilder) {
         mappingsGetter = mappings
     }
 
-    fun mappings(mappings: suspend (String) -> Mappings) {
-        mappingsGetter = toBuilder(mappings)
-    }
-
-    fun buildMappings(
+    fun mappings(
         version: String,
         name: String,
-        fillFieldDesc: Boolean = true,
-        fillMethodDesc: Boolean = true,
-        builder: suspend MappingsConstructingBuilder.() -> Unit,
+        builder: ConstructingMappingsBuilder,
     ) {
-        mappings { me.shedaniel.linkie.buildMappings(version, name, fillFieldDesc, fillMethodDesc, builder) }
+        mappings { buildMappings(version, name, builder) }
     }
 
-    fun buildMappings(
+    fun mappings(
         name: String,
-        fillFieldDesc: Boolean = true,
-        fillMethodDesc: Boolean = true,
-        builder: suspend MappingsConstructingBuilder.(version: String) -> Unit,
+        builder: ConstructingVersionedMappingsBuilder,
     ) {
-        mappings { me.shedaniel.linkie.buildMappings(it, name, fillFieldDesc, fillMethodDesc) { builder(it) } }
+        mappings { buildMappings(it, name) { builder(it) } }
     }
 
-    fun buildMappings(
+    fun mappings(
         name: suspend (version: String) -> String,
-        fillFieldDesc: Boolean = true,
-        fillMethodDesc: Boolean = true,
-        builder: suspend MappingsConstructingBuilder.(version: String) -> Unit,
+        builder: ConstructingVersionedMappingsBuilder,
     ) {
-        mappings { me.shedaniel.linkie.buildMappings(it, name(it), fillFieldDesc, fillMethodDesc) { builder(it) } }
+        mappings { buildMappings(it, name(it)) { builder(it) } }
     }
 
     fun version(version: String) {
         val list = listOf(version)
-        versions { list }
+        versionsItr { list }
     }
 
     fun versions(vararg versions: String) {
         val list = versions.toList()
-        versions { list }
+        versionsItr { list }
     }
 
     fun versions(versions: Iterable<String>) {
-        versions { versions }
+        versionsItr { versions }
     }
 
-    fun versions(versions: () -> Iterable<String>) {
+    fun versionsItr(versions: () -> Iterable<String>) {
         this.versions = versions
     }
 
-    fun versionsSeq(versions: () -> Sequence<String>) {
+    fun versions(versions: () -> Sequence<String>) {
         this.versions = {
             val sequence = versions()
             Iterable { sequence.iterator() }
         }
     }
 
-    fun accept(spec: VersionSpec.() -> Unit): MappingsVersionBuilder {
+    inline fun accept(spec: VersionSpec.() -> Unit): MappingsVersionBuilder {
         also(spec)
         mappingsGetter!!
 
-        return MappingsVersionBuilder {
-            ofVersion(runBlockingNoJs { uuidGetter(it) }, mappingsGetter!!)
+        return MappingsVersionBuilder { version ->
+            ofVersion(runBlockingNoJs { uuidGetter.get(version) }, mappingsGetter!!)
         }
     }
 }

@@ -35,14 +35,12 @@ object MCPNamespace : Namespace("mcp") {
     private val newMcpVersions = mutableMapOf<Version, MCPVersion>()
 
     init {
-        buildSupplier {
-            cached()
-
-            buildVersions {
-                versionsSeq(::getAllBotVersions)
+        buildSupplier(cached = true) {
+            versions {
+                versions(::getAllBotVersions)
                 uuid { "$it-${mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!}" }
 
-                buildMappings(name = "MCP") {
+                mappings(name = "MCP") {
                     val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!
                     source(if (it.toVersion() >= version113) {
                         loadTsrgFromURLZip(URL("https://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
@@ -55,11 +53,11 @@ object MCPNamespace : Namespace("mcp") {
                 }
             }
 
-            buildVersions {
-                versions { newMcpVersions.keys.map(Version::toString) }
+            versions {
+                versions { newMcpVersions.keys.asSequence().map(Version::toString) }
                 uuid { newMcpVersions[it.toVersion()]!!.name }
 
-                buildMappings(name = "MCP") {
+                mappings(name = "MCP") {
                     val mcpVersion = newMcpVersions[it.toVersion()]!!
                     loadTsrgFromURLZip(URL(mcpVersion.mcp_config))
                     loadMCPFromURLZip(URL(mcpVersion.mcp))

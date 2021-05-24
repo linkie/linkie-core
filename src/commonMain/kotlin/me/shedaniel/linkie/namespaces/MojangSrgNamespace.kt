@@ -31,11 +31,9 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
     )
 
     init {
-        buildSupplier {
-            cached()
-
-            buildVersions {
-                versionsSeq(::getAllVersions)
+        buildSupplier(cached = true) {
+            versions {
+                versions(::getAllVersions)
                 mappings {
                     val mojmap = MojangNamespace[it].get()
                     mojmap.clone().copy(version = it, name = "Mojang (via TSRG)", mappingsSource = MOJANG_TSRG).apply {

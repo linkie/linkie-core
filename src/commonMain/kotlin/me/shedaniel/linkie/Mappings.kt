@@ -129,21 +129,15 @@ fun Class.getFieldByObfName(obf: String, ignoreCase: Boolean = false): Field? {
 suspend inline fun buildMappings(
     version: String,
     name: String,
-    fillFieldDesc: Boolean = true,
-    fillMethodDesc: Boolean = true,
     crossinline constructingBuilder: suspend MappingsConstructingBuilder.() -> Unit,
 ): Mappings =
     MappingsConstructingBuilder(
-        fillFieldDesc,
-        fillMethodDesc,
         container = Mappings(version, name = name)
     ).also {
         constructingBuilder(it)
     }.build()
 
 class MappingsConstructingBuilder(
-    val fillFieldDesc: Boolean,
-    val fillMethodDesc: Boolean,
     var container: Mappings,
 ) {
     val pool = StringPool()

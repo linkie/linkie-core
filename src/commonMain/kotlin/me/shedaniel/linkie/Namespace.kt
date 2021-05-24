@@ -1,7 +1,7 @@
 package me.shedaniel.linkie
 
 import com.soywiz.korio.async.runBlockingNoJs
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import me.shedaniel.linkie.namespace.MappingsSupplierBuilder
@@ -28,15 +28,15 @@ abstract class Namespace(val id: String) {
     internal val mappingsSuppliers = mutableListOf<MappingsSupplier>()
 
     val reloading: Boolean
-        get() = selfReloading || dependencies.any { it.reloading }
-    private var selfReloading = false
+        get() = _reloading || dependencies.any { it.reloading }
+    private var _reloading = false
 
-    suspend fun reset() {
-        selfReloading = true
-        try {
+    suspend fun reset() = coroutineScope {
+        _reloading = true
+        runCatching {
             reloadData()
             val jobs = getDefaultLoadedVersions().map {
-                GlobalScope.launch {
+                launch {
                     val provider = this@Namespace[it]
                     if (provider.isEmpty().not() && provider.cached != true)
                         provider.get().also {
@@ -45,34 +45,27 @@ abstract class Namespace(val id: String) {
                 }
             }
             jobs.forEach { it.join() }
-        } catch (t: Throwable) {
-            t.printStackTrace()
-        }
-        selfReloading = false
+        }.exceptionOrNull()?.printStackTrace()
+        _reloading = false
     }
 
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): Sequence<String>
     abstract suspend fun reloadData()
     abstract val defaultVersion: String
-    fun getAllSortedVersions(): List<String> =
-        getAllVersions().sortedWith(nullsFirst(compareBy { it.tryToVersion() })).toList().asReversed()
-
-    fun registerSupplier(mappingsSupplier: MappingsSupplier) {
-        mappingsSuppliers.add(namespacedSupplier(loggingSupplier(mappingsSupplier)))
-    }
-
-    @Deprecated("Use the operator instead.", replaceWith = ReplaceWith("this[version]", imports = ["me.shedaniel.linkie.get"]))
-    fun getProvider(version: String): MappingsProvider = this[version]
-
-    @Deprecated("Use getDefault instead.", replaceWith = ReplaceWith("this.getDefault()", imports = ["me.shedaniel.linkie.getDefault"]))
-    fun getDefaultProvider(channel: (() -> String)? = null): MappingsProvider = getDefault()
 
     abstract val metadata: NamespaceMetadata
 }
 
-fun Namespace.buildSupplier(builder: MappingsSupplierBuilder.() -> Unit) {
-    registerSupplier(MappingsSupplierBuilder().also(builder).toMappingsSupplier())
+internal fun Namespace.registerSupplier(mappingsSupplier: MappingsSupplier) {
+    mappingsSuppliers.add(namespacedSupplier(loggingSupplier(mappingsSupplier)))
+}
+
+fun Namespace.buildSupplier(
+    cached: Boolean = false,
+    builder: MappingsSupplierBuilder.() -> Unit,
+) {
+    registerSupplier(MappingsSupplierBuilder(cached).also(builder).toMappingsSupplier(this))
 }
 
 operator fun Namespace.get(version: String): MappingsProvider {
@@ -82,4 +75,8 @@ operator fun Namespace.get(version: String): MappingsProvider {
     }
 }
 
-fun Namespace.getDefault(): MappingsProvider = this[defaultVersion]
+val Namespace.default: MappingsProvider
+    get() = this[defaultVersion]
+
+val Namespace.sortedVersions: List<String>
+    get() = getAllVersions().sortedWith(nullsFirst<String>(compareBy { it.tryToVersion() }).reversed()).toList()

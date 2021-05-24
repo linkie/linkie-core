@@ -32,11 +32,9 @@ object MojangNamespace : Namespace("mojang") {
     init {
         fun getName(version: String): String = if (YarnNamespace[version].isEmpty()) "Mojang" else "Mojang (via Intermediary)"
 
-        buildSupplier {
-            cached()
-
-            buildVersion("1.14.4") {
-                buildMappings(name = ::getName) {
+        buildSupplier(cached = true) {
+            version("1.14.4") {
+                mappings(name = ::getName) {
                     readMojangMappings(
                         client = "https://launcher.mojang.com/v1/objects/c0c8ef5131b7beef2317e6ad80ebcd68c4fb60fa/client.txt",
                         server = "https://launcher.mojang.com/v1/objects/448ccb7b455f156bb5cb9cdadd7f96cd68134dbd/server.txt"
@@ -51,11 +49,11 @@ object MojangNamespace : Namespace("mojang") {
                     }
                 }
             }
-            buildVersions {
-                versions { versionJsonMap.keys }
+            versions {
+                versions(versionJsonMap.keys)
                 uuid { if (!YarnNamespace[it].isEmpty()) "$it-intermediary" else it }
 
-                buildMappings(name = ::getName) {
+                mappings(name = ::getName) {
                     val url = URL(versionJsonMap[it]!!)
                     val versionJson = json.parseToJsonElement(url.readText()).jsonObject
                     val downloads = versionJson["downloads"]!!.jsonObject

@@ -10,7 +10,7 @@ import me.shedaniel.linkie.Obf
 fun ByteBuffer.writeMappingsContainer(mappingsContainer: Mappings) {
     writeNotNullString(mappingsContainer.version)
     writeNotNullString(mappingsContainer.name)
-    writeStringOrNull(mappingsContainer.mappingsSource?.name)
+    writeStringOrNull(mappingsContainer.mappingsSource?.id)
     writeCollection(mappingsContainer.classes.values) { writeClass(it) }
 }
 
@@ -69,7 +69,7 @@ fun ByteBuffer.writeMagicObf(original: String, obf: Obf) {
 fun ByteBuffer.readMappingsContainer(): Mappings {
     val version = readNotNullString()
     val name = readNotNullString()
-    val mappingSource = readStringOrNull()?.let { MappingsSource.valueOf(it) }
+    val mappingSource = readStringOrNull()?.let { MappingsSource.of(it) }
     val mappingsContainer = Mappings(version, name = name, mappingsSource = mappingSource)
     readCollection { readClass() }.forEach {
         mappingsContainer.classes[it.intermediaryName] = it

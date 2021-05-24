@@ -15,10 +15,8 @@ object YarrnNamespace : Namespace("yarrn") {
     private var yarrnBuildInf20100618 = ""
 
     init {
-        buildSupplier {
-            cached()
-
-            buildVersion("infdev") {
+        buildSupplier(cached = true) {
+            version("infdev") {
                 uuid { yarrnBuildInf20100618.replaceFirst("inf", "infdev") }
                 mappings {
                     Mappings(it, name = "Yarrn").apply {

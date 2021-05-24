@@ -1,6 +1,5 @@
 package me.shedaniel.linkie.namespaces
 
-import me.shedaniel.linkie.Mappings
 import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.buildSupplier
@@ -30,9 +29,9 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
 
     init {
         buildSupplier {
-            buildVersion("1.2.5") {
-                mappings {
-                    Mappings(it, name = "Yarn").apply {
+            version("1.2.5") {
+                mappings(name = "Yarn") {
+                    edit {
                         loadIntermediaryFromTinyFile(URL(intermediary125))
                         loadNamedFromGithubRepo("Blayyke/yarn", "1.2.5", showError = false)
                         mappingsSource = MappingsSource.ENGIMA
@@ -40,14 +39,12 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
                 }
             }
         }
-        buildSupplier {
-            cached()
-
-            buildVersions {
-                versions { workingLegacyFabricVersions }
+        buildSupplier(cached = true) {
+            versions {
+                versions(workingLegacyFabricVersions)
                 uuid { version -> "$version-${legacyFabricVersions[version]}" }
-                mappings { version ->
-                    Mappings(version, name = "Legacy Yarn").apply {
+                mappings(name = "Legacy Yarn") {
+                    edit {
                         loadIntermediaryFromMaven(version, repo = legacyFabricMaven)
                         mappingsSource = loadNamedFromMaven(
                             yarnVersion = legacyFabricVersions[version]!!,

@@ -9,6 +9,8 @@ import me.shedaniel.linkie.buffer.readMappingsContainer
 import me.shedaniel.linkie.buffer.swimmingPoolReader
 import me.shedaniel.linkie.buffer.swimmingPoolWriter
 import me.shedaniel.linkie.buffer.writeMappingsContainer
+import me.shedaniel.linkie.namespaces.MappingsBuilder
+import me.shedaniel.linkie.namespaces.UuidGetter
 import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
@@ -28,54 +30,54 @@ fun Namespace.loggingSupplier(mappingsSupplier: MappingsSupplier): MappingsSuppl
     LoggingMappingsSupplier(this, mappingsSupplier)
 
 fun Namespace.cachedSupplier(
-    uuidGetter: suspend (String) -> String,
+    uuidGetter: UuidGetter,
     mappingsSupplier: MappingsSupplier,
 ): MappingsSupplier =
     CachedMappingsSupplier(this, uuidGetter, mappingsSupplier)
 
-fun Namespace.simpleSupplier(
+fun simpleSupplier(
     version: String,
-    supplier: suspend (String) -> Mappings,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
-    SimpleMappingsSupplier(version) { supplier(version) }
+    SimpleMappingsSupplier(version, supplier)
 
 fun Namespace.simpleCachedSupplier(
     version: String,
     uuid: String = version,
-    supplier: suspend (String) -> Mappings,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
     cachedSupplier({ uuid }, simpleSupplier(version, supplier))
 
 fun Namespace.simpleCachedSupplier(
     version: String,
-    uuidGetter: suspend (String) -> String,
-    supplier: suspend (String) -> Mappings,
+    uuidGetter: UuidGetter,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
     cachedSupplier(uuidGetter, simpleSupplier(version, supplier))
 
-fun Namespace.multipleSupplier(
+fun multipleSupplier(
     versions: Iterable<String>,
-    supplier: suspend (String) -> Mappings,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
     multipleSupplier({ versions }, supplier)
 
-fun Namespace.multipleSupplier(
+fun multipleSupplier(
     versions: () -> Iterable<String>,
-    supplier: suspend (String) -> Mappings,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
     MultiMappingsSupplier(versions, supplier)
 
 fun Namespace.multipleCachedSupplier(
     versions: Iterable<String>,
-    uuidGetter: suspend (String) -> String,
-    supplier: suspend (String) -> Mappings,
+    uuidGetter: UuidGetter,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 fun Namespace.multipleCachedSupplier(
     versions: () -> Iterable<String>,
-    uuidGetter: suspend (String) -> String,
-    supplier: suspend (String) -> Mappings,
+    uuidGetter: UuidGetter,
+    supplier: MappingsBuilder,
 ): MappingsSupplier =
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
@@ -120,21 +122,21 @@ private open class DelegateMappingsSupplier(val mappingsSupplier: MappingsSuppli
 
 private class CachedMappingsSupplier(
     val namespace: Namespace,
-    val uuidGetter: suspend (String) -> String,
+    val uuidGetter: UuidGetter,
     val mappingsSupplier: MappingsSupplier,
 ) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
 
     override suspend fun isCached(version: String): Boolean {
         val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdir() }
-        val uuid = uuidGetter(version)
+        val uuid = uuidGetter.get(version)
         val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie5"
         return cachedFile.exists()
     }
 
     override suspend fun applyVersion(version: String): Mappings {
         val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdir() }
-        val uuid = uuidGetter(version)
+        val uuid = uuidGetter.get(version)
         val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie5"
         if (cachedFile.exists()) {
             try {
@@ -157,16 +159,16 @@ private class CachedMappingsSupplier(
         cachedFile.writeBytes(swimmingPoolWriter().also { it.writeMappingsContainer(this) }.writeTo())
 }
 
-private class SimpleMappingsSupplier(val version: String, val supplier: suspend () -> Mappings) : MappingsSupplier {
+private class SimpleMappingsSupplier(val version: String, val supplier: MappingsBuilder) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = version == this.version
 
-    override suspend fun applyVersion(version: String): Mappings = supplier()
+    override suspend fun applyVersion(version: String): Mappings = supplier.build(version)
 }
 
-private class MultiMappingsSupplier(val versions: () -> Iterable<String>, val supplier: suspend (String) -> Mappings) : MappingsSupplier {
+private class MultiMappingsSupplier(val versions: () -> Iterable<String>, val supplier: MappingsBuilder) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = version in versions()
 
-    override suspend fun applyVersion(version: String): Mappings = supplier(version)
+    override suspend fun applyVersion(version: String): Mappings = supplier.build(version)
 }
 
 object EmptyMappingsSupplier : MappingsSupplier {
@@ -175,7 +177,15 @@ object EmptyMappingsSupplier : MappingsSupplier {
     override suspend fun applyVersion(version: String): Mappings = throw UnsupportedOperationException()
 }
 
-class ConcatMappingsSupplier(val suppliers: List<MappingsSupplier>) : MappingsSupplier {
+fun Collection<MappingsSupplier>.concat(): MappingsSupplier {
+    return when (size) {
+        0 -> EmptyMappingsSupplier
+        1 -> first()
+        else -> ConcatMappingsSupplier(this)
+    }
+}
+
+class ConcatMappingsSupplier(val suppliers: Collection<MappingsSupplier>) : MappingsSupplier {
     override fun isApplicable(version: String): Boolean = suppliers.any { it.isApplicable(version) }
     override suspend fun isCached(version: String): Boolean {
         for (supplier in suppliers) {

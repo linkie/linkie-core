@@ -4,14 +4,13 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import me.shedaniel.linkie.Mappings
 import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.buildSupplier
 import me.shedaniel.linkie.json
 import me.shedaniel.linkie.namespace.NamespaceMetadata
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyJar
-import me.shedaniel.linkie.simpleCachedSupplier
 import me.shedaniel.linkie.utils.URL
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
@@ -27,13 +26,19 @@ object PlasmaNamespace : Namespace("plasma") {
     override val defaultVersion: String = "b1.7.3"
 
     init {
-        registerSupplier(simpleCachedSupplier("b1.7.3", { "b1.7.3-$lastId" }) {
-            Mappings(it, name = "Plasma").apply {
-                loadIntermediaryFromTinyFile(URL("https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/Beta%201.7.3%20Merge.tiny"))
-                loadNamedFromTinyJar(URL(downloadUrl), showError = false)
-                mappingsSource = MappingsSource.YARN_V1
+        buildSupplier(cached = true) {
+            version("b1.7.3") {
+                uuid { "b1.7.3-$lastId" }
+                mappings(name = "Plasma") {
+                    edit {
+                        loadIntermediaryFromTinyFile(
+                            URL("https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/Beta%201.7.3%20Merge.tiny"))
+                        loadNamedFromTinyJar(URL(downloadUrl), showError = false)
+                    }
+                    source(MappingsSource.TINY_V1)
+                }
             }
-        })
+        }
     }
 
     override fun getDefaultLoadedVersions(): List<String> = listOf()
