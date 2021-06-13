@@ -1,7 +1,5 @@
 package me.shedaniel.linkie.utils
 
-import kotlin.jvm.JvmInline
-
 class StringReader(val str: String) {
     private var cursor = 0
 

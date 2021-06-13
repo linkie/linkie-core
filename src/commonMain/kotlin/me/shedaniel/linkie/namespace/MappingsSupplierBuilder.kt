@@ -9,15 +9,21 @@ import me.shedaniel.linkie.namespaces.MappingsVersionBuilder
 
 class MappingsSupplierBuilder(
     var cached: Boolean = false,
-    var versions: MutableMap<MappingsVersionBuilder, () -> Iterable<String>> = mutableMapOf(),
 ) {
+    var versions: MutableMap<MappingsVersionBuilder, () -> Iterable<String>> = mutableMapOf()
+
     fun cached() {
         cached = true
     }
 
-    inline fun version(version: String, spec: VersionSpec.() -> Unit) {
+    inline fun version(
+        version: String,
+        uuid: String = version,
+        spec: VersionSpec.() -> Unit,
+    ) {
         versions {
             version(version)
+            uuid(uuid)
             spec()
         }
     }

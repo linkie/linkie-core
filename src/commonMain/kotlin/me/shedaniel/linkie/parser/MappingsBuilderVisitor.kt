@@ -1,6 +1,7 @@
 package me.shedaniel.linkie.parser
 
 import me.shedaniel.linkie.ClassBuilder
+import me.shedaniel.linkie.Mappings
 import me.shedaniel.linkie.MappingsConstructingBuilder
 import me.shedaniel.linkie.utils.remapDescriptor
 import kotlin.properties.Delegates
@@ -23,6 +24,14 @@ fun MappingsConstructingBuilder.apply(
     source(parser.source)
 }
 
+fun MappingsConstructingBuilder.apply(
+    parser: Parser,
+    config: NamespaceConfig,
+) {
+    parser.parse(visitor(config))
+    source(parser.source)
+}
+
 fun MappingsConstructingBuilder.visitor(
     obfClient: String? = null,
     obfServer: String? = null,
@@ -31,21 +40,31 @@ fun MappingsConstructingBuilder.visitor(
     named: String? = null,
 ): MappingsBuilderVisitor = MappingsBuilderVisitor(
     constructingBuilder = this,
-    obfClient = obfClient,
-    obfServer = obfServer,
-    obfMerged = obfMerged,
-    intermediary = intermediary,
-    named = named,
+    config = NamespaceConfig(
+        obfClient = obfClient,
+        obfServer = obfServer,
+        obfMerged = obfMerged,
+        intermediary = intermediary,
+        named = named,
+    )
 )
+
+fun MappingsConstructingBuilder.visitor(
+    config: NamespaceConfig,
+): MappingsBuilderVisitor = MappingsBuilderVisitor(this, config)
+
+fun MappingsReader(
+    mappings: Mappings,
+    config: NamespaceConfig,
+): MappingsBuilderVisitor = MappingsConstructingBuilder(mappings)
+    .visitor(config)
 
 class MappingsBuilderVisitor(
     val constructingBuilder: MappingsConstructingBuilder,
-    val obfClient: String?,
-    val obfServer: String?,
-    val obfMerged: String?,
-    val intermediary: String,
-    val named: String?,
+    val config: NamespaceConfig,
 ) : MappingsVisitor {
+    val mappings: Mappings
+        get() = constructingBuilder.build()
     var hasObfClient = false
     var hasObfServer = false
     var hasObfMerged = false
@@ -56,21 +75,21 @@ class MappingsBuilderVisitor(
     var directDescriptor = false
 
     override fun visitStart(namespaces: MappingsNamespaces) {
-        hasObfClient = obfClient in namespaces.namespaces
-        hasObfServer = obfServer in namespaces.namespaces
-        hasObfMerged = obfMerged in namespaces.namespaces
-        hasNamed = named in namespaces.namespaces
-        directDescriptor = namespaces.primaryNamespace == intermediary
+        hasObfClient = config.obfClient in namespaces.namespaces
+        hasObfServer = config.obfServer in namespaces.namespaces
+        hasObfMerged = config.obfMerged in namespaces.namespaces
+        hasNamed = config.named in namespaces.namespaces
+        directDescriptor = namespaces.primaryNamespace == config.intermediary
     }
 
     override fun visitClass(complex: MappingsEntryComplex): MappingsClassVisitor {
-        classVisitor.classBuilder = constructingBuilder.clazz(complex[intermediary]!!) {
-            if (hasObfClient) obfClient(complex[obfClient])
-            if (hasObfServer) obfServer(complex[obfServer])
-            if (hasObfMerged) obfClass(complex[obfMerged])
-            if (hasNamed) mapClass(complex[named])
+        classVisitor.classBuilder = constructingBuilder.clazz(complex[config.intermediary]!!) {
+            if (hasObfClient) obfClient(complex[config.obfClient])
+            if (hasObfServer) obfServer(complex[config.obfServer])
+            if (hasObfMerged) obfClass(complex[config.obfMerged])
+            if (hasNamed) mapClass(complex[config.named])
         }
-        classMap[complex[complex.primaryNamespace]!!] = complex[intermediary]!!
+        classMap[complex[complex.primaryNamespace]!!] = complex[config.intermediary]!!
         return classVisitor
     }
 
@@ -83,21 +102,21 @@ class MappingsBuilderVisitor(
         var classBuilder by Delegates.notNull<ClassBuilder>()
 
         override fun visitField(complex: MappingsEntryComplex, descriptor: String?): MappingsJavadocVisitor? {
-            classBuilder.field(complex[intermediary]!!, descriptor ?: "") {
-                if (hasObfClient) obfClient(complex[obfClient])
-                if (hasObfServer) obfServer(complex[obfServer])
-                if (hasObfMerged) obfField(complex[obfMerged])
-                if (hasNamed) mapField(complex[named])
+            classBuilder.field(complex[config.intermediary]!!, descriptor ?: "") {
+                if (hasObfClient) obfClient(complex[config.obfClient])
+                if (hasObfServer) obfServer(complex[config.obfServer])
+                if (hasObfMerged) obfField(complex[config.obfMerged])
+                if (hasNamed) mapField(complex[config.named])
             }
             return null
         }
 
         override fun visitMethod(complex: MappingsEntryComplex, descriptor: String): MappingsMethodVisitor? {
-            val intermediary = complex[intermediary]!!
-            val obfClient = if (hasObfClient) complex[obfClient] else null
-            val obfServer = if (hasObfServer) complex[obfServer] else null
-            val obfMerged = if (hasObfMerged) complex[obfMerged] else null
-            val named = if (hasNamed) complex[named] else null
+            val intermediary = complex[config.intermediary]!!
+            val obfClient = if (hasObfClient) complex[config.obfClient] else null
+            val obfServer = if (hasObfServer) complex[config.obfServer] else null
+            val obfMerged = if (hasObfMerged) complex[config.obfMerged] else null
+            val named = if (hasNamed) complex[config.named] else null
             val builder = classBuilder
             if (directDescriptor) {
                 builder.method(intermediary, descriptor) {

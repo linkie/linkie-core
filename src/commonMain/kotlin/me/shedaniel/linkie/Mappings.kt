@@ -2,6 +2,10 @@ package me.shedaniel.linkie
 
 import kotlinx.serialization.Serializable
 import me.shedaniel.linkie.namespaces.MappingsBuilder
+import me.shedaniel.linkie.parser.MappingsBinder
+import me.shedaniel.linkie.parser.MappingsVisitable
+import me.shedaniel.linkie.parser.MappingsVisitor
+import me.shedaniel.linkie.parser.NamespaceConfig
 import me.shedaniel.linkie.utils.StringPool
 import me.shedaniel.linkie.utils.info
 import me.shedaniel.linkie.utils.onlyClass
@@ -30,10 +34,17 @@ data class Mappings(
     override val name: String,
     override var mappingsSource: MappingsSource? = null,
     override var namespace: String = "",
-) : MappingsMetadata, MappingsBuilder {
+) : MappingsMetadata, MappingsBuilder, MappingsVisitable {
     override suspend fun build(version: String): Mappings = this
     val allClasses: MutableCollection<Class>
         get() = classes.values
+
+    override fun visit(visitor: MappingsVisitor) = visit(visitor, NamespaceConfig.DEFAULT)
+
+    fun visit(
+        visitor: MappingsVisitor,
+        config: NamespaceConfig,
+    ) = MappingsBinder(this, config).parse(visitor)
 
     fun toSimpleMappingsMetadata(): MappingsMetadata = SimpleMappingsMetadata(
         version = version,

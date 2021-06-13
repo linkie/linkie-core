@@ -7,21 +7,17 @@ import me.shedaniel.linkie.parser.MappingsClassVisitor
 import me.shedaniel.linkie.parser.MappingsEntryComplex
 import me.shedaniel.linkie.parser.MappingsNamespaces
 import me.shedaniel.linkie.parser.MappingsVisitor
+import me.shedaniel.linkie.parser.Parser
 import me.shedaniel.linkie.utils.filterNotBlank
 import kotlin.properties.Delegates
 
 fun srg(content: String): SrgParser = SrgParser(content)
 
 class SrgParser(content: String) : AbstractParser<SrgParser.SimpleEntryComplex>(::SimpleEntryComplex) {
-    companion object {
-        const val NS_OBF = "obf"
-        const val NS_SRG = "srg"
-    }
-
     val groups = content.lineSequence().filterNotBlank().groupBy { it.split(' ')[0] }
     override val namespaces: MutableMap<String, Int> = mutableMapOf(
-        NS_OBF to 0,
-        NS_SRG to 1,
+        Parser.NS_OBF to 0,
+        Parser.NS_INTERMEDIARY to 1,
     )
     override val source: MappingsSource
         get() = MappingsSource.SRG
@@ -34,8 +30,8 @@ class SrgParser(content: String) : AbstractParser<SrgParser.SimpleEntryComplex>(
         var srg by Delegates.notNull<String>()
 
         override fun get(namespace: String?): String? = when (namespace) {
-            NS_OBF -> obf
-            NS_SRG -> srg
+            Parser.NS_OBF -> obf
+            Parser.NS_INTERMEDIARY -> srg
             else -> null
         }
     }

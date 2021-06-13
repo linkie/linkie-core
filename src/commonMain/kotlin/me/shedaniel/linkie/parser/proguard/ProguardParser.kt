@@ -4,20 +4,16 @@ import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.parser.AbstractParser
 import me.shedaniel.linkie.parser.ArrayEntryComplex
 import me.shedaniel.linkie.parser.MappingsVisitor
+import me.shedaniel.linkie.parser.Parser
 import me.shedaniel.linkie.utils.onlyClass
 
 fun proguard(content: String): ProguardParser = ProguardParser(content)
 
 class ProguardParser(content: String) : AbstractParser<ArrayEntryComplex>(::ArrayEntryComplex) {
-    companion object {
-        const val NS_OBF = "obf"
-        const val NS_MAPPED = "mapped"
-    }
-
     val lines = content.lineSequence()
     override val namespaces = mutableMapOf(
-        NS_OBF to 0,
-        NS_MAPPED to 1,
+        Parser.NS_OBF to 0,
+        Parser.NS_MAPPED to 1,
     )
 
     override val source: MappingsSource
@@ -36,14 +32,14 @@ class ProguardParser(content: String) : AbstractParser<ArrayEntryComplex>(::Arra
                 if (trim.contains('(')) {
                     lastClassVisitor?.also { visitor ->
                         val methodName = self.substringBefore('(')
-                        lastMethod[NS_OBF] = obf
-                        lastMethod[NS_MAPPED] = methodName
+                        lastMethod[Parser.NS_OBF] = obf
+                        lastMethod[Parser.NS_MAPPED] = methodName
                         visitor.visitMethod(lastMethod, getActualDescription(self.substring(methodName.length), type))
                     }
                 } else {
                     lastClassVisitor?.also { visitor ->
-                        lastField[NS_OBF] = obf
-                        lastField[NS_MAPPED] = self
+                        lastField[Parser.NS_OBF] = obf
+                        lastField[Parser.NS_MAPPED] = self
                         visitor.visitField(lastField, type.delocalizeDescriptorType())
                     }
                 }
@@ -52,8 +48,8 @@ class ProguardParser(content: String) : AbstractParser<ArrayEntryComplex>(::Arra
                 val className = split[0].replace('.', '/')
                 val obf = split[1]
                 if (className.onlyClass() != "package-info") {
-                    lastClass[NS_OBF] = obf
-                    lastClass[NS_MAPPED] = className
+                    lastClass[Parser.NS_OBF] = obf
+                    lastClass[Parser.NS_MAPPED] = className
                     lastClassVisitor = visitor.visitClass(lastClass)
                 }
             }

@@ -15,6 +15,6 @@ val URL.bytes: ByteArray
 expect fun gc()
 
 @JvmInline
-data class URL(val url: String)
+value class URL(val url: String)
 
 operator fun VfsFile.div(related: String): VfsFile = this[related]

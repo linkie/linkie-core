@@ -2,6 +2,7 @@ package me.shedaniel.linkie.parser.srg
 
 import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.parser.MappingsVisitor
+import me.shedaniel.linkie.parser.Parser
 import me.shedaniel.linkie.utils.filterNotBlank
 import me.shedaniel.linkie.utils.indentCount
 
@@ -14,15 +15,10 @@ fun tsrg(content: String): AbstractTsrgParser {
 }
 
 class TsrgParser(content: String) : AbstractTsrgParser() {
-    companion object {
-        const val NS_OBF = "obf"
-        const val NS_SRG = "srg"
-    }
-
     val lines = content.lineSequence()
     override val namespaces = mutableMapOf(
-        NS_OBF to 0,
-        NS_SRG to 1,
+        Parser.NS_OBF to 0,
+        Parser.NS_INTERMEDIARY to 1,
     )
     override val source: MappingsSource
         get() = MappingsSource.TSRG

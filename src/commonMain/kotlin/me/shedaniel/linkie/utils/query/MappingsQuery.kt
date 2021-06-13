@@ -9,8 +9,6 @@ import me.shedaniel.linkie.MappingsEntryType.CLASS
 import me.shedaniel.linkie.MappingsEntryType.FIELD
 import me.shedaniel.linkie.MappingsEntryType.METHOD
 import me.shedaniel.linkie.MappingsMember
-import me.shedaniel.linkie.MappingsMetadata
-import me.shedaniel.linkie.MappingsProvider
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.optimumName
 import me.shedaniel.linkie.optimumSimpleName

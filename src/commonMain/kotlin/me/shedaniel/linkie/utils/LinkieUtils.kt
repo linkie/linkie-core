@@ -74,15 +74,7 @@ fun localisePrimitive(char: Char): String = when (char) {
 /**
  * Determines if the specified string is permissible as a Java identifier.
  */
-fun String.isValidJavaIdentifier(): Boolean {
-    return isNotEmpty() && allIndexed { index, c ->
-        if (index == 0) {
-            Character.isJavaIdentifierStart(c)
-        } else {
-            Character.isJavaIdentifierPart(c)
-        }
-    }
-}
+expect fun String.isValidJavaIdentifier(): Boolean
 
 fun CharSequence.allIndexed(predicate: (index: Int, Char) -> Boolean): Boolean {
     var index = 0

@@ -2,13 +2,15 @@ package me.shedaniel.linkie.parser.tiny
 
 import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.parser.AbstractParser
-import me.shedaniel.linkie.parser.ProvidedEntryComplex
 import me.shedaniel.linkie.parser.MappingsVisitor
+import me.shedaniel.linkie.parser.ProvidedEntryComplex
 import me.shedaniel.linkie.utils.StringReader
 import me.shedaniel.linkie.utils.columnView
 import me.shedaniel.linkie.utils.indentedColumnView
 
 class Tiny2Parser(val reader: StringReader) : AbstractParser<ProvidedEntryComplex>(::ProvidedEntryComplex) {
+    constructor(content: String) : this(StringReader(content))
+
     override val namespaces = mutableMapOf<String, Int>()
 
     override val source: MappingsSource
@@ -26,7 +28,7 @@ class Tiny2Parser(val reader: StringReader) : AbstractParser<ProvidedEntryComple
         val minorVersion = headerLine[2].toInt()
         require(majorVersion == 2) { "Assumed tiny major version as 2!" }
         require(minorVersion == 0) { "Assumed tiny minor version as 0!" }
-        headerLine.asSequence().drop(3).forEachIndexed { index, namespace -> 
+        headerLine.asSequence().drop(3).forEachIndexed { index, namespace ->
             namespaces[namespace] = index
         }
         visitor.visitSelfStart()
