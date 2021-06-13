@@ -8,14 +8,19 @@ data class MappingsProvider(
 ) {
     fun isEmpty(): Boolean = version == null || cached == null || mappingsContainer == null
 
-    fun injectDefaultVersion(mappingsProvider: MappingsProvider) {
-        if (isEmpty() && !mappingsProvider.isEmpty()) {
-            if (namespace != mappingsProvider.namespace) {
-                throw IllegalStateException("Could not inject default version as they are from the different namespace: ${namespace.id} and ${mappingsProvider.namespace.id}")
+    fun injectDefaultVersion(other: MappingsProvider) = injectDefaultVersion { other }
+
+    fun injectDefaultVersion(other: () -> MappingsProvider) {
+        if (isEmpty()) {
+            val otherProvider = other()
+            if (!otherProvider.isEmpty()) {
+                if (namespace != otherProvider.namespace) {
+                    throw IllegalStateException("Could not inject default version as they are from the different namespace: ${namespace.id} and ${otherProvider.namespace.id}")
+                }
+                version = otherProvider.version
+                cached = otherProvider.cached
+                mappingsContainer = otherProvider.mappingsContainer
             }
-            version = mappingsProvider.version
-            cached = mappingsProvider.cached
-            mappingsContainer = mappingsProvider.mappingsContainer
         }
     }
 
@@ -28,7 +33,12 @@ data class MappingsProvider(
                 supply(namespace, version, null, null)
             else supply(namespace, version, true) { mappingsContainer }
 
-        fun supply(namespace: Namespace, version: String?, cached: Boolean?, mappingsContainer: (suspend () -> MappingsContainer)?): MappingsProvider =
+        fun supply(
+            namespace: Namespace,
+            version: String?,
+            cached: Boolean?,
+            mappingsContainer: (suspend () -> MappingsContainer)?,
+        ): MappingsProvider =
             MappingsProvider(namespace, version, cached, mappingsContainer)
 
         fun empty(namespace: Namespace): MappingsProvider =
