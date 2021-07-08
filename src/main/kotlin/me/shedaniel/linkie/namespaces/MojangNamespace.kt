@@ -163,7 +163,7 @@ object MojangNamespace : Namespace("mojang") {
             } else {
                 val split = it.trimIndent().trimEnd(':').split(" -> ")
                 val className = split[0].replace('.', '/')
-                val obf = split[1]
+                val obf = split[1].replace('.', '/')
                 if (className.onlyClass() != "package-info") {
                     lastClass = clazz(
                         intermediaryName = className,
