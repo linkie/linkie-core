@@ -245,7 +245,9 @@ fun MappingsContainer.rewireIntermediaryFrom(
                 if (replacementField != null) {
                     field.mappedName = field.intermediaryName
                     field.intermediaryName = replacementField.intermediaryName
-                    field.intermediaryDesc = replacementField.intermediaryDesc
+                    field.intermediaryDesc = replacementField.intermediaryDesc.takeUnless(String::isEmpty) ?:
+                            field.intermediaryDesc
+                                .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }
                 } else if (!removeUnfound) {
                     field.intermediaryDesc = field.intermediaryDesc
                         .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }

@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.namespaces
 
+import com.soywiz.korio.stream.readAvailable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -38,10 +39,10 @@ object MCPNamespace : Namespace("mcp") {
                 buildMappings(name = "MCP") {
                     val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!
                     source(if (it.toVersion() >= Version(1, 13)) {
-                        loadTsrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
+                        loadTsrgFromURLZip(URL("http://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
                         MappingsSource.MCP_TSRG
                     } else {
-                        loadSrgFromURLZip(URL("http://files.minecraftforge.net/maven/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
+                        loadSrgFromURLZip(URL("http://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
                         MappingsSource.MCP_SRG
                     })
                     loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))

@@ -108,6 +108,17 @@ class LinkieTest {
     }
 
     @Test
+    fun mojmapSrg1_17() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangSrgNamespace)))
+            delay(2000)
+            while (MojangSrgNamespace.reloading) delay(100)
+            val container = MojangSrgNamespace.getProvider("1.17.1").get()
+            container
+        }
+    }
+
+    @Test
     fun descriptionLocalising() {
         assertEquals("int", "I".localiseFieldDesc())
         assertEquals("int[]", "[I".localiseFieldDesc())
