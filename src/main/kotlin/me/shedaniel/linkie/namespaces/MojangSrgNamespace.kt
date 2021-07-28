@@ -15,7 +15,6 @@ import me.shedaniel.linkie.rewireIntermediaryFrom
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toVersion
-import me.shedaniel.linkie.utils.tryToVersion
 import java.net.URL
 
 object MojangSrgNamespace : Namespace("mojang_srg") {
@@ -27,10 +26,7 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
     override fun supportsFieldDescription(): Boolean = false
     override fun getAllVersions(): Sequence<String> = MCPNamespace.getAllVersions().filter {
         MojangNamespace.getAllVersions().contains(it)
-    }
-
-    override fun getDefaultVersion(channel: () -> String): String =
-        getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
+    } + newMcpVersions.asSequence().map(Version::toString)
 
     override fun supportsAT(): Boolean = true
     override fun supportsMixin(): Boolean = true

@@ -67,7 +67,6 @@ object MCPNamespace : Namespace("mcp") {
     override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion())
     fun getAllBotVersions(): Sequence<String> = mcpConfigSnapshots.keys.asSequence().map { it.toString() }
     override fun getAllVersions(): Sequence<String> = getAllBotVersions() + newMcpVersions.keys.map(Version::toString)
-    override fun getDefaultVersion(channel: () -> String): String = getAllVersions().maxWithOrNull(nullsFirst(compareBy { it.tryToVersion() }))!!
 
     override fun supportsAT(): Boolean = true
     override fun supportsMixin(): Boolean = true

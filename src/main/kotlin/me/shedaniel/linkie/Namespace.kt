@@ -59,7 +59,9 @@ abstract class Namespace(val id: String) {
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): Sequence<String>
     abstract suspend fun reloadData()
-    abstract fun getDefaultVersion(channel: () -> String = this::getDefaultMappingChannel): String
+    open fun getDefaultVersion(channel: () -> String = this::getDefaultMappingChannel): String =
+        getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
+
     fun getAllSortedVersions(): List<String> =
         getAllVersions().sortedWith(nullsFirst(compareBy { it.tryToVersion() })).toList().asReversed()
 
