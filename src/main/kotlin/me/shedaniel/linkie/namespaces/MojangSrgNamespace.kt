@@ -43,7 +43,7 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
             cached()
 
             buildVersions {
-                versionsSeq(::getAllVersions)
+                versionsSeq { legacy }
                 mappings {
                     val mojmap = MojangNamespace.getProvider(it).get()
                     mojmap.clone().copy(version = it, name = "Mojang (via TSRG)", mappingsSource = MOJANG_TSRG).apply {
