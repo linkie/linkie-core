@@ -66,7 +66,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            assertEquals("1.16.5", YarnNamespace.getDefaultVersion())
+            assertEquals("1.17.1", YarnNamespace.getDefaultVersion())
             YarnNamespace.getDefaultProvider().get()
         }
     }
@@ -89,7 +89,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            assertEquals("1.16.5", MojangNamespace.getDefaultVersion())
+            assertEquals("1.17.1", MojangNamespace.getDefaultVersion())
             val container = MojangNamespace.getDefaultProvider().get()
             container
         }
@@ -101,7 +101,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangSrgNamespace)))
             delay(2000)
             while (MojangSrgNamespace.reloading) delay(100)
-            assertEquals("1.16.5", MojangSrgNamespace.getDefaultVersion())
+            assertEquals("1.17.1", MojangSrgNamespace.getDefaultVersion())
             val container = MojangSrgNamespace.getDefaultProvider().get()
             container
         }
@@ -177,7 +177,7 @@ class LinkieTest {
                 assertClassIntermediary("net/minecraft/recipe/ShapelessRecipe", "class_1867")
                 assertClassIntermediary("net/minecraft/data/server/recipe/ShapelessRecipeJsonFactory\$ShapelessRecipeJsonProvider", "class_2450\$class_2451")
                 assertClassIntermediary("recipe/ShapelessRec", "class_1867")
-                assertClassIntermediary("nbt/Tag", "class_2520")
+                assertClassIntermediary("nbt/NbtElement", "class_2520")
                 assertFieldIntermediary("recipe/ShapelessR.inp", "field_9047")
 
                 assertClassIntermediary("MinecraffClient", "class_310", true)

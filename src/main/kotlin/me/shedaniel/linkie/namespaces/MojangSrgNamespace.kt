@@ -24,9 +24,11 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
     override fun getDependencies(): Set<Namespace> = setOf(MCPNamespace, MojangNamespace)
     override fun getDefaultLoadedVersions(): List<String> = emptyList()
     override fun supportsFieldDescription(): Boolean = false
-    override fun getAllVersions(): Sequence<String> = MCPNamespace.getAllVersions().filter {
-        MojangNamespace.getAllVersions().contains(it)
-    } + newMcpVersions.asSequence().map(Version::toString)
+    val legacy: Sequence<String>
+        get() = MCPNamespace.getAllVersions().filter {
+            MojangNamespace.getAllVersions().contains(it)
+        }
+    override fun getAllVersions(): Sequence<String> = legacy + newMcpVersions.asSequence().map(Version::toString)
 
     override fun supportsAT(): Boolean = true
     override fun supportsMixin(): Boolean = true
