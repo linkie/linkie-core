@@ -19,6 +19,7 @@ enum class MappingsSource {
     MOJANG,
     MOJANG_TSRG,
     MOJANG_TSRG2,
+    MOJANG_HASHED,
     YARN_V1,
     YARN_V2,
     SPIGOT,

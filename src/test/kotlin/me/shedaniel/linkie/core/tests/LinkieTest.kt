@@ -11,6 +11,7 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsEntry
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespaces
+import me.shedaniel.linkie.namespaces.MojangHashedNamespace
 import me.shedaniel.linkie.namespaces.MCPNamespace
 import me.shedaniel.linkie.namespaces.MojangNamespace
 import me.shedaniel.linkie.namespaces.MojangSrgNamespace
@@ -30,6 +31,7 @@ import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
 import org.junit.jupiter.api.Test
+import java.security.Security.getProvider
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -119,6 +121,17 @@ class LinkieTest {
     }
 
     @Test
+    fun mojmapHashed1_17() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace, MojangHashedNamespace)))
+            delay(2000)
+            while (MojangHashedNamespace.reloading) delay(100)
+            val container = MojangHashedNamespace.getProvider("1.17.1").get()
+            container
+        }
+    }
+
+    @Test
     fun descriptionLocalising() {
         assertEquals("int", "I".localiseFieldDesc())
         assertEquals("int[]", "[I".localiseFieldDesc())
@@ -129,6 +142,7 @@ class LinkieTest {
     @Test
     fun remapDescription() {
         val remaps = mapOf(
+            "Sad" to "Happy",
             "kotlin/Sad" to "kotlin/Happy",
             "java/util/Comparator" to "kotlin/IceCream",
         )
@@ -151,6 +165,7 @@ class LinkieTest {
         assertEquals("Lkotlin/IceCream;", "Ljava/util/Comparator;".remapDescriptor(remapper))
         assertEquals("[Lkotlin/IceCream;", "[Ljava/util/Comparator;".remapDescriptor(remapper))
         assertEquals("[J", "[J".remapDescriptor(remapper))
+        assertEquals("[LHappy;", "[LSad;".remapDescriptor(remapper))
     }
 
     @Test

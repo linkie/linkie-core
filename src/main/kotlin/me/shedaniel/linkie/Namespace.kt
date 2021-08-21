@@ -119,10 +119,6 @@ abstract class Namespace(val id: String) {
             }
         }
 
-        fun buildVersion(spec: VersionSpec.() -> Unit) {
-            buildVersions(spec)
-        }
-
         fun versions(vararg versions: String, uuid: String, mappings: MappingsContainer) {
             val list = versions.toList()
             versions(list, uuid, mappings)

@@ -65,7 +65,7 @@ data class MappingsContainer(
             }
         }.also { info(it) }
     }
-    
+
     fun clone(): MappingsContainer {
         return MappingsContainer(
             version,
@@ -210,16 +210,21 @@ fun MappingsContainer.rearrangeClassMap() {
     }
 }
 
+val MappingsEntry.obfMergedOrOptimumName: String
+    get() = obfMergedName ?: (mappedName ?: intermediaryName)
+
 fun MappingsContainer.rewireIntermediaryFrom(
     obf2intermediary: MappingsContainer,
     removeUnfound: Boolean = false,
     mapClassNames: Boolean = true,
 ) {
     val classO2I = mutableMapOf<String, Class>()
-    obf2intermediary.classes.forEach { (_, clazz) -> clazz.obfMergedName?.also { classO2I[it] = clazz } }
-    
+    obf2intermediary.classes.forEach { (_, clazz) ->
+        classO2I[clazz.obfMergedOrOptimumName] = clazz
+    }
+
     classes.values.removeIf { clazz ->
-        val replacement = classO2I[clazz.obfMergedName]
+        val replacement = classO2I[clazz.obfMergedOrOptimumName]
         if (replacement != null) {
             if (mapClassNames) {
                 clazz.mappedName = clazz.intermediaryName
@@ -236,7 +241,7 @@ fun MappingsContainer.rewireIntermediaryFrom(
                     method.intermediaryDesc = replacementMethod.intermediaryDesc
                 } else if (!removeUnfound || name.startsWith('<')) {
                     method.intermediaryDesc = method.intermediaryDesc
-                        .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }
+                        .remapDescriptor { classes[it]?.obfMergedOrOptimumName.let { classO2I[it] }?.intermediaryName ?: it }
                 }
                 replacementMethod == null && removeUnfound && !name.startsWith('<')
             }
@@ -245,14 +250,18 @@ fun MappingsContainer.rewireIntermediaryFrom(
                 if (replacementField != null) {
                     field.mappedName = field.intermediaryName
                     field.intermediaryName = replacementField.intermediaryName
-                    field.intermediaryDesc = replacementField.intermediaryDesc.takeUnless(String::isEmpty) ?:
-                            field.intermediaryDesc
-                                .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }
+                    field.intermediaryDesc = replacementField.intermediaryDesc.takeUnless(String::isEmpty) ?: field.intermediaryDesc
+                        .remapDescriptor { classes[it]?.obfMergedOrOptimumName.let { classO2I[it] }?.intermediaryName ?: it }
                 } else if (!removeUnfound) {
                     field.intermediaryDesc = field.intermediaryDesc
-                        .remapDescriptor { classes[it]?.obfMergedName?.let { classO2I[it] }?.intermediaryName ?: it }
+                        .remapDescriptor { classes[it]?.obfMergedOrOptimumName.let { classO2I[it] }?.intermediaryName ?: it }
                 }
                 replacementField == null && removeUnfound
+            }
+        } else if (!removeUnfound) {
+            clazz.members.forEach { member ->
+                member.intermediaryDesc = member.intermediaryDesc
+                    .remapDescriptor { classes[it]?.obfMergedOrOptimumName.let { classO2I[it] }?.intermediaryName ?: it }
             }
         }
         replacement == null && removeUnfound
@@ -419,7 +428,7 @@ data class Class(
 
     fun getOrCreateField(intermediaryName: String, intermediaryDesc: String): Field =
         getField(intermediaryName) ?: Field(intermediaryName, intermediaryDesc).also { fields.add(it) }
-    
+
     fun clone(): Class = Class(
         intermediaryName,
         obfName.copy(),

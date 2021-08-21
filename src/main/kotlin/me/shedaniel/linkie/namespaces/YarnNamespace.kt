@@ -39,7 +39,7 @@ object YarnNamespace : Namespace("yarn") {
         buildSupplier {
             cached()
 
-            buildVersion {
+            buildVersions {
                 versions { yarnBuilds.keys }
                 uuid { version ->
                     yarnBuilds[version]!!.maven.let { it.substring(it.lastIndexOf(':') + 1) }

@@ -4,17 +4,19 @@ import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ObsoleteCoroutinesApi
-import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.shedaniel.linkie.jar.GameJarProvider
 import me.shedaniel.linkie.utils.debug
 import me.shedaniel.linkie.utils.getMillis
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.properties.Delegates
 
 object Namespaces {
-    lateinit var config: LinkieConfig
+    var config by Delegates.notNull<LinkieConfig>()
     val namespaces = LinkedHashMap<String, Namespace>()
     val cachedMappings = CopyOnWriteArrayList<MappingsContainer>()
+    var gameJarProvider: GameJarProvider? = null
     val cacheFolder: VfsFile
         get() = config.cacheDirectory
 
@@ -54,9 +56,10 @@ object Namespaces {
             Namespaces.registerNamespace(namespace)
         }
         Namespaces.config = config
+        gameJarProvider = config.gameJarProvider?.let { it(config) }
         config.namespaces.forEach { registerNamespace(it) }
         val cycleMs = config.reloadCycleDuration.millisecondsLong
-        
+
         var nextDelay = getMillis() - cycleMs
         CoroutineScope(Dispatchers.Default).launch {
             while (true) {

@@ -117,7 +117,7 @@ object MojangNamespace : Namespace("mojang") {
 
     private fun MappingsBuilder.readMappings(lines: Sequence<String>) {
         fun String.toActualDescription(): String {
-            if (endsWith("[]")) return substring(0, length - 2).toActualDescription()
+            if (endsWith("[]")) return "[" + substring(0, length - 2).toActualDescription()
             return when (this) {
                 "boolean" -> "Z"
                 "char" -> "C"
