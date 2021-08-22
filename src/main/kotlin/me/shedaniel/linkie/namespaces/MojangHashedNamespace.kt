@@ -93,7 +93,7 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
                     val mappedMethodName = originalClass?.getMethodMapping(methodMapping.signature)?.orElse(null)
                         ?.deobfuscatedName
                     if (mappedMethodName != method.intermediaryName) {
-                        method.obfClientName = mappedMethodName
+                        method.mappedName = mappedMethodName
                     }
                 }
                 mapping.fieldMappings.forEach { fieldMapping ->
@@ -104,7 +104,7 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
                     val mappedFieldName = originalClass?.getFieldMapping(fieldMapping.signature)?.orElse(null)
                         ?.deobfuscatedName
                     if (mappedFieldName != field.intermediaryName) {
-                        field.obfClientName = mappedFieldName
+                        field.mappedName = mappedFieldName
                     }
                 }
             }
