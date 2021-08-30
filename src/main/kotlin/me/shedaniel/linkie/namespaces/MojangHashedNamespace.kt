@@ -7,14 +7,13 @@ import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.jar.GameJarProvider
-import me.shedaniel.linkie.obfClientName
 import me.shedaniel.linkie.obfMergedName
 import me.shedaniel.linkie.obfMergedOrOptimumName
 import me.shedaniel.linkie.optimumName
 import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.singleSequenceOf
-import me.shedaniel.mappings_hasher.cadixdev.lorenz.MappingSet
-import me.shedaniel.mappings_hasher.quiltmc.mappings_hasher.MappingsHasher
+import org.quiltmc.mappings_hasher.MappingsHasher
+import org.quiltmc.mappings_hasher.cadixdev.lorenz.MappingSet
 import java.io.Closeable
 import java.util.jar.JarFile
 
@@ -63,8 +62,6 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
             }
         }
         val hasher = MappingsHasher(original, "net/minecraft/unmapped")
-        hasher.addDontObfuscateAnnotation("net/minecraft/unmapped/C_qwuptkcl", true)
-        hasher.addDontObfuscateAnnotation("net/minecraft/unmapped/C_prlazzma", true)
         val toClose = mutableListOf<Closeable>()
         result.libraries.forEach {
             hasher.addLibrary(JarFile(it.absolutePath).also(toClose::add))
