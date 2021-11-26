@@ -45,7 +45,7 @@ object MCPNamespace : Namespace("mcp") {
                         loadSrgFromURLZip(URL("http://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
                         MappingsSource.MCP_SRG
                     })
-                    loadMCPFromURLZip(URL("http://export.mcpbot.bspk.rs/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
+                    loadMCPFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
                 }
             }
 
@@ -72,8 +72,8 @@ object MCPNamespace : Namespace("mcp") {
     override fun supportsMixin(): Boolean = true
     override suspend fun reloadData() {
         mcpConfigSnapshots.clear()
-        json.parseToJsonElement(URL("http://export.mcpbot.bspk.rs/versions.json").readText()).jsonObject.forEach { mcVersion, mcpVersionsObj ->
-            val list = mcpConfigSnapshots.getOrPut(mcVersion.toVersion(), { mutableListOf() })
+        json.parseToJsonElement(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/versions.json").readText()).jsonObject.forEach { mcVersion, mcpVersionsObj ->
+            val list = mcpConfigSnapshots.getOrPut(mcVersion.toVersion(), ::mutableListOf)
             mcpVersionsObj.jsonObject["snapshot"]?.jsonArray?.forEach {
                 list.add(it.jsonPrimitive.content)
             }
