@@ -18,7 +18,7 @@ import me.shedaniel.linkie.utils.toVersion
 import java.net.URL
 
 object MojangSrgNamespace : Namespace("mojang_srg") {
-    const val tmpTsrg2VersionsUrl = "https://gist.githubusercontent.com/shedaniel/68c5a5f8a56a30f48f994e105351b15f/raw/d6aeaa5996f9d18764a03edd74f1d08a70fc312e/official-mcpconfig.json"
+    const val tmpTsrg2VersionsUrl = "https://gist.githubusercontent.com/shedaniel/68c5a5f8a56a30f48f994e105351b15f/raw/official-mcpconfig.json"
     private var newMcpVersions = listOf<Version>()
 
     override fun getDependencies(): Set<Namespace> = setOf(MCPNamespace, MojangNamespace)
