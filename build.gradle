@@ -33,7 +33,7 @@ repositories {
     }
     maven { url "https://jitpack.io" }
     maven { url "https://maven.shedaniel.me" }
-    maven { url "https://maven.quiltmc.org/repository/snapshot" }
+    maven { url "https://maven.quiltmc.org/repository/release" }
 }
 
 dependencies {
@@ -53,7 +53,7 @@ dependencies {
 
     compile("com.soywiz.korlibs.korio:korio:$korlibs_version")
     compile("com.squareup.okio:okio-multiplatform:$okio_version")
-    compile("org.quiltmc:mappings-hasher:1.0-20210829.214545-1")
+    compile("org.quiltmc:mappings-hasher:1.1.0:all")
 }
 
 compileKotlin {

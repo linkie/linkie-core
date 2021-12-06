@@ -23,7 +23,8 @@ enum class MappingsSource {
     YARN_V1,
     YARN_V2,
     SPIGOT,
-    ENGIMA;
+    ENGIMA,
+    QUILT_MAPPINGS;
 
     override fun toString(): String = name.toLowerCase(Locale.ROOT).split("_").joinToString(" ") { it.capitalize() }
 }

@@ -11,11 +11,7 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsEntry
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespaces
-import me.shedaniel.linkie.namespaces.MojangHashedNamespace
-import me.shedaniel.linkie.namespaces.MCPNamespace
-import me.shedaniel.linkie.namespaces.MojangNamespace
-import me.shedaniel.linkie.namespaces.MojangSrgNamespace
-import me.shedaniel.linkie.namespaces.YarnNamespace
+import me.shedaniel.linkie.namespaces.*
 import me.shedaniel.linkie.obfMergedName
 import me.shedaniel.linkie.utils.ClassResultList
 import me.shedaniel.linkie.utils.FieldResultList
@@ -74,6 +70,17 @@ class LinkieTest {
     }
 
     @Test
+    fun quiltMappings() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(QuiltMappingsNamespace)))
+            delay(2000)
+            while (QuiltMappingsNamespace.reloading) delay(100)
+            assertEquals("1.18", QuiltMappingsNamespace.getDefaultVersion())
+            QuiltMappingsNamespace.getDefaultProvider().get()
+        }
+    }
+
+    @Test
     fun mcp() {
         runBlocking {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
@@ -102,7 +109,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            assertEquals("1.17.1", MojangNamespace.getDefaultVersion())
+            assertEquals("1.18", MojangNamespace.getDefaultVersion())
             val container = MojangNamespace.getDefaultProvider().get()
             container
         }
