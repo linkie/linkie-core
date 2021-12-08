@@ -58,6 +58,9 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
+    override val defaultVersion: String
+        get() = latestYarnVersion!!
+
     override fun getDefaultLoadedVersions(): List<String> {
         return latestYarnVersion?.let(::listOf) ?: listOf()
     }
