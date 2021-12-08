@@ -40,7 +40,7 @@ object YarrnNamespace : Namespace("yarrn") {
 
     override fun getAllVersions(): Sequence<String> = singleSequenceOf("infdev")
     override fun getDefaultLoadedVersions(): List<String> = listOf()
-    override fun getDefaultVersion(channel: () -> String): String = "infdev"
+    override val defaultVersion: String = "infdev"
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
 

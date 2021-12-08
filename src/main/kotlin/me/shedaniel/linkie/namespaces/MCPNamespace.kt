@@ -64,7 +64,7 @@ object MCPNamespace : Namespace("mcp") {
     }
 
     override fun supportsFieldDescription(): Boolean = false
-    override fun getDefaultLoadedVersions(): List<String> = listOf(getDefaultVersion())
+    override fun getDefaultLoadedVersions(): List<String> = listOf(defaultVersion)
     fun getAllBotVersions(): Sequence<String> = mcpConfigSnapshots.keys.asSequence().map { it.toString() }
     override fun getAllVersions(): Sequence<String> = getAllBotVersions() + newMcpVersions.keys.map(Version::toString)
 

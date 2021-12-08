@@ -93,12 +93,8 @@ object MojangNamespace : Namespace("mojang") {
         latestSnapshot = versionManifest.jsonObject["latest"]!!.jsonObject["snapshot"]!!.jsonPrimitive.content
     }
 
-    override fun getDefaultVersion(channel: () -> String): String = when (channel()) {
-        "snapshot" -> latestSnapshot
-        else -> latestRelease
-    }
-
-    override fun getAvailableMappingChannels(): List<String> = listOf("release", "snapshot")
+    override val defaultVersion: String
+        get() = latestRelease
 
     private fun MappingsBuilder.readMojangMappings(client: String, server: String) {
         var clientMappings: Sequence<String>? = null

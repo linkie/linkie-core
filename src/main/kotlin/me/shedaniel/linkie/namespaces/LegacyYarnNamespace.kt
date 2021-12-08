@@ -1,8 +1,7 @@
 package me.shedaniel.linkie.namespaces
 
-import me.shedaniel.linkie.MappingsSource
-import java.net.URL
 import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromMaven
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
@@ -12,6 +11,7 @@ import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.singleSequenceOf
 import me.shedaniel.linkie.utils.toVersion
 import org.dom4j.io.SAXReader
+import java.net.URL
 
 object LegacyYarnNamespace : Namespace("legacy-yarn") {
     const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
@@ -60,7 +60,8 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
 
     override fun getAllVersions(): Sequence<String> = workingLegacyFabricVersions.asSequence() + singleSequenceOf("1.2.5")
     override fun getDefaultLoadedVersions(): List<String> = listOf()
-    override fun getDefaultVersion(channel: () -> String): String = latestLegacyFabricVersions
+    override val defaultVersion: String
+        get() = latestLegacyFabricVersions
 
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
