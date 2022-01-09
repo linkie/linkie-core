@@ -3,15 +3,17 @@ package me.shedaniel.linkie.namespaces
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.Class
-import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.ZipFile
 import me.shedaniel.linkie.utils.filterNotBlank
 import me.shedaniel.linkie.utils.lines
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toAsyncZip
+import me.shedaniel.linkie.utils.tryToVersion
 import me.shedaniel.linkie.utils.warn
 import java.io.InputStream
 import java.net.URL
@@ -32,7 +34,8 @@ object YarnNamespace : Namespace("yarn") {
 
     val yarnBuilds = mutableMapOf<String, YarnBuild>()
     val latestYarnVersion: String?
-        get() = yarnBuilds.keys.firstOrNull { it.contains('.') && !it.contains('-') }
+        get() = yarnBuilds.keys.filter { it.contains('.') && !it.contains('-') }
+            .maxByOrNull { it.tryToVersion() ?: Version() }
 
     init {
         YarnV2BlackList.loadData()
@@ -55,6 +58,9 @@ object YarnNamespace : Namespace("yarn") {
         }
     }
 
+    override val defaultVersion: String
+        get() = latestYarnVersion!!
+
     override fun getDefaultLoadedVersions(): List<String> {
         return latestYarnVersion?.let(::listOf) ?: listOf()
     }
@@ -67,22 +73,9 @@ object YarnNamespace : Namespace("yarn") {
     override suspend fun reloadData() {
         val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
         json.decodeFromString(ListSerializer(YarnBuild.serializer()), URL("https://meta.fabricmc.net/v2/versions/yarn").readText())
-            .forEach { buildMap.getOrPut(it.gameVersion, { mutableListOf() }).add(it) }
+            .forEach { buildMap.getOrPut(it.gameVersion) { mutableListOf() }.add(it) }
         buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.build }?.apply { yarnBuilds[version] = this } }
     }
-
-    override fun getDefaultVersion(channel: () -> String): String =
-        when (channel()) {
-            "patchwork" -> "1.14.4"
-            "snapshot" -> yarnBuilds.keys.first()
-            else -> latestYarnVersion!!
-        }
-
-    override fun getAvailableMappingChannels(): List<String> = listOf(
-        "release",
-        "snapshot",
-        "patchwork",
-    )
 
     suspend fun MappingsContainer.loadIntermediaryFromMaven(
         mcVersion: String,

@@ -11,7 +11,11 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsEntry
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespaces
-import me.shedaniel.linkie.namespaces.*
+import me.shedaniel.linkie.namespaces.MojangHashedNamespace
+import me.shedaniel.linkie.namespaces.MCPNamespace
+import me.shedaniel.linkie.namespaces.MojangNamespace
+import me.shedaniel.linkie.namespaces.MojangSrgNamespace
+import me.shedaniel.linkie.namespaces.YarnNamespace
 import me.shedaniel.linkie.obfMergedName
 import me.shedaniel.linkie.utils.ClassResultList
 import me.shedaniel.linkie.utils.FieldResultList
@@ -64,7 +68,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            assertEquals("1.17.1", YarnNamespace.getDefaultVersion())
+            assertEquals("1.18", YarnNamespace.defaultVersion)
             YarnNamespace.getDefaultProvider().get()
         }
     }
@@ -86,7 +90,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
             delay(2000)
             while (MCPNamespace.reloading) delay(100)
-            assertEquals("1.16.5", MCPNamespace.getDefaultVersion())
+            assertEquals("1.16.5", MCPNamespace.defaultVersion)
             val container = MCPNamespace.getDefaultProvider().get()
             container
         }
@@ -109,7 +113,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            assertEquals("1.18", MojangNamespace.getDefaultVersion())
+            assertEquals("1.18", MojangNamespace.defaultVersion)
             val container = MojangNamespace.getDefaultProvider().get()
             container
         }
@@ -121,7 +125,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangSrgNamespace)))
             delay(2000)
             while (MojangSrgNamespace.reloading) delay(100)
-            assertEquals("1.17.1", MojangSrgNamespace.getDefaultVersion())
+            assertEquals("1.18", MojangSrgNamespace.defaultVersion)
             val container = MojangSrgNamespace.getDefaultProvider().get()
             container
         }

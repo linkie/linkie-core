@@ -53,14 +53,10 @@ abstract class Namespace(val id: String) {
         selfReloading = false
     }
 
-    open fun getAvailableMappingChannels(): List<String> = listOf("release")
-    open fun getDefaultMappingChannel(): String = getAvailableMappingChannels().first()
-
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): Sequence<String>
     abstract suspend fun reloadData()
-    open fun getDefaultVersion(channel: () -> String = this::getDefaultMappingChannel): String =
-        getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
+    open val defaultVersion: String get() = getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
 
     fun getAllSortedVersions(): List<String> =
         getAllVersions().sortedWith(nullsFirst(compareBy { it.tryToVersion() })).toList().asReversed()
@@ -331,8 +327,8 @@ abstract class Namespace(val id: String) {
         return MappingsProvider.supply(this, version, entry.isCached(version)) { entry.applyVersion(version) }
     }
 
-    suspend fun getDefaultProvider(channel: () -> String = this::getDefaultMappingChannel): MappingsProvider {
-        return getProvider(getDefaultVersion(channel))
+    suspend fun getDefaultProvider(): MappingsProvider {
+        return getProvider(defaultVersion)
     }
 
     open fun supportsMixin(): Boolean = false

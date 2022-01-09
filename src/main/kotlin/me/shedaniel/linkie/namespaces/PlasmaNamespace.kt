@@ -4,8 +4,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.MappingsContainer
+import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyJar
@@ -38,5 +38,6 @@ object PlasmaNamespace : Namespace("plasma") {
     }
 
     override fun supportsMixin(): Boolean = true
-    override fun getDefaultVersion(channel: () -> String): String = "b1.7.3"
+
+    override val defaultVersion: String = "b1.7.3"
 }
