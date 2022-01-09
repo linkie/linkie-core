@@ -1,11 +1,11 @@
 package me.shedaniel.linkie.namespaces
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.*
+import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyInputStream
+import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyInputStream
 import me.shedaniel.linkie.utils.*
 import org.dom4j.io.SAXReader
-import java.io.InputStream
 import java.net.URL
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -80,53 +80,7 @@ object QuiltMappingsNamespace : Namespace("quilt-mappings") {
 	suspend fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
 		url.toAsyncZip().forEachEntry { path, entry ->
 			if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
-				loadIntermediaryFromTinyInputStream(entry.bytes.inputStream())
-			}
-		}
-	}
-
-	suspend fun MappingsContainer.loadIntermediaryFromTinyInputStream(stream: InputStream) {
-		val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
-		val isSplit = !mappings.namespaces.contains("official")
-		mappings.classEntries.forEach { entry ->
-			val hashed = entry["hashed"]
-			getOrCreateClass(hashed).apply {
-				if (isSplit) {
-					obfName.client = entry["client"]
-					obfName.server = entry["server"]
-				} else obfName.merged = entry["official"]
-			}
-		}
-		mappings.methodEntries.forEach { entry ->
-			val hashedTriple = entry["hashed"]
-			getOrCreateClass(hashedTriple.owner).apply {
-				getOrCreateMethod(hashedTriple.name, hashedTriple.desc).apply {
-					if (isSplit) {
-						val clientTriple = entry["client"]
-						val serverTriple = entry["server"]
-						obfName.client = clientTriple?.name
-						obfName.server = serverTriple?.name
-					} else {
-						val officialTriple = entry["official"]
-						obfName.merged = officialTriple?.name
-					}
-				}
-			}
-		}
-		mappings.fieldEntries.forEach { entry ->
-			val hashedTriple = entry["hashed"]
-			getOrCreateClass(hashedTriple.owner).apply {
-				getOrCreateField(hashedTriple.name, hashedTriple.desc).apply {
-					if (isSplit) {
-						val clientTriple = entry["client"]
-						val serverTriple = entry["server"]
-						obfName.client = clientTriple?.name
-						obfName.server = serverTriple?.name
-					} else {
-						val officialTriple = entry["official"]
-						obfName.merged = officialTriple?.name
-					}
-				}
+				loadIntermediaryFromTinyInputStream(entry.bytes.inputStream(), "hashed")
 			}
 		}
 	}
@@ -145,53 +99,7 @@ object QuiltMappingsNamespace : Namespace("quilt-mappings") {
 	suspend fun MappingsContainer.loadNamedFromTinyJar(url: URL, showError: Boolean = true) {
 		url.toAsyncZip().forEachEntry { path, entry ->
 			if (!entry.isDirectory && path.split("/").lastOrNull() == "mappings.tiny") {
-				loadNamedFromTinyInputStream(entry.bytes.inputStream(), showError)
-			}
-		}
-	}
-
-	fun MappingsContainer.loadNamedFromTinyInputStream(stream: InputStream, showError: Boolean = true) {
-		val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
-		mappings.classEntries.forEach { entry ->
-			val hashedMojmap = entry["hashed"]
-			val clazz = getClass(hashedMojmap)
-			if (clazz == null) {
-				if (showError) warn("Class $hashedMojmap does not have hashedMojmap name! Skipping!")
-			} else clazz.apply {
-				if (mappedName == null)
-					mappedName = entry["named"]
-			}
-		}
-		mappings.methodEntries.forEach { entry ->
-			val hashedTriple = entry["hashed"]
-			val clazz = getClass(hashedTriple.owner)
-			if (clazz == null) {
-				if (showError) warn("Class ${hashedTriple.owner} does not have hashed name! Skipping!")
-			} else clazz.apply {
-				val method = getMethod(hashedTriple.name, hashedTriple.desc)
-				if (method == null) {
-					if (showError) warn("Method ${hashedTriple.name} in ${hashedTriple.owner} does not have hashed name! Skipping!")
-				} else method.apply {
-					val namedTriple = entry["named"]
-					if (mappedName == null)
-						mappedName = namedTriple?.name
-				}
-			}
-		}
-		mappings.fieldEntries.forEach { entry ->
-			val hashedTriple = entry["hashed"]
-			val clazz = getClass(hashedTriple.owner)
-			if (clazz == null) {
-				if (showError) warn("Class ${hashedTriple.owner} does not have hashed name! Skipping!")
-			} else clazz.apply {
-				val field = getField(hashedTriple.name)
-				if (field == null) {
-					if (showError) warn("Field ${hashedTriple.name} in ${hashedTriple.owner} does not have hashed name! Skipping!")
-				} else field.apply {
-					val namedTriple = entry["named"]
-					if (mappedName == null)
-						mappedName = namedTriple?.name
-				}
+				loadNamedFromTinyInputStream(entry.bytes.inputStream(), showError, "hashed")
 			}
 		}
 	}
