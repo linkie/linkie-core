@@ -19,7 +19,8 @@ object QuiltMappingsNamespace : Namespace("quilt-mappings") {
 
 	val quiltMappingsBuilds = mutableMapOf<String, QuiltMappingsBuild>()
 	val latestQuiltMappingsVersion: String?
-		get() = quiltMappingsBuilds.keys.stream().map { it.tryToVersion() }.filter { it.toString().last().isDigit() && !it.toString().contains("-") }.sorted { a, b -> b!!.compareTo(a!!) }.findFirst().map { it.toString() }.get()
+		get() = quiltMappingsBuilds.keys.filter { it.contains('.') && !it.contains("-") }
+			.maxByOrNull { it.tryToVersion() ?: Version() }
 
 	init {
 		buildSupplier {
@@ -42,7 +43,7 @@ object QuiltMappingsNamespace : Namespace("quilt-mappings") {
 	}
 
 	override fun getDefaultLoadedVersions(): List<String> {
-		return latestQuiltMappingsVersion?.let(::listOf) ?: listOf()
+		return emptyList()
 	}
 
 	override fun getAllVersions(): Sequence<String> = quiltMappingsBuilds.keys.asSequence()
@@ -59,28 +60,15 @@ object QuiltMappingsNamespace : Namespace("quilt-mappings") {
 				.element("versions")
 				.elementIterator("version")
 				.asSequence()
-				.map { "org.quitlmc:quilt-mappings:${it.text}" }
+				.map { it.text }
 				.forEach {
-					buildMap.computeIfAbsent(it.substring(it.lastIndexOf(":") + 1, it.lastIndexOf("+"))) {
+					buildMap.computeIfAbsent(it.substring(0, it.lastIndexOf("+"))) {
 						mutableListOf()
-					}.add(QuiltMappingsBuild(it))
+					}.add(QuiltMappingsBuild("org.quitlmc:quilt-mappings:$it"))
 				}
 
 		buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.maven.substring(it.maven.lastIndexOf(".") + 1, it.maven.length) }?.apply { quiltMappingsBuilds[version] = this } }
 	}
-
-	override fun getDefaultVersion(channel: () -> String): String =
-			when (channel()) {
-				"patchwork" -> "1.14.4"
-				"snapshot" -> quiltMappingsBuilds.keys.first()
-				else -> latestQuiltMappingsVersion!!
-			}
-
-	override fun getAvailableMappingChannels(): List<String> = listOf(
-			"release",
-			"snapshot",
-			"patchwork",
-	)
 
 	suspend fun MappingsContainer.loadIntermediaryFromMaven(
 			mcVersion: String,
