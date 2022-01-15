@@ -103,8 +103,8 @@ object YarnNamespace : Namespace("yarn") {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         val isSplit = !mappings.namespaces.contains("official")
         mappings.classEntries.forEach { entry ->
-            val hashed = entry[intermediaryNamespace]
-            getOrCreateClass(hashed).apply {
+            val intermediary = entry[intermediaryNamespace]
+            getOrCreateClass(intermediary).apply {
                 if (isSplit) {
                     obfName.client = entry["client"]
                     obfName.server = entry["server"]
@@ -112,9 +112,9 @@ object YarnNamespace : Namespace("yarn") {
             }
         }
         mappings.methodEntries.forEach { entry ->
-            val hashedTriple = entry[intermediaryNamespace]
-            getOrCreateClass(hashedTriple.owner).apply {
-                getOrCreateMethod(hashedTriple.name, hashedTriple.desc).apply {
+            val intermediaryTriple = entry[intermediaryNamespace]
+            getOrCreateClass(intermediaryTriple.owner).apply {
+                getOrCreateMethod(intermediaryTriple.name, intermediaryTriple.desc).apply {
                     if (isSplit) {
                         val clientTriple = entry["client"]
                         val serverTriple = entry["server"]
@@ -128,9 +128,9 @@ object YarnNamespace : Namespace("yarn") {
             }
         }
         mappings.fieldEntries.forEach { entry ->
-            val hashedTriple = entry[intermediaryNamespace]
-            getOrCreateClass(hashedTriple.owner).apply {
-                getOrCreateField(hashedTriple.name, hashedTriple.desc).apply {
+            val intermediaryTriple = entry[intermediaryNamespace]
+            getOrCreateClass(intermediaryTriple.owner).apply {
+                getOrCreateField(intermediaryTriple.name, intermediaryTriple.desc).apply {
                     if (isSplit) {
                         val clientTriple = entry["client"]
                         val serverTriple = entry["server"]
@@ -185,24 +185,24 @@ object YarnNamespace : Namespace("yarn") {
     ) {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         mappings.classEntries.forEach { entry ->
-            val hashedMojmap = entry[intermediaryNamespace]
-            val clazz = getClass(hashedMojmap)
+            val intermediary = entry[intermediaryNamespace]
+            val clazz = getClass(intermediary)
             if (clazz == null) {
-                if (showError) warn("Class $hashedMojmap does not have $intermediaryNamespace name! Skipping!")
+                if (showError) warn("Class $intermediary does not have $intermediaryNamespace name! Skipping!")
             } else clazz.apply {
                 if (mappedName == null)
                     mappedName = entry["named"]
             }
         }
         mappings.methodEntries.forEach { entry ->
-            val hashedTriple = entry[intermediaryNamespace]
-            val clazz = getClass(hashedTriple.owner)
+            val intermediaryTriple = entry[intermediaryNamespace]
+            val clazz = getClass(intermediaryTriple.owner)
             if (clazz == null) {
-                if (showError) warn("Class ${hashedTriple.owner} does not have $intermediaryNamespace name! Skipping!")
+                if (showError) warn("Class ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
             } else clazz.apply {
-                val method = getMethod(hashedTriple.name, hashedTriple.desc)
+                val method = getMethod(intermediaryTriple.name, intermediaryTriple.desc)
                 if (method == null) {
-                    if (showError) warn("Method ${hashedTriple.name} in ${hashedTriple.owner} does not have $intermediaryNamespace name! Skipping!")
+                    if (showError) warn("Method ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
                 } else method.apply {
                     val namedTriple = entry["named"]
                     if (mappedName == null)
@@ -211,14 +211,14 @@ object YarnNamespace : Namespace("yarn") {
             }
         }
         mappings.fieldEntries.forEach { entry ->
-            val hashedTriple = entry[intermediaryNamespace]
-            val clazz = getClass(hashedTriple.owner)
+            val intermediaryTriple = entry[intermediaryNamespace]
+            val clazz = getClass(intermediaryTriple.owner)
             if (clazz == null) {
-                if (showError) warn("Class ${hashedTriple.owner} does not have $intermediaryNamespace name! Skipping!")
+                if (showError) warn("Class ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
             } else clazz.apply {
-                val field = getField(hashedTriple.name)
+                val field = getField(intermediaryTriple.name)
                 if (field == null) {
-                    if (showError) warn("Field ${hashedTriple.name} in ${hashedTriple.owner} does not have $intermediaryNamespace name! Skipping!")
+                    if (showError) warn("Field ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
                 } else field.apply {
                     val namedTriple = entry["named"]
                     if (mappedName == null)
