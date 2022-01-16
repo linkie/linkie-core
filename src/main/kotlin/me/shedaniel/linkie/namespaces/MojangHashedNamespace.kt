@@ -13,7 +13,7 @@ import me.shedaniel.linkie.optimumName
 import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.singleSequenceOf
 import org.quiltmc.mappings_hasher.MappingsHasher
-import org.quiltmc.mappings_hasher.cadixdev.lorenz.MappingSet
+import org.quiltmc.mappings_hasher.org.cadixdev.lorenz.MappingSet
 import java.io.Closeable
 import java.util.jar.JarFile
 
@@ -66,7 +66,7 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
         result.libraries.forEach {
             hasher.addLibrary(JarFile(it.absolutePath).also(toClose::add))
         }
-        val set = hasher.generate(JarFile(result.minecraftFile.absolutePath).also(toClose::add))
+        val set = hasher.generate(JarFile(result.minecraftFile.absolutePath).also(toClose::add)) { original.getClassMapping(it.name()).isPresent }
         toClose.forEach(Closeable::close)
         classes.clear()
         set.topLevelClassMappings.asSequence()
