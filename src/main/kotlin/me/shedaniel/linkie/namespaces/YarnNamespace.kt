@@ -7,6 +7,7 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.isSpecialGenerated
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.ZipFile
 import me.shedaniel.linkie.utils.filterNotBlank
@@ -179,12 +180,13 @@ object YarnNamespace : Namespace("yarn") {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         mappings.classEntries.forEach { entry ->
             val intermediary = entry["intermediary"]
-            val clazz = getClass(intermediary)
+            val named = entry["named"]
+            val clazz = getClass(intermediary, create = named == intermediary)
             if (clazz == null) {
                 if (showError) warn("Class $intermediary does not have intermediary name! Skipping!")
             } else clazz.apply {
                 if (mappedName == null)
-                    mappedName = entry["named"]
+                    mappedName = named
             }
         }
         mappings.methodEntries.forEach { entry ->
@@ -193,11 +195,12 @@ object YarnNamespace : Namespace("yarn") {
             if (clazz == null) {
                 if (showError) warn("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
             } else clazz.apply {
-                val method = getMethod(intermediaryTriple.name, intermediaryTriple.desc)
+                val namedTriple = entry["named"]
+                val method = getMethod(intermediaryTriple.name, intermediaryTriple.desc,
+                    create = intermediaryTriple.name.isSpecialGenerated || namedTriple?.name == intermediaryTriple.name)
                 if (method == null) {
                     if (showError) warn("Method ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
                 } else method.apply {
-                    val namedTriple = entry["named"]
                     if (mappedName == null)
                         mappedName = namedTriple?.name
                 }
@@ -209,11 +212,12 @@ object YarnNamespace : Namespace("yarn") {
             if (clazz == null) {
                 if (showError) warn("Class ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
             } else clazz.apply {
-                val field = getField(intermediaryTriple.name)
+                val namedTriple = entry["named"]
+                val field = getField(intermediaryTriple.name, intermediaryTriple.desc,
+                    create = namedTriple?.name == intermediaryTriple.name)
                 if (field == null) {
                     if (showError) warn("Field ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have intermediary name! Skipping!")
                 } else field.apply {
-                    val namedTriple = entry["named"]
                     if (mappedName == null)
                         mappedName = namedTriple?.name
                 }

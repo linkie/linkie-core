@@ -40,10 +40,14 @@ data class MappingsContainer(
         namespace = namespace
     )
 
-    fun getClass(intermediaryName: String): Class? = classes[intermediaryName]
+    fun getClass(intermediaryName: String, create: Boolean = false): Class? = if (!create) {
+        classes[intermediaryName]
+    } else {
+        classes.getOrPut(intermediaryName) { Class(intermediaryName) }
+    }
 
     fun getOrCreateClass(intermediaryName: String): Class =
-        classes.getOrPut(intermediaryName) { Class(intermediaryName) }
+        getClass(intermediaryName, true)!!
 
     fun prettyPrint() {
         buildString {
@@ -406,6 +410,9 @@ var MappingsEntry.obfMergedName: String?
         obfName.merged = value
     }
 
+val String.isSpecialGenerated: Boolean
+    get() = startsWith("<") && endsWith(">")
+
 @Serializable
 data class Class(
     override var intermediaryName: String,
@@ -417,17 +424,27 @@ data class Class(
     val members: Sequence<MappingsMember>
         get() = methods.asSequence() + fields.asSequence()
 
-    fun getMethod(intermediaryName: String, intermediaryDesc: String): Method? =
+    private fun _getMethod(intermediaryName: String, intermediaryDesc: String): Method? =
         methods.firstOrNull { it.intermediaryName == intermediaryName && it.intermediaryDesc == intermediaryDesc }
 
+    fun getMethod(intermediaryName: String, intermediaryDesc: String, create: Boolean = false): Method? =
+        _getMethod(intermediaryName, intermediaryDesc) ?: if (create) {
+            Method(intermediaryName, intermediaryDesc).also { methods.add(it) }
+        } else null
+
     fun getOrCreateMethod(intermediaryName: String, intermediaryDesc: String): Method =
-        getMethod(intermediaryName, intermediaryDesc) ?: Method(intermediaryName, intermediaryDesc).also { methods.add(it) }
+        getMethod(intermediaryName, intermediaryDesc, true)!!
 
     fun getField(intermediaryName: String): Field? =
         fields.firstOrNull { it.intermediaryName == intermediaryName }
 
+    fun getField(intermediaryName: String, intermediaryDesc: String, create: Boolean = false): Field? =
+        getField(intermediaryName) ?: if (create) {
+            Field(intermediaryName, intermediaryDesc).also { fields.add(it) }
+        } else null
+
     fun getOrCreateField(intermediaryName: String, intermediaryDesc: String): Field =
-        getField(intermediaryName) ?: Field(intermediaryName, intermediaryDesc).also { fields.add(it) }
+        getField(intermediaryName, intermediaryDesc, true)!!
 
     fun clone(): Class = Class(
         intermediaryName,

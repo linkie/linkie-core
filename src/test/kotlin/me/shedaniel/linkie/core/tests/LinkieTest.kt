@@ -21,6 +21,7 @@ import me.shedaniel.linkie.utils.ClassResultList
 import me.shedaniel.linkie.utils.FieldResultList
 import me.shedaniel.linkie.utils.MappingsQuery
 import me.shedaniel.linkie.utils.MatchAccuracy
+import me.shedaniel.linkie.utils.MemberEntry
 import me.shedaniel.linkie.utils.MethodResultList
 import me.shedaniel.linkie.utils.QueryContext
 import me.shedaniel.linkie.utils.ResultHolder
@@ -247,10 +248,10 @@ class LinkieTest {
                 append(' ')
                 val member: MappingsEntry = if (holder.value is Class) {
                     holder.value as Class
-                } else (holder.value as Pair<Class, Any>).second as MappingsEntry
+                } else (holder.value as MemberEntry<*>).member
                 append(member.javaClass.simpleName)
                 append(' ')
-                append(member.obfMergedName)
+                append(member.obfMergedName ?: "OBF_NULL")
                 append(" -> ")
                 append(member.intermediaryName)
                 if (member.mappedName != null) {
@@ -271,18 +272,18 @@ class LinkieTest {
         inline fun assertMethod(query: String, fuzzy: Boolean, expected: String, value: (method: Method) -> Boolean) {
             val list = query(query, fuzzy)
             assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
-            assert(list.first().value is Pair<*, *>
-                    && (list.first().value as Pair<*, *>).second is Method) { "Query \"$query\" did not return a method! ${list.offerList()}" }
-            assert(value((list.first().value as Pair<*, *>).second as Method)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            assert(list.first().value is MemberEntry<*>
+                    && (list.first().value as MemberEntry<*>).member is Method) { "Query \"$query\" did not return a method! ${list.offerList()}" }
+            assert(value((list.first().value as MemberEntry<*>).member as Method)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
             println("\n$query -> $expected" + list.offerList())
         }
 
         inline fun assertField(query: String, fuzzy: Boolean, expected: String, value: (field: Field) -> Boolean) {
             val list = query(query, fuzzy)
             assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
-            assert(list.first().value is Pair<*, *>
-                    && (list.first().value as Pair<*, *>).second is Field) { "Query \"$query\" did not return a field! ${list.offerList()}" }
-            assert(value((list.first().value as Pair<*, *>).second as Field)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            assert(list.first().value is MemberEntry<*>
+                    && (list.first().value as MemberEntry<*>).member is Field) { "Query \"$query\" did not return a field! ${list.offerList()}" }
+            assert(value((list.first().value as MemberEntry<*>).member as Field)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
             println("\n$query -> $expected" + list.offerList())
         }
 

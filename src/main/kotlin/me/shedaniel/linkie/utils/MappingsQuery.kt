@@ -16,9 +16,14 @@ import me.shedaniel.linkie.optimumName
 import me.shedaniel.linkie.optimumSimpleName
 import kotlin.math.pow
 
+data class MemberEntry<T : MappingsMember>(
+    val owner: Class,
+    val member: MappingsMember,
+)
+
 typealias ClassResultList = List<ResultHolder<Class>>
-typealias FieldResultList = List<ResultHolder<Pair<Class, Field>>>
-typealias MethodResultList = List<ResultHolder<Pair<Class, Method>>>
+typealias FieldResultList = List<ResultHolder<MemberEntry<Field>>>
+typealias MethodResultList = List<ResultHolder<MemberEntry<Method>>>
 
 enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?, val multiplier: Double) {
     MAPPED({ mappedName }, 1.0),
@@ -61,7 +66,7 @@ object MappingsQuery {
         val parentDef: QueryDefinition,
         val memberDef: QueryDefinition,
     ) {
-        fun toSimplePair(): Pair<Class, T> = parent to member
+        fun toSimplePair(): MemberEntry<T> = MemberEntry(parent, member)
     }
 
     fun errorNoResultsFound(type: MappingsEntryType?, searchKey: String) {
@@ -128,7 +133,7 @@ object MappingsQuery {
     suspend fun <T : MappingsMember> queryMember(
         context: QueryContext,
         memberGetter: (Class) -> Sequence<T>,
-    ): QueryResult<MappingsContainer, List<ResultHolder<Pair<Class, T>>>> {
+    ): QueryResult<MappingsContainer, List<ResultHolder<MemberEntry<T>>>> {
         val searchKey = context.searchKey
         val classKey = if (searchKey.contains('/')) searchKey.substringBeforeLast('/') else ""
         val memberKey = searchKey.onlyClass()
@@ -148,7 +153,7 @@ object MappingsQuery {
             }
         }.flatMap { it }.distinctTwoBy({ it.member }, { it.parent }).toList()
 
-        val sortedMembers: List<ResultHolder<Pair<Class, T>>> = when {
+        val sortedMembers: List<ResultHolder<MemberEntry<T>>> = when {
             // Class and member both wildcard
             isClassWildcard && isMemberWildcard -> members.sortedWith(
                 compareBy<MemberResultMore<T>> { it.parent.optimumName.onlyClass() }
@@ -167,9 +172,9 @@ object MappingsQuery {
                 }
             // Simple search
             else -> members.map { it.toSimplePair() hold it.memberDef(it.member)!!.similarity(memberKey) }
-        }.sortedWith(compareByDescending<ResultHolder<Pair<Class, T>>> { it.score }
-            .thenBy { it.value.first.optimumName.onlyClass() }
-            .thenBy { it.value.second.intermediaryName })
+        }.sortedWith(compareByDescending<ResultHolder<MemberEntry<T>>> { it.score }
+            .thenBy { it.value.owner.optimumName.onlyClass() }
+            .thenBy { it.value.member.intermediaryName })
 
         return QueryResult(mappings, sortedMembers)
     }
