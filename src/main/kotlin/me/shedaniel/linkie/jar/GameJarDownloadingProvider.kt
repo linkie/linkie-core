@@ -5,7 +5,6 @@ import com.soywiz.klock.minutes
 import com.soywiz.korio.async.async
 import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -17,7 +16,6 @@ import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.valueKeeper
 import java.net.URL
-import kotlin.time.measureTime
 
 class GameJarDownloadingProvider(private val config: LinkieConfig) : GameJarProvider {
     val manifest by valueKeeper(30.minutes) { Json { ignoreUnknownKeys = true }.decodeFromString(VersionManifest.serializer(), URL("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json").readText()) }
@@ -68,7 +66,7 @@ class GameJarDownloadingProvider(private val config: LinkieConfig) : GameJarProv
 
     @Serializable
     data class VersionManifest(
-        val versions: List<MinecraftVersonEntry>
+        val versions: List<MinecraftVersonEntry>,
     )
 
     @Serializable
@@ -80,7 +78,7 @@ class GameJarDownloadingProvider(private val config: LinkieConfig) : GameJarProv
     @Serializable
     data class VersionJson(
         val downloads: Downloads,
-        val libraries: List<Library>
+        val libraries: List<Library>,
     )
 
     @Serializable
