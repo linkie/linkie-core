@@ -5,6 +5,7 @@ import com.soywiz.klock.minutes
 import com.soywiz.korio.async.async
 import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -16,6 +17,7 @@ import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.valueKeeper
 import java.net.URL
+import kotlin.time.measureTime
 
 class GameJarDownloadingProvider(private val config: LinkieConfig) : GameJarProvider {
     val manifest by valueKeeper(30.minutes) { Json { ignoreUnknownKeys = true }.decodeFromString(VersionManifest.serializer(), URL("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json").readText()) }
@@ -59,10 +61,10 @@ class GameJarDownloadingProvider(private val config: LinkieConfig) : GameJarProv
     }
 
     suspend fun getMinecraftJarFileStore(version: String): VfsFile =
-        (config.cacheDirectory / "minecraft-jars").also { it.mkdir() } / "$version-client.jar"
+        (config.cacheDirectory / "minecraft-jars").also { it.mkdirs() } / "$version-client.jar"
 
     suspend fun getLibraryFileStore(library: Library): VfsFile =
-        (config.cacheDirectory / "minecraft-jars/libraries/${library.downloads.artifact.path}").ensureParents()
+        (config.cacheDirectory / "minecraft-jars/libraries/${library.downloads.artifact.path}").also { it.parent.mkdirs() }
 
     @Serializable
     data class VersionManifest(
