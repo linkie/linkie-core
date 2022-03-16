@@ -17,9 +17,15 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
     const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
     const val legacyFabricMaven = "https://maven.legacyfabric.net"
     val legacyFabricVersions = mutableMapOf<String, String?>(
+        "1.3.2" to null,
+        "1.4.7" to null,
+        "1.5.2" to null,
         "1.6.4" to null,
         "1.7.10" to null,
         "1.8.9" to null,
+        "1.9.4" to null,
+        "1.10.2" to null,
+        "1.11.2" to null,
         "1.12.2" to null,
         "1.13.2" to null,
     )

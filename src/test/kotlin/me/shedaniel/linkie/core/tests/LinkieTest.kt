@@ -11,11 +11,7 @@ import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsEntry
 import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespaces
-import me.shedaniel.linkie.namespaces.MojangHashedNamespace
-import me.shedaniel.linkie.namespaces.MCPNamespace
-import me.shedaniel.linkie.namespaces.MojangNamespace
-import me.shedaniel.linkie.namespaces.MojangSrgNamespace
-import me.shedaniel.linkie.namespaces.YarnNamespace
+import me.shedaniel.linkie.namespaces.*
 import me.shedaniel.linkie.obfMergedName
 import me.shedaniel.linkie.utils.ClassResultList
 import me.shedaniel.linkie.utils.FieldResultList
@@ -69,8 +65,19 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            assertEquals("1.18", YarnNamespace.defaultVersion)
+            assertEquals("1.18.1", YarnNamespace.defaultVersion)
             YarnNamespace.getDefaultProvider().get()
+        }
+    }
+
+    @Test
+    fun quiltMappings() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(QuiltMappingsNamespace)))
+            delay(2000)
+            while (QuiltMappingsNamespace.reloading) delay(100)
+            assertEquals("1.18.1", QuiltMappingsNamespace.defaultVersion)
+            QuiltMappingsNamespace.getDefaultProvider().get()
         }
     }
 
@@ -103,7 +110,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            assertEquals("1.18", MojangNamespace.defaultVersion)
+            assertEquals("1.18.1", MojangNamespace.defaultVersion)
             val container = MojangNamespace.getDefaultProvider().get()
             container
         }
@@ -115,7 +122,7 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangSrgNamespace)))
             delay(2000)
             while (MojangSrgNamespace.reloading) delay(100)
-            assertEquals("1.18", MojangSrgNamespace.defaultVersion)
+            assertEquals("1.18.1", MojangSrgNamespace.defaultVersion)
             val container = MojangSrgNamespace.getDefaultProvider().get()
             container
         }
