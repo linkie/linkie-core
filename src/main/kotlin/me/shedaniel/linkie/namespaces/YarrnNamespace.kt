@@ -22,12 +22,12 @@ object YarrnNamespace : Namespace("yarrn") {
                     MappingsContainer(it, name = "Yarrn").apply {
                         loadIntermediaryFromMaven(
                             mcVersion = yarrnBuildInf20100618.substringBefore('+'),
-                            repo = "https://maven.concern.i.ng",
+                            repo = "https://maven.concern.i.ng/releases",
                             group = "net.textilemc.intermediary"
                         )
                         mappingsSource = loadNamedFromMaven(
                             yarnVersion = yarrnBuildInf20100618,
-                            repo = "https://maven.concern.i.ng",
+                            repo = "https://maven.concern.i.ng/releases",
                             group = "net.textilemc.yarrn",
                             id = "yarrn",
                             showError = false
@@ -45,7 +45,7 @@ object YarrnNamespace : Namespace("yarrn") {
     override fun supportsAW(): Boolean = true
 
     override suspend fun reloadData() {
-        val pomYarrn = URL("https://maven.concern.i.ng/net/textilemc/yarrn/maven-metadata.xml").readText()
+        val pomYarrn = URL("https://maven.concern.i.ng/releases/net/textilemc/yarrn/maven-metadata.xml").readText()
         yarrnBuildInf20100618 = SAXReader().read(pomYarrn.reader()).rootElement
             .element("versioning")
             .element("versions")
