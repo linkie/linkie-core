@@ -18,7 +18,7 @@ import kotlin.math.pow
 
 data class MemberEntry<T : MappingsMember>(
     val owner: Class,
-    val member: MappingsMember,
+    val member: T,
 )
 
 typealias ClassResultList = List<ResultHolder<Class>>
