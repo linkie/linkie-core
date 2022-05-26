@@ -52,7 +52,7 @@ dependencies {
 
     compile("com.soywiz.korlibs.korio:korio:$korlibs_version")
     compile("com.squareup.okio:okio-multiplatform:$okio_version")
-    compile("org.quiltmc:mappings-hasher:1.1.0:all")
+    compile("org.quiltmc:mappings-hasher:1.1.1:all")
 }
 
 compileKotlin {
