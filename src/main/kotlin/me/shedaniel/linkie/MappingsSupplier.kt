@@ -120,14 +120,14 @@ private class CachedMappingsSupplier(
     override fun isApplicable(version: String): Boolean = mappingsSupplier.isApplicable(version)
 
     override suspend fun isCached(version: String): Boolean {
-        val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdir() }
+        val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
         val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie5"
         return cachedFile.exists()
     }
 
     override suspend fun applyVersion(version: String): MappingsContainer {
-        val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdir() }
+        val cacheFolder = (Namespaces.cacheFolder / "mappings").also { it.mkdirs() }
         val uuid = uuidGetter(version)
         val cachedFile = cacheFolder / "${namespace.id}-$uuid.linkie5"
         if (cachedFile.exists()) {
