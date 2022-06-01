@@ -18,7 +18,7 @@ data class LinkieConfig(
     companion object {
         @JvmStatic
         val DEFAULT = LinkieConfig(
-            cacheDirectory = (localCurrentDirVfs / ".linkie-cache").jail(),
+            cacheDirectory = localCurrentDirVfs / ".linkie-cache",
             maximumLoadedVersions = 2,
             namespaces = listOf(),
             reloadCycleDuration = 1800000.milliseconds,
