@@ -453,6 +453,8 @@ data class Class(
         methods.asSequence().map(Method::clone).toMutableList(),
         fields.asSequence().map(Field::clone).toMutableList(),
     )
+
+    override fun hashCode(): Int = intermediaryName.hashCode()
 }
 
 @Serializable
@@ -468,6 +470,8 @@ data class Method(
         obfName.copy(),
         mappedName,
     )
+
+    override fun hashCode(): Int = 31 * (31 + intermediaryName.hashCode()) + intermediaryDesc.hashCode()
 }
 
 @Serializable
@@ -483,6 +487,8 @@ data class Field(
         obfName.copy(),
         mappedName,
     )
+
+    override fun hashCode(): Int = 31 * (31 + intermediaryName.hashCode()) + intermediaryDesc.hashCode()
 }
 
 fun MappingsMember.getMappedDesc(container: MappingsContainer): String =

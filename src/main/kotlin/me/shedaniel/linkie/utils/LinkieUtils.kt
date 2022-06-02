@@ -78,10 +78,18 @@ private fun editDistance(s11: String, s22: String): Int {
 fun String?.similarityOnNull(other: String?, onlyClass: Boolean = true): Double = if (this == null || other == null) 0.0 else similarity(other, onlyClass)
 
 fun String.similarity(other: String, onlyClass: Boolean = true): Double {
-    val s11 = if (onlyClass) this.onlyClass() else this
-    val s12 = s11.toLowerCase()
-    val s21 = if (onlyClass) other.onlyClass() else other
-    val s22 = s21.toLowerCase()
+    return if (onlyClass) {
+        similarity(onlyClass(), other, other.onlyClass(), true)
+    } else {
+        similarity(null, other, null, false)
+    }
+}
+
+fun String.similarity(thisOnlyClass: String?, other: String, otherOnlyClass: String?, onlyClass: Boolean = true): Double {
+    val s11 = if (onlyClass) (thisOnlyClass ?: this) else this
+    val s12 = s11.lowercase()
+    val s21 = if (onlyClass) (otherOnlyClass ?: other) else other
+    val s22 = s21.lowercase()
     return if (s11 != s12 || s21 != s22) {
         (innerSimilarity(s11, s21) + innerSimilarity(s12, s22)) / 2.0
     } else innerSimilarity(s11, s21)
@@ -111,20 +119,25 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
 }
 
 fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+    return matchWithSimilarity(searchTerm, searchTerm.onlyClassOrNull(), accuracy, onlyClass)
+}
+fun String?.matchWithSimilarity(searchTerm: String, searchTermOnlyClass: String?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+    return matchWithSimilarity(if (searchTermOnlyClass == null) this?.onlyClass() else null, searchTerm, searchTermOnlyClass, accuracy, onlyClass)
+}
+
+fun String?.matchWithSimilarity(thisOnlyClass: String?, searchTerm: String, searchTermOnlyClass: String?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
     if (this == null) return null
-    val searchOnlyClass = searchTerm.onlyClassOrNull()
     var similarity = -1.0
     fun getSimilarity(): Double {
         if (similarity == -1.0) {
-            similarity = this.similarity(searchTerm, onlyClass)
+            similarity = this.similarity(thisOnlyClass, searchTerm, searchTermOnlyClass, onlyClass)
         }
         return similarity
     }
-    return if (searchOnlyClass != null) {
-        getSimilarity().takeIf { contains(searchTerm, true) || (accuracy.isNotExact() && it >= accuracy.accuracy) }
+    return if (searchTermOnlyClass != null) {
+        getSimilarity().takeIf { (accuracy.isNotExact() && it >= accuracy.accuracy) || contains(searchTerm, true) }
     } else {
-        val onlyClass = onlyClass()
-        getSimilarity().takeIf { onlyClass.contains(searchTerm, true) || (accuracy.isNotExact() && it >= accuracy.accuracy) }
+        getSimilarity().takeIf { (accuracy.isNotExact() && it >= accuracy.accuracy) || (thisOnlyClass ?: this).contains(searchTerm, true) }
     }
 }
 

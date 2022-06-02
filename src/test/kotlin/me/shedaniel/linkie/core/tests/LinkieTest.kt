@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.core.tests
 
+import com.soywiz.klock.measureTime
 import com.soywiz.korio.util.toStringDecimal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -28,7 +29,6 @@ import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.toVersion
 import me.shedaniel.linkie.utils.tryToVersion
 import org.junit.jupiter.api.Test
-import java.security.Security.getProvider
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -171,12 +171,18 @@ class LinkieTest {
         assertEquals("(Ljava/util/Optional;)V", "(Ljava/util/Optional;)V".remapDescriptor(remapper))
         assertEquals("(IJ)Ljava/util/Optional;", "(IJ)Ljava/util/Optional;".remapDescriptor(remapper))
         assertEquals("(JZLjava/util/Optional;IJ)Ljava/util/Optional;", "(JZLjava/util/Optional;IJ)Ljava/util/Optional;".remapDescriptor(remapper))
-        assertEquals("(JZLkotlin/Happy;Ljava/util/Optional;IJ)Ljava/util/Optional;",
-            "(JZLkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Optional;".remapDescriptor(remapper))
-        assertEquals("(JZLkotlin/Happy;Ljava/util/Optional;IJ)Lkotlin/IceCream;",
-            "(JZLkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Comparator;".remapDescriptor(remapper))
-        assertEquals("(JZ[Lkotlin/Happy;Ljava/util/Optional;IJ)Lkotlin/IceCream;",
-            "(JZ[Lkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Comparator;".remapDescriptor(remapper))
+        assertEquals(
+            "(JZLkotlin/Happy;Ljava/util/Optional;IJ)Ljava/util/Optional;",
+            "(JZLkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Optional;".remapDescriptor(remapper)
+        )
+        assertEquals(
+            "(JZLkotlin/Happy;Ljava/util/Optional;IJ)Lkotlin/IceCream;",
+            "(JZLkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Comparator;".remapDescriptor(remapper)
+        )
+        assertEquals(
+            "(JZ[Lkotlin/Happy;Ljava/util/Optional;IJ)Lkotlin/IceCream;",
+            "(JZ[Lkotlin/Sad;Ljava/util/Optional;IJ)Ljava/util/Comparator;".remapDescriptor(remapper)
+        )
 
         assertEquals("V", "V".remapDescriptor(remapper))
         assertEquals("Ljava/util/Optional;", "Ljava/util/Optional;".remapDescriptor(remapper))
@@ -227,21 +233,30 @@ class LinkieTest {
 
     private class MappingsTester(val container: MappingsContainer) {
         fun assertClassIntermediary(query: String, expectedIntermediary: String, fuzzy: Boolean = false) {
-            assertClass(query, fuzzy, "a class with intermediary named \"$expectedIntermediary\"") {
-                it.intermediaryName.onlyClass() == expectedIntermediary
+            val time = measureTime {
+                assertClass(query, fuzzy, "a class with intermediary named \"$expectedIntermediary\"") {
+                    it.intermediaryName.onlyClass() == expectedIntermediary
+                }
             }
+            println("$query took $time")
         }
 
         fun assertMethodIntermediary(query: String, expectedIntermediary: String, fuzzy: Boolean = false) {
-            assertMethod(query, fuzzy, "a method with intermediary named \"$expectedIntermediary\"") {
-                it.intermediaryName == expectedIntermediary
+            val time = measureTime {
+                assertMethod(query, fuzzy, "a method with intermediary named \"$expectedIntermediary\"") {
+                    it.intermediaryName == expectedIntermediary
+                }
             }
+            println("$query took $time")
         }
 
         fun assertFieldIntermediary(query: String, expectedIntermediary: String, fuzzy: Boolean = false) {
-            assertField(query, fuzzy, "a field with intermediary named \"$expectedIntermediary\"") {
-                it.intermediaryName == expectedIntermediary
+            val time = measureTime {
+                assertField(query, fuzzy, "a field with intermediary named \"$expectedIntermediary\"") {
+                    it.intermediaryName == expectedIntermediary
+                }
             }
+            println("$query took $time")
         }
 
         fun List<ResultHolder<*>>.offerList(): String = offerList(this)
@@ -270,27 +285,31 @@ class LinkieTest {
 
         inline fun assertClass(query: String, fuzzy: Boolean, expected: String, value: (clazz: Class) -> Boolean) {
             val list = query(query, fuzzy)
-            assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
-            assert(list.first().value is Class) { "Query \"$query\" did not return a class! ${list.offerList()}" }
-            assert(value(list.first().value as Class)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            require(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
+            require(list.first().value is Class) { "Query \"$query\" did not return a class! ${list.offerList()}" }
+            require(value(list.first().value as Class)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
             println("\n$query -> $expected" + list.offerList())
         }
 
         inline fun assertMethod(query: String, fuzzy: Boolean, expected: String, value: (method: Method) -> Boolean) {
             val list = query(query, fuzzy)
-            assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
-            assert(list.first().value is MemberEntry<*>
-                    && (list.first().value as MemberEntry<*>).member is Method) { "Query \"$query\" did not return a method! ${list.offerList()}" }
-            assert(value((list.first().value as MemberEntry<*>).member as Method)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            require(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
+            require(
+                list.first().value is MemberEntry<*>
+                        && (list.first().value as MemberEntry<*>).member is Method
+            ) { "Query \"$query\" did not return a method! ${list.offerList()}" }
+            require(value((list.first().value as MemberEntry<*>).member as Method)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
             println("\n$query -> $expected" + list.offerList())
         }
 
         inline fun assertField(query: String, fuzzy: Boolean, expected: String, value: (field: Field) -> Boolean) {
             val list = query(query, fuzzy)
-            assert(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
-            assert(list.first().value is MemberEntry<*>
-                    && (list.first().value as MemberEntry<*>).member is Field) { "Query \"$query\" did not return a field! ${list.offerList()}" }
-            assert(value((list.first().value as MemberEntry<*>).member as Field)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
+            require(list.isNotEmpty()) { "Query \"$query\" returned no result! ${list.offerList()}" }
+            require(
+                list.first().value is MemberEntry<*>
+                        && (list.first().value as MemberEntry<*>).member is Field
+            ) { "Query \"$query\" did not return a field! ${list.offerList()}" }
+            require(value((list.first().value as MemberEntry<*>).member as Field)) { "Query \"$query\" did not return $expected! ${list.offerList()}" }
             println("\n$query -> $expected" + list.offerList())
         }
 
