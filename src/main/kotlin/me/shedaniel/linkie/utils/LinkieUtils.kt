@@ -52,7 +52,7 @@ inline fun <T, R : Comparable<R>> Iterable<T>.maxOfIgnoreNullSelf(filterTransfor
 
 inline fun <T, R : Comparable<R>> Sequence<T>.maxOfIgnoreNullSelf(filterTransform: (entry: T) -> R?): R? = asIterable().maxOfIgnoreNull(filterTransform)
 
-private fun editDistance(s11: String, s22: String): Int {
+private fun editDistance(s11: StringLike, s22: StringLike): Int {
     val costs = IntArray(s22.length + 1)
     for (i in 0..s11.length) {
         var lastValue = i
@@ -75,9 +75,9 @@ private fun editDistance(s11: String, s22: String): Int {
     return costs[s22.length]
 }
 
-fun String?.similarityOnNull(other: String?, onlyClass: Boolean = true): Double = if (this == null || other == null) 0.0 else similarity(other, onlyClass)
+fun StringLike?.similarityOnNull(other: StringLike?, onlyClass: Boolean = true): Double = if (this == null || other == null) 0.0 else similarity(other, onlyClass)
 
-fun String.similarity(other: String, onlyClass: Boolean = true): Double {
+fun StringLike.similarity(other: StringLike, onlyClass: Boolean = true): Double {
     return if (onlyClass) {
         similarity(onlyClass(), other, other.onlyClass(), true)
     } else {
@@ -85,7 +85,7 @@ fun String.similarity(other: String, onlyClass: Boolean = true): Double {
     }
 }
 
-fun String.similarity(thisOnlyClass: String?, other: String, otherOnlyClass: String?, onlyClass: Boolean = true): Double {
+fun StringLike.similarity(thisOnlyClass: StringLike?, other: StringLike, otherOnlyClass: StringLike?, onlyClass: Boolean = true): Double {
     val s11 = if (onlyClass) (thisOnlyClass ?: this) else this
     val s12 = s11.lowercase()
     val s21 = if (onlyClass) (otherOnlyClass ?: other) else other
@@ -95,7 +95,7 @@ fun String.similarity(thisOnlyClass: String?, other: String, otherOnlyClass: Str
     } else innerSimilarity(s11, s21)
 }
 
-private fun innerSimilarity(s11: String, s21: String): Double {
+private fun innerSimilarity(s11: StringLike, s21: StringLike): Double {
     var longer = s11
     var shorter = s21
     if (s11.length < s21.length) { // longer should always have greater length
@@ -118,14 +118,22 @@ fun String.onlyClassOrNull(c: Char = '/'): String? {
     return if (indexOf < 0) null else substring(indexOf + 1)
 }
 
-fun String?.matchWithSimilarity(searchTerm: String, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+fun StringLike.onlyClass(c: Char = '/'): StringLike = onlyClassOrNull(c) ?: this
+
+fun StringLike.onlyClassOrNull(c: Char = '/'): StringLike? {
+    val indexOf = lastIndexOf(c)
+    return if (indexOf < 0) null else withOffset(indexOf + 1)
+}
+
+fun StringLike?.matchWithSimilarity(searchTerm: StringLike, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
     return matchWithSimilarity(searchTerm, searchTerm.onlyClassOrNull(), accuracy, onlyClass)
 }
-fun String?.matchWithSimilarity(searchTerm: String, searchTermOnlyClass: String?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+
+fun StringLike?.matchWithSimilarity(searchTerm: StringLike, searchTermOnlyClass: StringLike?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
     return matchWithSimilarity(if (searchTermOnlyClass == null) this?.onlyClass() else null, searchTerm, searchTermOnlyClass, accuracy, onlyClass)
 }
 
-fun String?.matchWithSimilarity(thisOnlyClass: String?, searchTerm: String, searchTermOnlyClass: String?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+fun StringLike?.matchWithSimilarity(thisOnlyClass: StringLike?, searchTerm: StringLike, searchTermOnlyClass: StringLike?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
     if (this == null) return null
     var similarity = -1.0
     fun getSimilarity(): Double {
@@ -141,7 +149,7 @@ fun String?.matchWithSimilarity(thisOnlyClass: String?, searchTerm: String, sear
     }
 }
 
-fun String?.containsOrMatchWildcardOrNull(searchTerm: String): MatchResult? {
+fun StringLike?.containsOrMatchWildcardOrNull(searchTerm: StringLike): MatchResult? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
     return if (searchOnlyClass != null) {
@@ -160,7 +168,7 @@ fun String?.containsOrMatchWildcardOrNull(searchTerm: String): MatchResult? {
     }
 }
 
-fun String?.containsOrMatchWildcardOrNull(searchTerm: String, definition: QueryDefinition): MatchResultWithDefinition? {
+fun StringLike?.containsOrMatchWildcardOrNull(searchTerm: StringLike, definition: QueryDefinition): MatchResultWithDefinition? {
     if (this == null) return null
     val searchOnlyClass = searchTerm.onlyClassOrNull()
     return if (searchOnlyClass != null) {
@@ -179,8 +187,8 @@ fun String?.containsOrMatchWildcardOrNull(searchTerm: String, definition: QueryD
     }
 }
 
-data class MatchResult(val matchStr: String, val selfTerm: String)
-data class MatchResultWithDefinition(val matchStr: String, val selfTerm: String, val definition: QueryDefinition)
+data class MatchResult(val matchStr: StringLike, val selfTerm: StringLike)
+data class MatchResultWithDefinition(val matchStr: StringLike, val selfTerm: StringLike, val definition: QueryDefinition)
 
 fun String.remapDescriptor(classMappings: (String) -> String): String {
     val reader = StringReader(this)

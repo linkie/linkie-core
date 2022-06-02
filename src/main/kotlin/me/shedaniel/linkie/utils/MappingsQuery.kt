@@ -39,7 +39,7 @@ enum class QueryDefinition(val toDefinition: MappingsEntry.() -> String?, val mu
     OBF_SERVER({ obfName.server }, 1.0 - Double.MIN_VALUE - Double.MIN_VALUE),
     WILDCARD({ throw IllegalStateException("Cannot get definition of type WILDCARD!") }, 1.0);
 
-    operator fun invoke(entry: MappingsEntry): String? = toDefinition(entry)
+    operator fun invoke(entry: MappingsEntry): StringLike? = toDefinition(entry)?.like
 
     companion object {
         val allProper = listOf(
@@ -91,7 +91,7 @@ object MappingsQuery {
         }
     }
 
-    fun MappingsEntry.searchDefinition(isClass: Boolean, classKey: String, searchTermOnlyClass: String?, accuracy: MatchAccuracy, onlyClass: Boolean): QueryDefinition? {
+    fun MappingsEntry.searchDefinition(isClass: Boolean, classKey: StringLike, searchTermOnlyClass: StringLike?, accuracy: MatchAccuracy, onlyClass: Boolean): QueryDefinition? {
         return QueryDefinition.allProper.maxOfIgnoreNullSelf {
             it(this)?.let { str ->
                 str.matchWithSimilarity(
@@ -102,7 +102,7 @@ object MappingsQuery {
         }
     }
 
-    fun MappingsEntry.searchWithSimilarity(isClass: Boolean, classKey: String, searchTermOnlyClass: String?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
+    fun MappingsEntry.searchWithSimilarity(isClass: Boolean, classKey: StringLike, searchTermOnlyClass: StringLike?, accuracy: MatchAccuracy, onlyClass: Boolean): Double? {
         return QueryDefinition.allProper.maxOfIgnoreNull {
             it(this)?.let { str ->
                 str.matchWithSimilarity(
@@ -120,12 +120,12 @@ object MappingsQuery {
     }
 
     suspend fun queryClasses(context: QueryContext): QueryResult<MappingsContainer, ClassResultList> {
-        val searchKey = context.searchKey
-        val searchKeyOnlyClass = context.searchKey.onlyClassOrNull()
+        val searchKey = context.searchKey.like
+        val searchKeyOnlyClass = searchKey.onlyClassOrNull()
         val mappings = context.get()
         val isClassKeyPackageSpecific = searchKey.contains('/')
 
-        val results = if (searchKey == "*") {
+        val results = if (searchKey.string == "*") {
             Streams.mapWithIndex(mappings.allClasses.parallelStream().sorted(compareBy { it.intermediaryName }).limit(context.limit)) { entry, index ->
                 entry hold 1.0 - index * Double.MIN_VALUE
             }
@@ -152,10 +152,10 @@ object MappingsQuery {
     fun <T, R> Stream<T>.flatMapNotNull(function: (T) -> Stream<R>?): Stream<R> =
         flatMap { function(it) ?: Stream.empty() }.filter(Objects::nonNull)
 
-    suspend fun <T> queryClassFilter(context: QueryContext, classKey: String, action: (Class, QueryDefinition) -> Stream<T>): Stream<T> {
+    suspend fun <T> queryClassFilter(context: QueryContext, classKey: StringLike, action: (Class, QueryDefinition) -> Stream<T>): Stream<T> {
         val classKeyOnlyClass = classKey.onlyClassOrNull()
         val mappings = context.get()
-        val isWildcard = classKey.isBlank() || classKey == "*"
+        val isWildcard = classKey.string.isBlank() || classKey.string == "*"
         val isClassKeyPackageSpecific = classKey.contains('/')
         return mappings.allClasses.parallelStream().flatMapNotNull { c ->
             when {
@@ -169,13 +169,13 @@ object MappingsQuery {
         context: QueryContext,
         memberGetter: (Class) -> Stream<T>,
     ): QueryResult<MappingsContainer, List<ResultHolder<MemberEntry<T>>>> {
-        val searchKey = context.searchKey
-        val classKey = if (searchKey.contains('/')) searchKey.substringBeforeLast('/') else ""
+        val searchKey = context.searchKey.like
+        val classKey = if (searchKey.contains('/')) context.searchKey.substringBeforeLast('/').like else "".like
         val memberKey = searchKey.onlyClass()
         val memberKeyOnlyClass = memberKey.onlyClassOrNull()
         val isClassKeyPackageSpecific = classKey.contains('/')
-        val isClassWildcard = classKey.isBlank() || classKey == "*"
-        val isMemberWildcard = memberKey == "*"
+        val isClassWildcard = classKey.string.isBlank() || classKey.string == "*"
+        val isMemberWildcard = memberKey.string == "*"
         val mappings = context.get()
 
         val observedMember = HashSet<T>()
@@ -212,7 +212,7 @@ object MappingsQuery {
                 it.toSimplePair() hold it.parentDef(it.parent)!!.similarity(classKey, !isClassKeyPackageSpecific).pow(parentPower)
             }
             // Has class filter
-            classKey.isNotBlank() && !isClassWildcard -> members.map {
+            classKey.string.isNotBlank() && !isClassWildcard -> members.map {
                 it.toSimplePair() hold it.memberDef(it.member)!!.similarity(memberKey) *
                         it.parentDef(it.parent)!!.similarity(classKey, !isClassKeyPackageSpecific).pow(parentPower)
             }

@@ -23,6 +23,7 @@ import me.shedaniel.linkie.utils.MethodResultList
 import me.shedaniel.linkie.utils.QueryContext
 import me.shedaniel.linkie.utils.ResultHolder
 import me.shedaniel.linkie.utils.Version
+import me.shedaniel.linkie.utils.like
 import me.shedaniel.linkie.utils.localiseFieldDesc
 import me.shedaniel.linkie.utils.onlyClass
 import me.shedaniel.linkie.utils.remapDescriptor
@@ -191,6 +192,11 @@ class LinkieTest {
         assertEquals("[Lkotlin/IceCream;", "[Ljava/util/Comparator;".remapDescriptor(remapper))
         assertEquals("[J", "[J".remapDescriptor(remapper))
         assertEquals("[LHappy;", "[LSad;".remapDescriptor(remapper))
+    }
+
+    @Test
+    fun stringLike() {
+        assertEquals("MinecraftClient".like, "net/minecraft/client/MinecraftClient".like.onlyClass())
     }
 
     @Test
