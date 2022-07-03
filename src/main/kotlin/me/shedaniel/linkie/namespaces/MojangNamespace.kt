@@ -79,7 +79,7 @@ object MojangNamespace : Namespace("mojang") {
 
     override suspend fun reloadData() {
         versionJsonMap.clear()
-        val versionManifest = json.parseToJsonElement(URL("https://launchermeta.mojang.com/mc/game/version_manifest.json").readText())
+        val versionManifest = json.parseToJsonElement(URL("https://piston-meta.mojang.com/mc/game/version_manifest.json").readText())
         val lowestVersionWithMojmap = "19w36a".toVersion()
         versionManifest.jsonObject["versions"]!!.jsonArray.forEach { versionElement ->
             val versionString = versionElement.jsonObject["id"]!!.jsonPrimitive.content
