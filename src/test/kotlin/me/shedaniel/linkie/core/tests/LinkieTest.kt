@@ -66,8 +66,19 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            assertEquals("1.18.2", YarnNamespace.defaultVersion)
             YarnNamespace.getDefaultProvider().get()
+        }
+    }
+
+    @Test
+    fun yarnSource() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
+            delay(2000)
+            while (YarnNamespace.reloading) delay(100)
+            val container = YarnNamespace.getDefaultProvider()
+            val source = container.getSources()
+            source
         }
     }
 
@@ -77,7 +88,6 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(QuiltMappingsNamespace)))
             delay(2000)
             while (QuiltMappingsNamespace.reloading) delay(100)
-            assertEquals("1.18.2", QuiltMappingsNamespace.defaultVersion)
             QuiltMappingsNamespace.getDefaultProvider().get()
         }
     }
@@ -88,7 +98,6 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
             delay(2000)
             while (MCPNamespace.reloading) delay(100)
-            assertEquals("1.16.5", MCPNamespace.defaultVersion)
             val container = MCPNamespace.getDefaultProvider().get()
             container
         }
@@ -111,9 +120,20 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
-            assertEquals("1.18.2", MojangNamespace.defaultVersion)
             val container = MojangNamespace.getDefaultProvider().get()
             container
+        }
+    }
+
+    @Test
+    fun mojmapSource() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
+            delay(2000)
+            while (MojangNamespace.reloading) delay(100)
+            val container = MojangNamespace.getDefaultProvider()
+            val source = container.getSources()
+            source
         }
     }
 
@@ -123,7 +143,6 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangSrgNamespace)))
             delay(2000)
             while (MojangSrgNamespace.reloading) delay(100)
-            assertEquals("1.18.2", MojangSrgNamespace.defaultVersion)
             val container = MojangSrgNamespace.getDefaultProvider().get()
             container
         }

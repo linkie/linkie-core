@@ -6,7 +6,11 @@ import me.shedaniel.linkie.Class
 import me.shedaniel.linkie.MappingsContainer
 import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Method
+import me.shedaniel.linkie.MethodArg
 import me.shedaniel.linkie.Namespace
+import me.shedaniel.linkie.getClassByObfName
+import me.shedaniel.linkie.getClassByOptimumName
+import me.shedaniel.linkie.getMethodByOptimum
 import me.shedaniel.linkie.isSpecialGenerated
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.ZipFile
@@ -16,6 +20,7 @@ import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toAsyncZip
 import me.shedaniel.linkie.utils.tryToVersion
 import me.shedaniel.linkie.utils.warn
+import net.fabricmc.mappings.ExtendedMappings
 import java.io.InputStream
 import java.net.URL
 import kotlin.collections.component1
@@ -70,6 +75,7 @@ object YarnNamespace : Namespace("yarn") {
 
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
+    override fun supportsSource(): Boolean = true
 
     override suspend fun reloadData() {
         val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()
@@ -99,7 +105,7 @@ object YarnNamespace : Namespace("yarn") {
 
     suspend fun MappingsContainer.loadIntermediaryFromTinyInputStream(
         stream: InputStream,
-        intermediaryNamespace: String
+        intermediaryNamespace: String,
     ) {
         val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
         val isSplit = !mappings.namespaces.contains("official")
@@ -182,9 +188,9 @@ object YarnNamespace : Namespace("yarn") {
     fun MappingsContainer.loadNamedFromTinyInputStream(
         stream: InputStream,
         showError: Boolean = true,
-        intermediaryNamespace: String
+        intermediaryNamespace: String,
     ) {
-        val mappings = net.fabricmc.mappings.MappingsProvider.readTinyMappings(stream, false)
+        val mappings = net.fabricmc.mappings.MappingsProvider.readFullTinyMappings(stream, false)
         mappings.classEntries.forEach { entry ->
             val intermediary = entry[intermediaryNamespace]
             val named = entry["named"]
@@ -203,8 +209,10 @@ object YarnNamespace : Namespace("yarn") {
                 if (showError) warn("Class ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
             } else clazz.apply {
                 val namedTriple = entry["named"]
-                val method = getMethod(intermediaryTriple.name, intermediaryTriple.desc,
-                    create = intermediaryTriple.name.isSpecialGenerated || namedTriple?.name == intermediaryTriple.name)
+                val method = getMethod(
+                    intermediaryTriple.name, intermediaryTriple.desc,
+                    create = intermediaryTriple.name.isSpecialGenerated || namedTriple?.name == intermediaryTriple.name
+                )
                 if (method == null) {
                     if (showError) warn("Method ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
                 } else method.apply {
@@ -220,13 +228,33 @@ object YarnNamespace : Namespace("yarn") {
                 if (showError) warn("Class ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
             } else clazz.apply {
                 val namedTriple = entry["named"]
-                val field = getField(intermediaryTriple.name, intermediaryTriple.desc,
-                    create = namedTriple?.name == intermediaryTriple.name)
+                val field = getField(
+                    intermediaryTriple.name, intermediaryTriple.desc,
+                    create = namedTriple?.name == intermediaryTriple.name
+                )
                 if (field == null) {
                     if (showError) warn("Field ${intermediaryTriple.name} in ${intermediaryTriple.owner} does not have $intermediaryNamespace name! Skipping!")
                 } else field.apply {
                     if (mappedName == null)
                         mappedName = namedTriple?.name
+                }
+            }
+        }
+        mappings.methodParameterEntries.forEach { entry ->
+            val namedTriple = entry["named"] ?: return@forEach
+            val clazz = getClassByOptimumName(namedTriple.method.owner)
+            if (clazz == null) {
+                if (showError) warn("Class ${namedTriple.method.owner} does not have named name! Skipping!")
+            } else clazz.apply {
+                val method = getMethodByOptimum(
+                    this@loadNamedFromTinyInputStream,
+                    namedTriple.method.name, namedTriple.method.desc
+                )
+                if (method == null) {
+                    if (showError) warn("Method ${namedTriple.method.name} in ${namedTriple.method.owner} does not have named name! Skipping!")
+                } else method.apply {
+                    if (args == null) args = mutableListOf()
+                    args!!.add(MethodArg(namedTriple.localVariableIndex, namedTriple.name))
                 }
             }
         }

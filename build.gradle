@@ -24,13 +24,14 @@ tasks.test {
 
 repositories {
     mavenCentral()
-    maven { 
+    maven {
         url "https://maven.fabricmc.net"
         metadataSources {
             it.mavenPom()
             it.ignoreGradleMetadataRedirection()
         }
     }
+    maven { url "https://maven.quiltmc.org/repository/release" }
     maven { url "https://jitpack.io" }
     maven { url "https://maven.shedaniel.me" }
     maven { url "https://maven.quiltmc.org/repository/release" }
@@ -54,6 +55,8 @@ dependencies {
     compile("com.squareup.okio:okio-multiplatform:$okio_version")
     compile("org.quiltmc:mappings-hasher:1.1.1:all")
     compile("com.google.guava:guava:31.1-jre")
+    compile("net.fabricmc:tiny-remapper:0.8.6")
+    compile("org.quiltmc:quiltflower:1.8.0")
 }
 
 compileKotlin {

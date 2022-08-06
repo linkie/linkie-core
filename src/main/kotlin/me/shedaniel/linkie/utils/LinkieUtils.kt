@@ -1,5 +1,6 @@
 package me.shedaniel.linkie.utils
 
+import com.soywiz.korio.dynamic.KDynamic.Companion.toInt
 import com.soywiz.korio.file.VfsFile
 import java.io.StringReader
 import kotlin.math.min
@@ -190,28 +191,47 @@ fun StringLike?.containsOrMatchWildcardOrNull(searchTerm: StringLike, definition
 data class MatchResult(val matchStr: StringLike, val selfTerm: StringLike)
 data class MatchResultWithDefinition(val matchStr: StringLike, val selfTerm: StringLike, val definition: QueryDefinition)
 
-fun String.remapDescriptor(classMappings: (String) -> String): String {
+fun String.forEachDescriptor(action: (String) -> Unit) {
     val reader = StringReader(this)
+    var insideClassName = false
+    val className = StringBuilder()
+    var array = 0
+    while (true) {
+        val c: Int = reader.read()
+        if (c == -1) {
+            break
+        }
+        if (c == ';'.toInt()) {
+            insideClassName = false
+            action("[".repeat(array) + "L$className;")
+            array = 0
+            continue
+        }
+        if (insideClassName) {
+            className.append(c.toChar())
+        } else if (c != 'L'.toInt() && c != '['.toInt()) {
+            action("[".repeat(array) + c.toChar().toString())
+            array = 0
+        }
+        if (c == '['.toInt()) {
+            array++
+        }
+        if (!insideClassName && c == 'L'.toInt()) {
+            insideClassName = true
+            className.setLength(0)
+        }
+    }
+}
+
+fun String.remapDescriptor(classMappings: (String) -> String): String {
     return buildString {
-        var insideClassName = false
-        val className = StringBuilder()
-        while (true) {
-            val c: Int = reader.read()
-            if (c == -1) {
-                break
-            }
-            if (c == ';'.toInt()) {
-                insideClassName = false
-                append(classMappings(className.toString()))
-            }
-            if (insideClassName) {
-                className.append(c.toChar())
+        forEachDescriptor { descriptor ->
+            val actualDesc = descriptor.substringAfterLast('[')
+            append("[".repeat(descriptor.length - actualDesc.length))
+            if (actualDesc.startsWith("L")) {
+                append("L" + classMappings(actualDesc.substring(1, actualDesc.length - 1)) + ";")
             } else {
-                append(c.toChar())
-            }
-            if (!insideClassName && c == 'L'.toInt()) {
-                insideClassName = true
-                className.setLength(0)
+                append(actualDesc)
             }
         }
     }

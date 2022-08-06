@@ -1,17 +1,50 @@
 package me.shedaniel.linkie
 
+import com.soywiz.korio.dynamic.KDynamic.Companion.get
+import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import me.shedaniel.linkie.Namespaces.config
+import me.shedaniel.linkie.jar.GameJarProvider
 import me.shedaniel.linkie.namespaces.MappingsContainerBuilder
 import me.shedaniel.linkie.namespaces.MappingsVersion
 import me.shedaniel.linkie.namespaces.MappingsVersionBuilder
 import me.shedaniel.linkie.namespaces.ofVersion
 import me.shedaniel.linkie.namespaces.toBuilder
+import me.shedaniel.linkie.source.QfResultSaver
+import me.shedaniel.linkie.utils.ZipFile
+import me.shedaniel.linkie.utils.div
+import me.shedaniel.linkie.utils.forEachDescriptor
+import me.shedaniel.linkie.utils.isValidJavaIdentifier
 import me.shedaniel.linkie.utils.tryToVersion
+import net.fabricmc.stitch.util.StitchUtil
+import net.fabricmc.tinyremapper.IMappingProvider
+import net.fabricmc.tinyremapper.OutputConsumerPath
+import net.fabricmc.tinyremapper.TinyRemapper
+import org.jetbrains.java.decompiler.main.Fernflower
+import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger
+import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Label
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.util.jar.JarOutputStream
+import java.util.zip.ZipEntry
+import javax.lang.model.SourceVersion
+
 
 abstract class Namespace(val id: String) {
+    val jarProvider: GameJarProvider? by lazy { Namespaces.gameJarProvider }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null) return false
@@ -335,4 +368,261 @@ abstract class Namespace(val id: String) {
     open fun supportsAT(): Boolean = false
     open fun supportsAW(): Boolean = false
     open fun supportsFieldDescription(): Boolean = true
+    open fun supportsSource(): Boolean = false
+
+    suspend fun getSource(mappings: MappingsContainer, version: String): VfsFile {
+        val result = jarProvider!!.provide(version)
+        val remappedJarRaw = (config.cacheDirectory / "minecraft-jars" / "remapped").also { it.mkdirs() } / "$id-$version.jar"
+        val remappedJarResult = runCatching {
+            val filteredJar = config.cacheDirectory / "minecraft-jars" / "$version-client-filtered.jar"
+            if (remappedJarRaw.exists()) return@runCatching remappedJarRaw
+            if (!filteredJar.exists()) {
+                JarOutputStream(Files.newOutputStream(Paths.get(filteredJar.absolutePath))).use {
+                    ZipFile(result.minecraftFile.readBytes()).forEachEntry { path, entry ->
+                        if (path.endsWith(".class")) {
+                            val reader = ClassReader(entry.bytes)
+                            val writer = ClassWriter(0)
+                            reader.accept(object : ClassVisitor(Opcodes.ASM9, writer) {
+                                override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor {
+                                    return object : MethodVisitor(api, super.visitMethod(access, name, descriptor, signature, exceptions)) {
+                                        override fun visitLocalVariable(name: String?, descriptor: String?, signature: String?, start: Label?, end: Label?, index: Int) {
+                                        }
+
+                                        override fun visitParameter(name: String?, access: Int) {
+                                        }
+                                    }
+                                }
+                            }, 0)
+                            it.putNextEntry(ZipEntry(path))
+                            it.write(writer.toByteArray())
+                            it.closeEntry()
+                        }
+                    }
+                }
+            }
+            val remapper = TinyRemapper.newRemapper()
+                .withMappings { accepter ->
+                    mappings.allClasses.forEach { clazz ->
+                        if (clazz.obfMergedName == null) return@forEach
+                        accepter.acceptClass(clazz.obfMergedName, clazz.optimumName)
+
+                        clazz.methods.forEach { method ->
+                            if (method.obfMergedName == null) return@forEach
+                            val member = IMappingProvider.Member(clazz.obfMergedName, method.obfMergedName, method.getObfMergedDesc(mappings))
+                            accepter.acceptMethod(member, method.optimumName)
+
+                            val nameCounts: MutableMap<String, Int> = HashMap()
+
+                            method.args?.forEach { arg ->
+                                nameCounts[arg.name] = nameCounts.getOrPut(arg.name) { 0 } + 1
+                            }
+
+                            val methodParameterDesc = member.desc.substringAfter('(').substringBefore(')')
+                            var index = 0
+
+                            methodParameterDesc.forEachDescriptor {
+                                index++
+                            }
+
+                            val size = index
+                            val args = arrayOfNulls<String>(size + 1)
+
+                            method.args?.forEach { arg ->
+                                accepter.acceptMethodArg(member, arg.index, arg.name)
+                            }
+
+//                            args.forEachIndexed { index, arg ->
+//                                if (arg != null) {
+//                                    accepter.acceptMethodArg(member, index, arg)
+//                                }
+//                            }
+                        }
+
+                        clazz.fields.forEach { field ->
+                            if (field.obfMergedName == null) return@forEach
+                            accepter.acceptField(IMappingProvider.Member(clazz.obfMergedName, field.obfMergedName, field.getObfMergedDesc(mappings)), field.optimumName)
+                        }
+                    }
+                }
+                .threads(4)
+                .build()
+            remapper.readClassPath(*result.libraries.map { Paths.get(it.absolutePath) }.toTypedArray())
+            remapper.readInputs(Paths.get(filteredJar.absolutePath))
+            OutputConsumerPath.Builder(Paths.get(remappedJarRaw.absolutePath)).build().use { path ->
+                remapper.apply(path)
+            }
+            remapper.finish()
+            return@runCatching remappedJarRaw
+        }
+        if (remappedJarResult.isFailure) {
+            remappedJarRaw.delete()
+            throw remappedJarResult.exceptionOrNull()!!
+        }
+        val remappedJar = remappedJarResult.getOrThrow()
+        val sourceJar = (config.cacheDirectory / "minecraft-jars" / "sources").also { it.mkdirs() } / "$id-$version.jar"
+        if (sourceJar.exists()) return sourceJar
+
+        val options = mutableMapOf<String, String>()
+        options[IFernflowerPreferences.INDENT_STRING] = "\t"
+        options[IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES] = "1"
+        options[IFernflowerPreferences.BYTECODE_SOURCE_MAPPING] = "1"
+        options[IFernflowerPreferences.LOG_LEVEL] = "warn"
+        options[IFernflowerPreferences.REMOVE_BRIDGE] = "0"
+        options[IFernflowerPreferences.REMOVE_SYNTHETIC] = "0"
+        options[IFernflowerPreferences.THREADS] = "4"
+
+        val ff = Fernflower({ outer, inner -> getBytes(outer, inner) },
+            QfResultSaver(File(sourceJar.absolutePath)) { null }, options as Map<String, Any>, PrintStreamLogger(System.out)
+        )
+
+        for (library in result.libraries) {
+            ff.addLibrary(File(library.absolutePath))
+        }
+
+        ff.addSource(File(remappedJar.absolutePath))
+        ff.decompileContext()
+
+        return sourceJar
+    }
+
+    @Throws(IOException::class)
+    open fun getBytes(outerPath: String, innerPath: String?): ByteArray? {
+        if (innerPath == null) {
+            return Files.readAllBytes(Paths.get(outerPath))
+        }
+        StitchUtil.getJarFileSystem(File(outerPath), false).use { fs -> return Files.readAllBytes(fs.get().getPath(innerPath)) }
+    }
+
+    private fun getNameFromType(nameCounts: MutableMap<String, Int>, type: String, isArg: Boolean): String? {
+        var type = type
+        var plural = false
+        if (type[0] == '[') {
+            plural = true
+            type = type.substring(type.lastIndexOf('[') + 1)
+        }
+        var incrementLetter = true
+        var varName: String?
+        when (type[0]) {
+            'B' -> varName = "b"
+            'C' -> varName = "c"
+            'D' -> varName = "d"
+            'F' -> varName = "f"
+            'I' -> varName = "i"
+            'J' -> varName = "l"
+            'S' -> varName = "s"
+            'Z' -> {
+                varName = "bl"
+                incrementLetter = false
+            }
+
+            'L' -> {
+                // strip preceding packages and outer classes
+                var start = type.lastIndexOf('/') + 1
+                val startDollar = type.lastIndexOf('$') + 1
+                if (startDollar > start && startDollar < type.length - 1) {
+                    start = startDollar
+                } else if (start == 0) {
+                    start = 1
+                }
+
+                // assemble, lowercase first char, apply plural s
+                val first = type[start]
+                val firstLc = first.lowercaseChar()
+                varName = if (first == firstLc) { // type is already lower case, the var name would shade the type
+                    null
+                } else {
+                    firstLc.toString() + type.substring(start + 1, type.length - 1)
+                }
+
+                // Only check for invalid identifiers, keyword check is performed below
+                if (varName == null || !varName.isValidJavaIdentifier()) {
+                    varName = if (isArg) "arg" else "lv" // lv instead of var to avoid confusion with Java 10's var keyword
+                }
+                incrementLetter = false
+            }
+
+            else -> throw IllegalStateException()
+        }
+        var hasPluralS = false
+        if (plural) {
+            val pluralVarName = varName + 's'
+
+            // Appending 's' could make name invalid, e.g. "clas" -> "class" (keyword)
+            if (!isJavaKeyword(pluralVarName)) {
+                varName = pluralVarName
+                hasPluralS = true
+            }
+        }
+        return if (incrementLetter) {
+            var index = -1
+            while (nameCounts.putIfAbsent(varName!!, 1) != null || isJavaKeyword(varName)) {
+                if (index < 0) index = getNameIndex(varName, hasPluralS)
+                varName = getIndexName(++index, plural)
+            }
+            varName
+        } else {
+            val baseVarName = varName
+            var count: Int = nameCounts.compute(baseVarName) { _, v -> if (v == null) 1 else v + 1 }!!
+            if (count == 1) {
+                varName += if (isJavaKeyword(baseVarName)) {
+                    '_'
+                } else {
+                    return varName // name does not exist yet, so can return fast here
+                }
+            } else {
+                varName = baseVarName + Integer.toString(count)
+            }
+
+            /*
+                     * Check if name is not taken yet, count only indicates where to continue
+                     * numbering for baseVarName, but does not guarantee that there is no
+                     * other variable which already has that name, e.g.:
+                     * (MyClass ?, MyClass2 ?, MyClass ?) -> (MyClass myClass, MyClass2 myClass2, !myClass2 is already taken!)
+                     */while (nameCounts.putIfAbsent(varName!!, 1) != null) {
+                varName = baseVarName + Integer.toString(count++)
+            }
+            nameCounts.put(baseVarName, count) // update name count
+            varName
+        }
+    }
+
+    private fun getNameIndex(name: String, plural: Boolean): Int {
+        var ret = 0
+        var i = 0
+        val max = name.length - if (plural) 1 else 0
+        while (i < max) {
+            ret = ret * 26 + name[i].code - 'a'.code + 1
+            i++
+        }
+        return ret - 1
+    }
+
+    private val singleCharStrings = arrayOf(
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"
+    )
+
+    private fun getIndexName(index: Int, plural: Boolean): String {
+        var index = index
+        return if (index < 26 && !plural) {
+            singleCharStrings[index]
+        } else {
+            val ret = StringBuilder(2)
+            do {
+                val next = index / 26
+                val cur = index - next * 26
+                ret.append(('a'.code + cur).toChar())
+                index = next - 1
+            } while (index >= 0)
+            ret.reverse()
+            if (plural) ret.append('s')
+            ret.toString()
+        }
+    }
+
+    private fun isJavaKeyword(s: String): Boolean {
+        // TODO: Use SourceVersion.isKeyword(CharSequence, SourceVersion) in Java 9
+        //       to make it independent from JDK version
+        return SourceVersion.isKeyword(s)
+    }
 }

@@ -92,6 +92,12 @@ fun MappingsContainer.getClassByObfName(obf: String, ignoreCase: Boolean = false
     }
 }
 
+fun MappingsContainer.getClassByOptimumName(optimum: String, ignoreCase: Boolean = false): Class? {
+    return classes.values.firstOrNull {
+        it.optimumName.equals(optimum, ignoreCase = ignoreCase)
+    }
+}
+
 fun Class.getMethodByObfName(obf: String, ignoreCase: Boolean = false): Method? {
     return methods.firstOrNull {
         if (it.obfName.isMerged()) {
@@ -114,6 +120,12 @@ fun Class.getMethodByObf(container: MappingsContainer, obf: String, desc: String
                     || (it.obfServerName.equals(obf, ignoreCase = ignoreCase)
                     && it.getObfServerDesc(container).equals(desc, ignoreCase = ignoreCase))
         }
+    }
+}
+
+fun Class.getMethodByOptimum(mappings: MappingsContainer, optimum: String, desc: String, ignoreCase: Boolean = false): Method? {
+    return methods.firstOrNull {
+        it.optimumName.equals(optimum, ignoreCase = ignoreCase) && it.getMappedDesc(mappings).equals(desc, ignoreCase = ignoreCase)
     }
 }
 
@@ -463,6 +475,7 @@ data class Method(
     override var intermediaryDesc: String,
     override val obfName: Obf = Obf(),
     override var mappedName: String? = null,
+    var args: MutableList<MethodArg>? = null,
 ) : MappingsMember {
     fun clone(): Method = Method(
         intermediaryName,
@@ -473,6 +486,12 @@ data class Method(
 
     override fun hashCode(): Int = 31 * (31 + intermediaryName.hashCode()) + intermediaryDesc.hashCode()
 }
+
+@Serializable
+data class MethodArg(
+    val index: Int,
+    val name: String,
+)
 
 @Serializable
 data class Field(

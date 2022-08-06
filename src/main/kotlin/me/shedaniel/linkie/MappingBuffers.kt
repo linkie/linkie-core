@@ -24,6 +24,7 @@ fun ByteBuffer.writeMethod(method: Method) {
     writeNotNullString(method.intermediaryDesc)
     writeMagicObf(method.intermediaryName, method.obfName)
     writeMagic(method.intermediaryName, method.mappedName)
+    writeCollection(method.args ?: emptyList()) { writeArg(it) }
 }
 
 fun ByteBuffer.writeField(field: Field) {
@@ -31,6 +32,11 @@ fun ByteBuffer.writeField(field: Field) {
     writeNotNullString(field.intermediaryDesc)
     writeMagicObf(field.intermediaryName, field.obfName)
     writeMagic(field.intermediaryName, field.mappedName)
+}
+
+fun ByteBuffer.writeArg(arg: MethodArg) {
+    writeInt(arg.index)
+    writeNotNullString(arg.name)
 }
 
 fun ByteBuffer.writeMagic(original: String, string: String?) {
@@ -100,7 +106,8 @@ fun ByteBuffer.readMethod(): Method {
     val intermediaryDesc = readNotNullString()
     val obfName = readMagicObf(intermediaryName)
     val mappedName = readMagic(intermediaryName)
-    return Method(intermediaryName, intermediaryDesc, obfName, mappedName)
+    val args = readCollection { readArg() }.takeIf { it.isNotEmpty() }
+    return Method(intermediaryName, intermediaryDesc, obfName, mappedName, args)
 }
 
 fun ByteBuffer.readField(): Field {
@@ -109,6 +116,12 @@ fun ByteBuffer.readField(): Field {
     val obfName = readMagicObf(intermediaryName)
     val mappedName = readMagic(intermediaryName)
     return Field(intermediaryName, intermediaryDesc, obfName, mappedName)
+}
+
+fun ByteBuffer.readArg(): MethodArg {
+    val index = readInt()
+    val name = readNotNullString()
+    return MethodArg(index, name)
 }
 
 fun ByteBuffer.readObf(): Obf {
@@ -202,7 +215,7 @@ open class ByteBuffer(
     fun readDouble(): Double = Double.fromBits(buffer.readLong())
     fun readChar(): Char = buffer.readByte().toChar()
 
-    inline fun <T> readCollection(crossinline reader: ByteBuffer.() -> T): List<T> {
+    inline fun <T> readCollection(crossinline reader: ByteBuffer.() -> T): MutableList<T> {
         val size = readInt()
         val list = ArrayList<T>(size)
         for (i in 0 until size) {

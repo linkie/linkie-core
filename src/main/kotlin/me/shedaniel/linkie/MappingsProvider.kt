@@ -1,5 +1,7 @@
 package me.shedaniel.linkie
 
+import com.soywiz.korio.file.VfsFile
+
 data class MappingsProvider(
     var namespace: Namespace,
     var version: String?,
@@ -26,6 +28,8 @@ data class MappingsProvider(
 
     suspend fun getOrNull(): MappingsContainer? = mappingsContainer?.invoke()
     suspend fun get(): MappingsContainer = getOrNull()!!
+
+    suspend fun getSources(): VfsFile = namespace.getSource(get(), version!!)
 
     companion object {
         fun of(namespace: Namespace, version: String, mappingsContainer: MappingsContainer?): MappingsProvider =

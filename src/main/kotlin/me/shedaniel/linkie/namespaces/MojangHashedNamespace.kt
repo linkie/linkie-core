@@ -18,7 +18,6 @@ import java.io.Closeable
 import java.util.jar.JarFile
 
 object MojangHashedNamespace : Namespace("mojang_hashed") {
-    val jarProvider: GameJarProvider? get() = Namespaces.gameJarProvider
     override fun getDependencies(): Set<Namespace> = setOf(MojangNamespace)
     override fun getDefaultLoadedVersions(): List<String> = listOf()
     override fun getAllVersions(): Sequence<String> = MojangNamespace.getAllVersions().filter {
