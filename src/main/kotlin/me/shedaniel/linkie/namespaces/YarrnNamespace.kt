@@ -43,6 +43,7 @@ object YarrnNamespace : Namespace("yarrn") {
     override val defaultVersion: String = "infdev"
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
+    override fun supportsSource(): Boolean = true
 
     override suspend fun reloadData() {
         val pomYarrn = URL("https://maven.concern.i.ng/releases/net/textilemc/yarrn/maven-metadata.xml").readText()

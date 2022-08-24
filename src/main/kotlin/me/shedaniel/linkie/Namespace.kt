@@ -1,6 +1,5 @@
 package me.shedaniel.linkie
 
-import com.soywiz.korio.dynamic.KDynamic.Companion.get
 import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -35,7 +34,6 @@ import org.objectweb.asm.Opcodes
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
@@ -370,7 +368,7 @@ abstract class Namespace(val id: String) {
     open fun supportsFieldDescription(): Boolean = true
     open fun supportsSource(): Boolean = false
 
-    suspend fun getSource(mappings: MappingsContainer, version: String): VfsFile {
+    suspend fun getSource(mappings: MappingsContainer, version: String, className: String): VfsFile {
         val result = jarProvider!!.provide(version)
         val remappedJarRaw = (config.cacheDirectory / "minecraft-jars" / "remapped").also { it.mkdirs() } / "$id-$version.jar"
         val remappedJarResult = runCatching {
@@ -459,8 +457,11 @@ abstract class Namespace(val id: String) {
             throw remappedJarResult.exceptionOrNull()!!
         }
         val remappedJar = remappedJarResult.getOrThrow()
-        val sourceJar = (config.cacheDirectory / "minecraft-jars" / "sources").also { it.mkdirs() } / "$id-$version.jar"
-        if (sourceJar.exists()) return sourceJar
+        val sourcesDir = (config.cacheDirectory / "minecraft-jars" / "sources" / "$id-$version").also { it.mkdirs() }
+        val sourcesFile = sourcesDir / "$className.java"
+        val alternativeSourcesFile = sourcesDir / "${className.substringBeforeLast("/") + "$" + className.substringAfterLast("/")}.java"
+        if (sourcesFile.exists()) return sourcesFile
+        if (alternativeSourcesFile.exists()) return alternativeSourcesFile
 
         val options = mutableMapOf<String, String>()
         options[IFernflowerPreferences.INDENT_STRING] = "\t"
@@ -472,7 +473,7 @@ abstract class Namespace(val id: String) {
         options[IFernflowerPreferences.THREADS] = "4"
 
         val ff = Fernflower({ outer, inner -> getBytes(outer, inner) },
-            QfResultSaver(File(sourceJar.absolutePath)) { null }, options as Map<String, Any>, PrintStreamLogger(System.out)
+            QfResultSaver(File(sourcesDir.absolutePath)), options as Map<String, Any>, PrintStreamLogger(System.out)
         )
 
         for (library in result.libraries) {
@@ -480,9 +481,11 @@ abstract class Namespace(val id: String) {
         }
 
         ff.addSource(File(remappedJar.absolutePath))
+        ff.addWhitelist(className)
+        ff.addWhitelist(className.substringBeforeLast("/") + "$" + className.substringAfterLast("/"))
         ff.decompileContext()
 
-        return sourceJar
+        return alternativeSourcesFile.takeIfExists() ?: sourcesFile
     }
 
     @Throws(IOException::class)

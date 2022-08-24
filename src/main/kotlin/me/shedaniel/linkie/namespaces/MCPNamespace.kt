@@ -70,6 +70,7 @@ object MCPNamespace : Namespace("mcp") {
 
     override fun supportsAT(): Boolean = true
     override fun supportsMixin(): Boolean = true
+    override fun supportsSource(): Boolean = true
     override suspend fun reloadData() {
         mcpConfigSnapshots.clear()
         json.parseToJsonElement(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/versions.json").readText()).jsonObject.forEach { mcVersion, mcpVersionsObj ->

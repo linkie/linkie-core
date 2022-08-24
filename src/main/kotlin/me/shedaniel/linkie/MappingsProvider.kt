@@ -29,7 +29,7 @@ data class MappingsProvider(
     suspend fun getOrNull(): MappingsContainer? = mappingsContainer?.invoke()
     suspend fun get(): MappingsContainer = getOrNull()!!
 
-    suspend fun getSources(): VfsFile = namespace.getSource(get(), version!!)
+    suspend fun getSources(className: String): VfsFile = namespace.getSource(get(), version!!, className)
 
     companion object {
         fun of(namespace: Namespace, version: String, mappingsContainer: MappingsContainer?): MappingsProvider =

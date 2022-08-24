@@ -14,6 +14,7 @@ import me.shedaniel.linkie.Method
 import me.shedaniel.linkie.Namespaces
 import me.shedaniel.linkie.namespaces.*
 import me.shedaniel.linkie.obfMergedName
+import me.shedaniel.linkie.optimumName
 import me.shedaniel.linkie.utils.ClassResultList
 import me.shedaniel.linkie.utils.FieldResultList
 import me.shedaniel.linkie.utils.MappingsQuery
@@ -77,7 +78,7 @@ class LinkieTest {
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
             val container = YarnNamespace.getDefaultProvider()
-            val source = container.getSources()
+            val source = container.getSources(container.get().allClasses.random().optimumName)
             source
         }
     }
@@ -132,7 +133,7 @@ class LinkieTest {
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
             val container = MojangNamespace.getDefaultProvider()
-            val source = container.getSources()
+            val source = container.getSources(container.get().allClasses.random().optimumName)
             source
         }
     }

@@ -32,6 +32,7 @@ object MojangSrgNamespace : Namespace("mojang_srg") {
 
     override fun supportsAT(): Boolean = true
     override fun supportsMixin(): Boolean = true
+    override fun supportsSource(): Boolean = true
 
     override suspend fun reloadData() {
         newMcpVersions = json.decodeFromString(ListSerializer(String.serializer()), URL(tmpTsrg2VersionsUrl).readText())

@@ -71,6 +71,7 @@ object MojangNamespace : Namespace("mojang") {
 
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
+    override fun supportsSource(): Boolean = true
 
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
 
