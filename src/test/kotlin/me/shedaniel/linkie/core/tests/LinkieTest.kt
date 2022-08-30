@@ -172,6 +172,16 @@ class LinkieTest {
     }
 
     @Test
+    fun legacyYarn() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(LegacyYarnNamespace)))
+            delay(2000)
+            while (LegacyYarnNamespace.reloading) delay(100)
+            LegacyYarnNamespace.getDefaultProvider().get()
+        }
+    }
+
+    @Test
     fun descriptionLocalising() {
         assertEquals("int", "I".localiseFieldDesc())
         assertEquals("int[]", "[I".localiseFieldDesc())
