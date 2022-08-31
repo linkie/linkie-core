@@ -40,7 +40,7 @@ object LegacyYarnNamespace : Namespace("legacy-yarn") {
 
     override fun getAllVersions(): Sequence<String> = legacyYarnBuilds.keys.asSequence()
     override fun getDefaultLoadedVersions(): List<String> {
-        return latestLegacyYarnVersion?.let(::listOf) ?: listOf()
+        return emptyList()
     }
     override val defaultVersion: String
         get() = latestLegacyYarnVersion!!
