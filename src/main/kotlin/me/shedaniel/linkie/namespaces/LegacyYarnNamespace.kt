@@ -1,96 +1,57 @@
 package me.shedaniel.linkie.namespaces
 
+import kotlinx.serialization.builtins.ListSerializer
 import me.shedaniel.linkie.MappingsContainer
-import me.shedaniel.linkie.MappingsSource
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromMaven
-import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyFile
-import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromGithubRepo
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromMaven
-import me.shedaniel.linkie.utils.readText
-import me.shedaniel.linkie.utils.singleSequenceOf
-import me.shedaniel.linkie.utils.toVersion
-import org.dom4j.io.SAXReader
+import me.shedaniel.linkie.utils.*
 import java.net.URL
 
 object LegacyYarnNamespace : Namespace("legacy-yarn") {
-    const val intermediary125 = "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5%20Merge.tiny"
     const val legacyFabricMaven = "https://maven.legacyfabric.net"
-    val legacyFabricVersions = mutableMapOf<String, String?>(
-        "1.3.2" to null,
-        "1.4.7" to null,
-        "1.5.2" to null,
-        "1.6.4" to null,
-        "1.7.10" to null,
-        "1.8.9" to null,
-        "1.9.4" to null,
-        "1.10.2" to null,
-        "1.11.2" to null,
-        "1.12.2" to null,
-        "1.13.2" to null,
-    )
-    var latestLegacyFabricVersions = ""
-    val workingLegacyFabricVersions = mutableListOf<String>()
+    const val legacyFabricIntermediary = "net.legacyfabric.intermediary"
+    const val legacyFabricYarn = "net.legacyfabric.yarn"
+    val legacyYarnBuilds = mutableMapOf<String, YarnNamespace.YarnBuild>()
+    val latestLegacyYarnVersion: String?
+        get() = legacyYarnBuilds.keys.filter { it.contains('.') && !it.contains('-') }
+                .maxByOrNull { it.tryToVersion() ?: Version() }
 
     init {
-        buildSupplier {
-            buildVersion("1.2.5") {
-                mappings {
-                    MappingsContainer(it, name = "Yarn").apply {
-                        loadIntermediaryFromTinyFile(URL(intermediary125))
-                        loadNamedFromGithubRepo("Blayyke/yarn", "1.2.5", showError = false)
-                        mappingsSource = MappingsSource.ENGIMA
-                    }
-                }
-            }
-        }
         buildSupplier {
             cached()
 
             buildVersions {
-                versions { workingLegacyFabricVersions }
-                uuid { version -> "$version-${legacyFabricVersions[version]}" }
-                mappings { version ->
-                    MappingsContainer(version, name = "Legacy Yarn").apply {
-                        loadIntermediaryFromMaven(version, repo = legacyFabricMaven)
-                        mappingsSource = loadNamedFromMaven(
-                            yarnVersion = legacyFabricVersions[version]!!,
-                            repo = legacyFabricMaven,
-                            showError = false
-                        )
+                versions { legacyYarnBuilds.keys }
+                uuid { version ->
+                    legacyYarnBuilds[version]!!.maven.let { it.substring(it.lastIndexOf(':') + 1) }
+                }
+                mappings {
+                    MappingsContainer(it, name = "Legacy Yarn").apply {
+                        loadIntermediaryFromMaven(version, legacyFabricMaven, legacyFabricIntermediary)
+                        val yarnMaven = legacyYarnBuilds[version]!!.maven
+                        mappingsSource = loadNamedFromMaven(yarnMaven.substring(yarnMaven.lastIndexOf(':') + 1),
+                                showError = false, repo = legacyFabricMaven, group = legacyFabricYarn)
                     }
                 }
             }
         }
     }
 
-    override fun getAllVersions(): Sequence<String> = workingLegacyFabricVersions.asSequence() + singleSequenceOf("1.2.5")
-    override fun getDefaultLoadedVersions(): List<String> = listOf()
+    override fun getAllVersions(): Sequence<String> = legacyYarnBuilds.keys.asSequence()
+    override fun getDefaultLoadedVersions(): List<String> {
+        return emptyList()
+    }
     override val defaultVersion: String
-        get() = latestLegacyFabricVersions
+        get() = latestLegacyYarnVersion!!
 
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
 
     override suspend fun reloadData() {
-        val pom189 = URL("$legacyFabricMaven/net/fabricmc/yarn/maven-metadata.xml").readText()
-        SAXReader().read(pom189.reader()).rootElement
-            .element("versioning")
-            .element("versions")
-            .elementIterator("version")
-            .asSequence()
-            .map { it.text }
-            .groupBy { it.substringBefore('+') }
-            .forEach { (mcVersion, builds) ->
-                if (legacyFabricVersions.containsKey(mcVersion)) {
-                    legacyFabricVersions[mcVersion] = builds.last()
-                }
-            }
-        workingLegacyFabricVersions.clear()
-        workingLegacyFabricVersions.addAll(legacyFabricVersions.asSequence()
-            .filter { it.value != null }
-            .map { it.key }
-        )
-        latestLegacyFabricVersions = workingLegacyFabricVersions.maxByOrNull { it.toVersion() }!!
+        val buildMap = LinkedHashMap<String, MutableList<YarnNamespace.YarnBuild>>()
+        json.decodeFromString(ListSerializer(YarnNamespace.YarnBuild.serializer()), URL("https://meta.legacyfabric.net/v2/versions/yarn").readText())
+                .forEach { buildMap.getOrPut(it.gameVersion) { mutableListOf() }.add(it) }
+        buildMap.forEach { (version, builds) -> builds.maxByOrNull { it.build }?.apply { legacyYarnBuilds[version] = this } }
     }
 }
