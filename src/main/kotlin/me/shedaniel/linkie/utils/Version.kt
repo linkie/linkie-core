@@ -60,6 +60,8 @@ private object MinecraftVersionLookupData {
 
     init {
         parse("""
+1.19.3 22 42
+1.19.1 22 24
 1.19   22 11
 1.18.2 22 03
 1.18   21 37
