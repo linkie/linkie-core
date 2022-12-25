@@ -10,6 +10,7 @@ import me.shedaniel.linkie.jar.GameJarProvider
 import me.shedaniel.linkie.utils.debug
 import me.shedaniel.linkie.utils.getMillis
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.max
 import kotlin.properties.Delegates
 
 object Namespaces {
@@ -28,9 +29,9 @@ object Namespaces {
 
     fun getMaximumCachedVersion(): Int = config.maximumLoadedVersions
 
-    fun limitCachedData() {
+    fun limitCachedData(prepare: Int) {
         val list = mutableListOf<String>()
-        while (cachedMappings.size > getMaximumCachedVersion()) {
+        while (cachedMappings.size > max(0, getMaximumCachedVersion() - prepare)) {
             val first = cachedMappings.first()
             cachedMappings.remove(first)
             list.add(first.let { "${it.namespace}-${it.version}" })
@@ -41,7 +42,7 @@ object Namespaces {
 
     fun addMappingsContainer(mappingsContainer: MappingsContainer) {
         cachedMappings.add(mappingsContainer)
-        limitCachedData()
+        limitCachedData(0)
         debug("Currently Loaded ${cachedMappings.size} Mapping(s): " + cachedMappings.joinToString(", ") {
             "${it.namespace}-${it.version}"
         })

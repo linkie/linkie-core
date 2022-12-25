@@ -77,6 +77,7 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
     override suspend fun applyVersion(version: String): MappingsContainer {
         lock.lock()
         try {
+            Namespaces.limitCachedData(1)
             return getCachedVersion(version) ?: super.applyVersion(version).also {
                 it.namespace = namespace.id
                 Namespaces.addMappingsContainer(it)
