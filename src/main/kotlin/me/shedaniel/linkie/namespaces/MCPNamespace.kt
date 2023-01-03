@@ -65,7 +65,7 @@ object MCPNamespace : Namespace("mcp") {
                 uuid { "mcp-${it}-client" }
 
                 buildMappings(name = "MCP-Client") {
-                    val url = oldMcpVersions[it]!!
+                    val url = sidedMcpVersions[it]!!
                     source(MappingsSource.MCP_SRG)
                     loadSrgFromURLZip(URL(url), "client")
                 }
@@ -76,7 +76,7 @@ object MCPNamespace : Namespace("mcp") {
                 uuid { "mcp-${it}-server" }
 
                 buildMappings(name = "MCP-Server") {
-                    val url = oldMcpVersions[it]!!
+                    val url = sidedMcpVersions[it]!!
                     source(MappingsSource.MCP_SRG)
                     loadSrgFromURLZip(URL(url), "server")
                 }
