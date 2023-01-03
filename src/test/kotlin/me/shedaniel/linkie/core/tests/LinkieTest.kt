@@ -116,6 +116,17 @@ class LinkieTest {
     }
 
     @Test
+    fun mcpReallyOld() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MCPNamespace)))
+            delay(2000)
+            while (MCPNamespace.reloading) delay(100)
+            val container = MCPNamespace.getProvider("1.7.2").get()
+            container
+        }
+    }
+
+    @Test
     fun mojmap() {
         runBlocking {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))

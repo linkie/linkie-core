@@ -28,9 +28,70 @@ object MCPNamespace : Namespace("mcp") {
     private val mcpConfigSnapshots = mutableMapOf<Version, MutableList<String>>()
     private val newMcpVersions = mutableMapOf<Version, MCPVersion>()
 
+    // Found on Minecraft fandom MCP page.
+    private val oldMcpVersions = mapOf(
+            Pair("1.7.2", "https://www.mediafire.com/file/q97ptg3ng85tpra/mcp903.zip/file")
+    )
+    private val sidedMcpVersions = mapOf(
+            Pair("1.6.4", "https://www.mediafire.com/file/96mrmeo57cdf6zv/mcp811.zip/file"),
+            Pair("1.6.2", "https://www.mediafire.com/file/xcjy2o2zsdol7cu/mcp805.zip/file"),
+            Pair("1.6.1", "https://www.mediafire.com/file/fu9b8voz4xeu29n/mcp803.zip/file"),
+            Pair("1.5.2", "https://www.mediafire.com/file/95vlzp1a4n4wjqw/mcp751.zip/file"),
+            Pair("1.5.1", "https://www.mediafire.com/file/2s29h4469m2ysao/mcp744.zip/file"),
+            Pair("1.5", "https://www.mediafire.com/file/bbgk21dw4mp02sp/mcp742.zip/file"),
+            Pair("13w09c", "https://www.mediafire.com/file/t23e247mudahtam/mcp739.zip/file"),
+            Pair("13w05b", "https://www.mediafire.com/file/690vfbejvfe8q0m/mcp734.zip/file"),
+            Pair("13w02b", "https://www.mediafire.com/file/8amwnl6gt6p6gc5/mcp730c.zip/file"),
+            Pair("1.4.7", "https://www.mediafire.com/file/07d59w314ewjfth/mcp726a.zip/file"),
+            Pair("1.4.6", "https://www.mediafire.com/file/4kzs5swcm5ypqo6/mcp725.zip/file"),
+            Pair("1.4.5", "https://www.mediafire.com/file/spaiyzpccxkx6cg/mcp723.zip/file"),
+            Pair("1.4.4", "https://www.mediafire.com/file/i27oi6miadssyp9/mcp721.zip/file"),
+            Pair("1.4.2", "https://www.mediafire.com/file/rz8dnqj1bxrz85q/mcp719.zip/file"),
+            Pair("1.3.2", "https://www.mediafire.com/file/38vjh7hrpprrw1b/mcp72.zip/file"),
+            Pair("1.3.1", "https://www.mediafire.com/file/hxui27dv5q4k8v4/mcp70a.zip/file"),
+            Pair("12w26a", "https://www.mediafire.com/file/dhhvhzezje6zx59/mcp615.zip/file"),
+            Pair("12w17a", "https://www.mediafire.com/file/0nxeeitb1s54x1e/mcp65.zip/file"),
+            Pair("1.2.5", "https://www.mediafire.com/file/c6liau295225253/mcp62.zip/file"),
+            Pair("1.2.4", "https://www.mediafire.com/file/hl1t281w442wfxf/mcp61.zip/file"),
+            Pair("1.2.3", "https://www.mediafire.com/file/emz17agmzr3ed7e/mcp60.zip/file")
+    )
+
     init {
         buildSupplier {
             cached()
+
+            buildVersions {
+                versions { sidedMcpVersions.keys }
+                uuid { "mcp-${it}-client" }
+
+                buildMappings(name = "MCP-Client") {
+                    val url = oldMcpVersions[it]!!
+                    source(MappingsSource.MCP_SRG)
+                    loadSrgFromURLZip(URL(url), "client")
+                }
+            }
+
+            buildVersions {
+                versions { sidedMcpVersions.keys }
+                uuid { "mcp-${it}-server" }
+
+                buildMappings(name = "MCP-Server") {
+                    val url = oldMcpVersions[it]!!
+                    source(MappingsSource.MCP_SRG)
+                    loadSrgFromURLZip(URL(url), "server")
+                }
+            }
+
+            buildVersions {
+                versions { oldMcpVersions.keys }
+                uuid { "mcp-${it}" }
+
+                buildMappings(name = "MCP") {
+                    val url = oldMcpVersions[it]!!
+                    source(MappingsSource.MCP_SRG)
+                    loadSrgFromURLZip(URL(url))
+                }
+            }
 
             buildVersions {
                 versionsSeq(::getAllBotVersions)
@@ -66,7 +127,7 @@ object MCPNamespace : Namespace("mcp") {
     override fun supportsFieldDescription(): Boolean = false
     override fun getDefaultLoadedVersions(): List<String> = listOf(defaultVersion)
     fun getAllBotVersions(): Sequence<String> = mcpConfigSnapshots.keys.asSequence().map { it.toString() }
-    override fun getAllVersions(): Sequence<String> = getAllBotVersions() + newMcpVersions.keys.map(Version::toString)
+    override fun getAllVersions(): Sequence<String> = getAllBotVersions() + newMcpVersions.keys.map(Version::toString) + oldMcpVersions.keys + sidedMcpVersions.keys
 
     override fun supportsAT(): Boolean = true
     override fun supportsMixin(): Boolean = true
@@ -95,9 +156,9 @@ object MCPNamespace : Namespace("mcp") {
         }
     }
 
-    suspend fun MappingsBuilder.loadSrgFromURLZip(url: URL) {
+    suspend fun MappingsBuilder.loadSrgFromURLZip(url: URL, filename: String = "joined") {
         url.toAsyncZip().forEachEntry { path, entry ->
-            if (!entry.isDirectory && path.split("/").lastOrNull() == "joined.srg") {
+            if (!entry.isDirectory && path.split("/").lastOrNull() == "${filename}.srg") {
                 loadSrgFromInputStream(entry.bytes.decodeToString())
             }
         }
