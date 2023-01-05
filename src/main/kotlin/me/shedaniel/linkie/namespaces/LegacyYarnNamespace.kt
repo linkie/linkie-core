@@ -9,7 +9,7 @@ import me.shedaniel.linkie.utils.*
 import java.net.URL
 
 object LegacyYarnNamespace : Namespace("legacy-yarn") {
-    const val legacyFabricMaven = "https://maven.legacyfabric.net"
+    const val legacyFabricMaven = "https://repo.legacyfabric.net/repository/legacyfabric"
     const val legacyFabricIntermediary = "net.legacyfabric.intermediary"
     const val legacyFabricYarn = "net.legacyfabric.yarn"
     val legacyYarnBuilds = mutableMapOf<String, YarnNamespace.YarnBuild>()
