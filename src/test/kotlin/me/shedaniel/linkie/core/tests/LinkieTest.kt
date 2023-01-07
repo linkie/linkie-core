@@ -182,6 +182,16 @@ class LinkieTest {
     }
 
     @Test
+    fun barn() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(BarnNamespace)))
+            delay(2000)
+            while (BarnNamespace.reloading) delay(100)
+            BarnNamespace.getDefaultProvider().get()
+        }
+    }
+
+    @Test
     fun descriptionLocalising() {
         assertEquals("int", "I".localiseFieldDesc())
         assertEquals("int[]", "[I".localiseFieldDesc())
