@@ -8,6 +8,7 @@ The absolute core of linkie.
 - Yarn (1.14+)
 - Yarrn (Infdev 20100618)
 - Plasma (Beta 1.7.3)
+- Feather (1.3-1.13.2)
 
 ### Platform Targets
 - JVM
