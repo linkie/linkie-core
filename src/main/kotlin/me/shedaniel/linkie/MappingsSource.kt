@@ -24,7 +24,8 @@ enum class MappingsSource {
     YARN_V2,
     SPIGOT,
     ENGIMA,
-    QUILT_MAPPINGS;
+    QUILT_MAPPINGS,
+    FEATHER;
 
     override fun toString(): String = name.toLowerCase(Locale.ROOT).split("_").joinToString(" ") { it.capitalize() }
 }

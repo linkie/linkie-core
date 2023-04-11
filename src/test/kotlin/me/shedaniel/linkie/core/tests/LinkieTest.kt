@@ -192,6 +192,16 @@ class LinkieTest {
     }
 
     @Test
+    fun feather() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(FeatherNamespace)))
+            delay(2000)
+            while (FeatherNamespace.reloading) delay(100)
+            FeatherNamespace.getDefaultProvider().get()
+        }
+    }
+
+    @Test
     fun descriptionLocalising() {
         assertEquals("int", "I".localiseFieldDesc())
         assertEquals("int[]", "[I".localiseFieldDesc())
