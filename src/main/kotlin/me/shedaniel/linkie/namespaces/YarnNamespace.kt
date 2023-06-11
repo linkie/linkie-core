@@ -88,8 +88,9 @@ object YarnNamespace : Namespace("yarn") {
         mcVersion: String,
         repo: String = "https://maven.fabricmc.net",
         group: String = "net.fabricmc.intermediary",
+        artifact: String = "intermediary",
     ) =
-        loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/intermediary-$mcVersion.jar"))
+        loadIntermediaryFromTinyJar(URL("$repo/${group.replace('.', '/')}/$mcVersion/$artifact-$mcVersion.jar"))
 
     suspend fun MappingsContainer.loadIntermediaryFromTinyJar(url: URL) {
         url.toAsyncZip().forEachEntry { path, entry ->

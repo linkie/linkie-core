@@ -41,10 +41,10 @@ object FeatherNamespace : Namespace("feather") {
                 }
                 mappings {
                     MappingsContainer(it, name = "Feather").apply {
-                        loadIntermediaryFromMaven(version, ornitheMaven, intermediaryGroup)
+                        loadIntermediaryFromMaven(version, ornitheMaven, intermediaryGroup, "calamus-intermediary")
                         val featherMaven = featherBuilds[version]!!.maven
                         mappingsSource = loadNamedFromMaven(featherMaven.substring(featherMaven.lastIndexOf(':') + 1),
-                                showError = false, repo = ornitheMaven, group = featherGroup)
+                                showError = false, repo = ornitheMaven, group = featherGroup, id = "feather")
                     }
                 }
             }
@@ -60,7 +60,6 @@ object FeatherNamespace : Namespace("feather") {
 
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
-    override fun supportsSource(): Boolean = true
 
     override suspend fun reloadData() {
         val buildMap = LinkedHashMap<String, MutableList<FeatherBuild>>()
