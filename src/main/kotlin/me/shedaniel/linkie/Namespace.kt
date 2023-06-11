@@ -7,17 +7,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import me.shedaniel.linkie.Namespaces.config
 import me.shedaniel.linkie.jar.GameJarProvider
-import me.shedaniel.linkie.namespaces.MappingsContainerBuilder
-import me.shedaniel.linkie.namespaces.MappingsVersion
-import me.shedaniel.linkie.namespaces.MappingsVersionBuilder
-import me.shedaniel.linkie.namespaces.ofVersion
-import me.shedaniel.linkie.namespaces.toBuilder
+import me.shedaniel.linkie.namespaces.*
 import me.shedaniel.linkie.source.QfResultSaver
-import me.shedaniel.linkie.utils.ZipFile
-import me.shedaniel.linkie.utils.div
-import me.shedaniel.linkie.utils.forEachDescriptor
-import me.shedaniel.linkie.utils.isValidJavaIdentifier
-import me.shedaniel.linkie.utils.tryToVersion
+import me.shedaniel.linkie.utils.*
 import net.fabricmc.stitch.util.StitchUtil
 import net.fabricmc.tinyremapper.IMappingProvider
 import net.fabricmc.tinyremapper.OutputConsumerPath
@@ -25,12 +17,7 @@ import net.fabricmc.tinyremapper.TinyRemapper
 import org.jetbrains.java.decompiler.main.Fernflower
 import org.jetbrains.java.decompiler.main.decompiler.PrintStreamLogger
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences
-import org.objectweb.asm.ClassReader
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.Label
-import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
+import org.objectweb.asm.*
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -38,6 +25,28 @@ import java.nio.file.Paths
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
 import javax.lang.model.SourceVersion
+import kotlin.collections.HashMap
+import kotlin.collections.Iterable
+import kotlin.collections.List
+import kotlin.collections.Map
+import kotlin.collections.MutableMap
+import kotlin.collections.Set
+import kotlin.collections.any
+import kotlin.collections.asReversed
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.first
+import kotlin.collections.firstOrNull
+import kotlin.collections.forEach
+import kotlin.collections.getOrPut
+import kotlin.collections.listOf
+import kotlin.collections.map
+import kotlin.collections.mutableListOf
+import kotlin.collections.mutableMapOf
+import kotlin.collections.set
+import kotlin.collections.setOf
+import kotlin.collections.toList
+import kotlin.collections.toTypedArray
 
 
 abstract class Namespace(val id: String) {
@@ -367,102 +376,30 @@ abstract class Namespace(val id: String) {
     open fun supportsAW(): Boolean = false
     open fun supportsFieldDescription(): Boolean = true
     open fun supportsSource(): Boolean = false
+    
+    data class PreSource(
+        val result: GameJarProvider.Result,
+        val remappedJar: VfsFile,
+        val sourcesDir: VfsFile,
+        val ff: () -> Fernflower
+    )
 
-    suspend fun getSource(mappings: MappingsContainer, version: String, className: String): VfsFile {
+    suspend fun preGetSource(mappings: MappingsContainer, version: String, threads: Int): PreSource {
         val result = jarProvider!!.provide(version)
         val remappedJarRaw = (config.cacheDirectory / "minecraft-jars" / "remapped").also { it.mkdirs() } / "$id-$version.jar"
-        val remappedJarResult = runCatching {
-            val filteredJar = config.cacheDirectory / "minecraft-jars" / "$version-client-filtered.jar"
-            if (remappedJarRaw.exists()) return@runCatching remappedJarRaw
-            if (!filteredJar.exists()) {
-                JarOutputStream(Files.newOutputStream(Paths.get(filteredJar.absolutePath))).use {
-                    ZipFile(result.minecraftFile.readBytes()).forEachEntry { path, entry ->
-                        if (path.endsWith(".class")) {
-                            val reader = ClassReader(entry.bytes)
-                            val writer = ClassWriter(0)
-                            reader.accept(object : ClassVisitor(Opcodes.ASM9, writer) {
-                                override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor {
-                                    return object : MethodVisitor(api, super.visitMethod(access, name, descriptor, signature, exceptions)) {
-                                        override fun visitLocalVariable(name: String?, descriptor: String?, signature: String?, start: Label?, end: Label?, index: Int) {
-                                        }
-
-                                        override fun visitParameter(name: String?, access: Int) {
-                                        }
-                                    }
-                                }
-                            }, 0)
-                            it.putNextEntry(ZipEntry(path))
-                            it.write(writer.toByteArray())
-                            it.closeEntry()
-                        }
-                    }
-                }
-            }
-            val remapper = TinyRemapper.newRemapper()
-                .withMappings { accepter ->
-                    mappings.allClasses.forEach { clazz ->
-                        if (clazz.obfMergedName == null) return@forEach
-                        accepter.acceptClass(clazz.obfMergedName, clazz.optimumName)
-
-                        clazz.methods.forEach { method ->
-                            if (method.obfMergedName == null) return@forEach
-                            val member = IMappingProvider.Member(clazz.obfMergedName, method.obfMergedName, method.getObfMergedDesc(mappings))
-                            accepter.acceptMethod(member, method.optimumName)
-
-                            val nameCounts: MutableMap<String, Int> = HashMap()
-
-                            method.args?.forEach { arg ->
-                                nameCounts[arg.name] = nameCounts.getOrPut(arg.name) { 0 } + 1
-                            }
-
-                            val methodParameterDesc = member.desc.substringAfter('(').substringBefore(')')
-                            var index = 0
-
-                            methodParameterDesc.forEachDescriptor {
-                                index++
-                            }
-
-                            val size = index
-                            val args = arrayOfNulls<String>(size + 1)
-
-                            method.args?.forEach { arg ->
-                                accepter.acceptMethodArg(member, arg.index, arg.name)
-                            }
-
-//                            args.forEachIndexed { index, arg ->
-//                                if (arg != null) {
-//                                    accepter.acceptMethodArg(member, index, arg)
-//                                }
-//                            }
-                        }
-
-                        clazz.fields.forEach { field ->
-                            if (field.obfMergedName == null) return@forEach
-                            accepter.acceptField(IMappingProvider.Member(clazz.obfMergedName, field.obfMergedName, field.getObfMergedDesc(mappings)), field.optimumName)
-                        }
-                    }
-                }
-                .threads(4)
-                .build()
-            remapper.readClassPath(*result.libraries.map { Paths.get(it.absolutePath) }.toTypedArray())
-            remapper.readInputs(Paths.get(filteredJar.absolutePath))
-            OutputConsumerPath.Builder(Paths.get(remappedJarRaw.absolutePath)).build().use { path ->
-                remapper.apply(path)
-            }
-            remapper.finish()
-            return@runCatching remappedJarRaw
-        }
+        val remappedJarResult = getRemappedJar(version, remappedJarRaw, result, mappings)
         if (remappedJarResult.isFailure) {
             remappedJarRaw.delete()
             throw remappedJarResult.exceptionOrNull()!!
         }
         val remappedJar = remappedJarResult.getOrThrow()
         val sourcesDir = (config.cacheDirectory / "minecraft-jars" / "sources" / "$id-$version").also { it.mkdirs() }
-        val sourcesFile = sourcesDir / "$className.java"
-        val alternativeSourcesFile = sourcesDir / "${className.substringBeforeLast("/") + "$" + className.substringAfterLast("/")}.java"
-        if (sourcesFile.exists()) return sourcesFile
-        if (alternativeSourcesFile.exists()) return alternativeSourcesFile
-
+        return PreSource(result, remappedJar, sourcesDir) {
+            createFF(result, remappedJar, sourcesDir, threads)
+        }
+    }
+    
+    fun createFFOptions(threads: Int): Map<String, String> {
         val options = mutableMapOf<String, String>()
         options[IFernflowerPreferences.INDENT_STRING] = "\t"
         options[IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES] = "1"
@@ -470,7 +407,12 @@ abstract class Namespace(val id: String) {
         options[IFernflowerPreferences.LOG_LEVEL] = "warn"
         options[IFernflowerPreferences.REMOVE_BRIDGE] = "0"
         options[IFernflowerPreferences.REMOVE_SYNTHETIC] = "0"
-        options[IFernflowerPreferences.THREADS] = "4"
+        options[IFernflowerPreferences.THREADS] = threads.toString()
+        return options
+    }
+    
+    fun createFF(result: GameJarProvider.Result, remappedJar: VfsFile, sourcesDir: VfsFile, threads: Int): Fernflower {
+        val options = createFFOptions(threads)
 
         val ff = Fernflower({ outer, inner -> getBytes(outer, inner) },
             QfResultSaver(File(sourcesDir.absolutePath)), options as Map<String, Any>, PrintStreamLogger(System.out)
@@ -481,11 +423,159 @@ abstract class Namespace(val id: String) {
         }
 
         ff.addSource(File(remappedJar.absolutePath))
+        return ff
+    }
+
+    suspend fun getSource(mappings: MappingsContainer, version: String, className: String): VfsFile {
+        val (_, remappedJar, sourcesDir, ffProvider) = preGetSource(mappings, version, 4)
+        val sourcesFile = sourcesDir / "$className.java"
+        val alternativeSourcesFile = sourcesDir / "${className.substringBeforeLast("/") + "$" + className.substringAfterLast("/")}.java"
+        if (sourcesFile.exists()) return sourcesFile
+        if (alternativeSourcesFile.exists()) return alternativeSourcesFile
+
+        val ff = ffProvider()
         ff.addWhitelist(className)
         ff.addWhitelist(className.substringBeforeLast("/") + "$" + className.substringAfterLast("/"))
         ff.decompileContext()
 
-        return alternativeSourcesFile.takeIfExists() ?: sourcesFile
+        val output = alternativeSourcesFile.takeIfExists() ?: sourcesFile
+
+        RemapperDaemon.updateCacheJson(this, version, remappedJar, 1)
+
+        return output
+    }
+
+    suspend fun getAllSource(mappings: MappingsContainer, version: String) {
+        val (_, remappedJar, _, ffProvider) = preGetSource(mappings, version, 1)
+
+        try {
+            val ff = ffProvider()
+            ff.decompileContext()
+        } catch (e: Throwable) {
+            RemapperDaemon.updateCacheJson(this, version, remappedJar, null, true)
+            throw e
+        }
+
+        RemapperDaemon.updateCacheJson(this, version, remappedJar, null)
+    }
+
+    private suspend fun Namespace.getRemappedJar(
+        version: String,
+        remappedJar: VfsFile,
+        gameJars: GameJarProvider.Result,
+        mappings: MappingsContainer
+    ) = runCatching {
+        val filteredJar = config.cacheDirectory / "minecraft-jars" / "$version-client-filtered.jar"
+        if (remappedJar.exists()) return@runCatching remappedJar
+        if (!filteredJar.exists()) {
+            JarOutputStream(Files.newOutputStream(Paths.get(filteredJar.absolutePath))).use {
+                ZipFile(gameJars.minecraftFile.readBytes()).forEachEntry { path, entry ->
+                    if (path.endsWith(".class")) {
+                        val reader = ClassReader(entry.bytes)
+                        val writer = ClassWriter(0)
+                        reader.accept(object : ClassVisitor(Opcodes.ASM9, writer) {
+                            override fun visitMethod(
+                                access: Int,
+                                name: String?,
+                                descriptor: String?,
+                                signature: String?,
+                                exceptions: Array<out String>?
+                            ): MethodVisitor {
+                                return object : MethodVisitor(
+                                    api,
+                                    super.visitMethod(access, name, descriptor, signature, exceptions)
+                                ) {
+                                    override fun visitLocalVariable(
+                                        name: String?,
+                                        descriptor: String?,
+                                        signature: String?,
+                                        start: Label?,
+                                        end: Label?,
+                                        index: Int
+                                    ) {
+                                    }
+
+                                    override fun visitParameter(name: String?, access: Int) {
+                                    }
+                                }
+                            }
+                        }, 0)
+                        it.putNextEntry(ZipEntry(path))
+                        it.write(writer.toByteArray())
+                        it.closeEntry()
+                    }
+                }
+            }
+        }
+        val remapper = TinyRemapper.newRemapper()
+            .withMappings { accepter ->
+                mappings.allClasses.forEach { clazz ->
+                    if (clazz.obfMergedName == null) return@forEach
+                    accepter.acceptClass(
+                        clazz.obfMergedName,
+                        clazz.optimumName.takeIf(String::isNotBlank) ?: clazz.obfMergedName
+                    )
+
+                    clazz.methods.forEach { method ->
+                        if (method.obfMergedName == null) return@forEach
+                        val member = IMappingProvider.Member(
+                            clazz.obfMergedName,
+                            method.obfMergedName,
+                            method.getObfMergedDesc(mappings)
+                        )
+                        accepter.acceptMethod(
+                            member,
+                            method.optimumName.takeIf(String::isNotBlank) ?: method.obfMergedName
+                        )
+
+                        val nameCounts: MutableMap<String, Int> = HashMap()
+
+                        method.args?.forEach { arg ->
+                            nameCounts[arg.name] = nameCounts.getOrPut(arg.name) { 0 } + 1
+                        }
+
+                        val methodParameterDesc = member.desc.substringAfter('(').substringBefore(')')
+                        var index = 0
+
+                        methodParameterDesc.forEachDescriptor {
+                            index++
+                        }
+
+                        val size = index
+                        val args = arrayOfNulls<String>(size + 1)
+
+                        method.args?.forEach { arg ->
+                            accepter.acceptMethodArg(member, arg.index, arg.name)
+                        }
+    
+    //                            args.forEachIndexed { index, arg ->
+    //                                if (arg != null) {
+    //                                    accepter.acceptMethodArg(member, index, arg)
+    //                                }
+    //                            }
+                    }
+
+                    clazz.fields.forEach { field ->
+                        if (field.obfMergedName == null) return@forEach
+                        accepter.acceptField(
+                            IMappingProvider.Member(
+                                clazz.obfMergedName,
+                                field.obfMergedName,
+                                field.getObfMergedDesc(mappings)
+                            ), field.optimumName.takeIf(String::isNotBlank) ?: field.obfMergedName
+                        )
+                    }
+                }
+            }
+            .threads(4)
+            .build()
+        remapper.readClassPath(*gameJars.libraries.map { Paths.get(it.absolutePath) }.toTypedArray())
+        remapper.readInputs(Paths.get(filteredJar.absolutePath))
+        OutputConsumerPath.Builder(Paths.get(remappedJar.absolutePath)).build().use { path ->
+            remapper.apply(path)
+        }
+        remapper.finish()
+        return@runCatching remappedJar
     }
 
     @Throws(IOException::class)

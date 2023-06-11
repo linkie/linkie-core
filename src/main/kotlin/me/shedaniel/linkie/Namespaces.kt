@@ -58,6 +58,7 @@ object Namespaces {
         }
         Namespaces.config = config
         gameJarProvider = config.gameJarProvider?.let { it(config) }
+        RemapperDaemon.init()
         config.namespaces.forEach { registerNamespace(it) }
         val cycleMs = config.reloadCycleDuration.millisecondsLong
 

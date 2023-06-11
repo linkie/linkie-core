@@ -14,6 +14,7 @@ data class LinkieConfig(
     val namespaces: Iterable<Namespace>,
     val reloadCycleDuration: TimeSpan,
     val gameJarProvider: ((LinkieConfig) -> GameJarProvider)?,
+    val remapSourceDaemonDuration: TimeSpan?,
 ) {
     companion object {
         @JvmStatic
@@ -23,6 +24,7 @@ data class LinkieConfig(
             namespaces = listOf(),
             reloadCycleDuration = 1800000.milliseconds,
             gameJarProvider = ::GameJarDownloadingProvider,
+            remapSourceDaemonDuration = null,
         )
     }
 }

@@ -27,7 +27,6 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
     override suspend fun reloadData() = Unit
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
-    override fun supportsSource(): Boolean = true
 
     init {
         buildSupplier {
