@@ -1,6 +1,5 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.stream.readAvailable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -13,15 +12,7 @@ import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.parser.apply
 import me.shedaniel.linkie.parser.srg
 import me.shedaniel.linkie.parser.tsrg
-import me.shedaniel.linkie.parser.visitor
-import me.shedaniel.linkie.utils.Version
-import me.shedaniel.linkie.utils.filterNotBlank
-import me.shedaniel.linkie.utils.lines
-import me.shedaniel.linkie.utils.readText
-import me.shedaniel.linkie.utils.toAsyncZip
-import me.shedaniel.linkie.utils.toVersion
-import me.shedaniel.linkie.utils.tryToVersion
-import java.net.URL
+import me.shedaniel.linkie.utils.*
 
 object MCPNamespace : Namespace("mcp") {
     const val tmpMcpVersionsUrl = "https://gist.githubusercontent.com/shedaniel/afc2748c6d5dd827d4cde161a49687ec/raw/mcp_versions.json"

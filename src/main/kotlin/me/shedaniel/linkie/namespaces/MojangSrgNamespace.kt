@@ -2,20 +2,14 @@ package me.shedaniel.linkie.namespaces
 
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
-import me.shedaniel.linkie.MappingsContainer
-import me.shedaniel.linkie.MappingsMember
+import me.shedaniel.linkie.*
 import me.shedaniel.linkie.MappingsSource.MOJANG_TSRG
 import me.shedaniel.linkie.MappingsSource.MOJANG_TSRG2
-import me.shedaniel.linkie.Namespace
-import me.shedaniel.linkie.buildMappings
-import me.shedaniel.linkie.getMappedDesc
 import me.shedaniel.linkie.namespaces.MCPNamespace.loadTsrgFromURLZip
-import me.shedaniel.linkie.rearrangeClassMap
-import me.shedaniel.linkie.rewireIntermediaryFrom
+import me.shedaniel.linkie.utils.URL
 import me.shedaniel.linkie.utils.Version
 import me.shedaniel.linkie.utils.readText
 import me.shedaniel.linkie.utils.toVersion
-import java.net.URL
 
 object MojangSrgNamespace : Namespace("mojang_srg") {
     const val tmpTsrg2VersionsUrl = "https://gist.githubusercontent.com/shedaniel/68c5a5f8a56a30f48f994e105351b15f/raw/official-mcpconfig.json"

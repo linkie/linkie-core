@@ -7,20 +7,18 @@ import com.soywiz.korio.stream.AsyncStream
 import com.soywiz.korio.stream.openAsync
 import com.soywiz.korio.stream.readAvailable
 import okio.BufferedSource
-import java.net.URL
 import java.util.zip.ZipInputStream
-import kotlin.io.readText
 
 val httpClient = createHttpClient()
 val defaultRequestConfig = HttpClient.RequestConfig(
-    followRedirects = false,
     throwErrors = true
 )
 
 suspend fun AsyncInputStream.readText(): String = readBytes().decodeToString()
 suspend fun AsyncInputStream.lines(): Sequence<String> = readText().lineSequence()
 suspend fun AsyncInputStream.readBytes() = readAvailable()
-suspend fun URL.readText() = readText(Charsets.UTF_8)
+suspend fun URL.readBytes() = httpClient.readBytes(this.toString(), defaultRequestConfig)
+suspend fun URL.readText() = readBytes().decodeToString()
 suspend fun URL.readLines() = readText().lineSequence()
 suspend fun ByteArray.lines() = decodeToString().lineSequence()
 suspend fun URL.toAsyncZip(): ZipFile = toAsyncStream().zip()
@@ -31,6 +29,11 @@ inline fun BufferedSource.forEachLine(consumer: (String) -> Unit) = readUtf8().l
 fun BufferedSource.lines() = readUtf8().lines()
 
 fun getMillis(): Long = System.currentTimeMillis()
+
+@JvmInline
+value class URL(val path: String) {
+    override fun toString(): String = path
+}
 
 class ZipFile(val bytes: ByteArray) {
     suspend fun forEachEntry(action: suspend (path: String, entry: ZipEntry) -> Unit) {

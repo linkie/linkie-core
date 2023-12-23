@@ -7,13 +7,15 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.*
-import me.shedaniel.linkie.utils.onlyClass
-import me.shedaniel.linkie.utils.readLines
-import me.shedaniel.linkie.utils.readText
-import me.shedaniel.linkie.utils.singleSequenceOf
-import me.shedaniel.linkie.utils.toVersion
-import me.shedaniel.linkie.utils.tryToVersion
-import java.net.URL
+import me.shedaniel.linkie.utils.*
+import kotlin.collections.List
+import kotlin.collections.Set
+import kotlin.collections.asSequence
+import kotlin.collections.forEach
+import kotlin.collections.listOf
+import kotlin.collections.mutableMapOf
+import kotlin.collections.set
+import kotlin.collections.setOf
 
 object MojangNamespace : Namespace("mojang") {
     val versionJsonMap = mutableMapOf<String, String>()

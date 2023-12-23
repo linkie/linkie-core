@@ -6,7 +6,6 @@ import me.shedaniel.linkie.namespaces.YarnNamespace.loadIntermediaryFromTinyInpu
 import me.shedaniel.linkie.namespaces.YarnNamespace.loadNamedFromTinyInputStream
 import me.shedaniel.linkie.utils.*
 import org.dom4j.io.SAXReader
-import java.net.URL
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
