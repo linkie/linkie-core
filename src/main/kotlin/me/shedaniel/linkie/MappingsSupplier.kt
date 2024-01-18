@@ -3,10 +3,11 @@
 package me.shedaniel.linkie
 
 import com.soywiz.korio.file.VfsFile
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
-import java.util.concurrent.locks.ReentrantLock
 
 interface MappingsSupplier {
     fun isApplicable(version: String): Boolean
@@ -73,17 +74,14 @@ fun Namespace.multipleCachedSupplier(
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
-    private val lock = ReentrantLock()
+    private val mutex = Mutex()
     override suspend fun applyVersion(version: String): MappingsContainer {
-        lock.lock()
-        try {
+        mutex.withLock {
             Namespaces.limitCachedData(1)
             return getCachedVersion(version) ?: super.applyVersion(version).also {
                 it.namespace = namespace.id
                 Namespaces.addMappingsContainer(it)
             }
-        } finally {
-            lock.unlock()
         }
     }
 
@@ -93,6 +91,12 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
     
     private fun getCachedVersion(version: String): MappingsContainer? =
         Namespaces.cachedMappings.firstOrNull { it.namespace == namespace.id && it.version == version.toLowerCase() }
+    
+    companion object {
+        fun create(namespace: Namespace, supplier: () -> MappingsSupplier) {
+            
+        }
+    }
 }
 
 private class LoggingMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
