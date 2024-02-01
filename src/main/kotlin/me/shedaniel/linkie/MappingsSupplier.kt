@@ -5,9 +5,12 @@ package me.shedaniel.linkie
 import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
+import kotlin.time.Duration.Companion.seconds
 
 interface MappingsSupplier {
     fun isApplicable(version: String): Boolean
@@ -78,10 +81,12 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
     override suspend fun applyVersion(version: String): MappingsContainer {
         mutex.withLock {
             Namespaces.limitCachedData(1)
-            return getCachedVersion(version) ?: super.applyVersion(version).also {
+            return getCachedVersion(version) ?: withTimeoutOrNull(20.seconds) {
+                super.applyVersion(version)
+            }?.also {
                 it.namespace = namespace.id
                 Namespaces.addMappingsContainer(it)
-            }
+            } ?: throw IllegalStateException("TIMED OUT! Failed to load $version in $namespace.")
         }
     }
 
