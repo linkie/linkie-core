@@ -16,6 +16,7 @@ object RemapperDaemon {
         get() = Namespaces.namespaces.values.asSequence()
             .filter { it.supportsSource() }
             .flatMap { ns -> ns.getAllVersions().map { RemapPair(ns, it, getCache(ns, it)) } }
+            .filter { it.version.tryToVersion() == null || it.version.tryToVersion()!! > "1.12.2".toVersion() }
             .sortedWith(compareBy<RemapPair> {
                 when {
                     it.version.tryToVersion() == null -> 2
