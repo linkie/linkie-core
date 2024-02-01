@@ -6,7 +6,6 @@ import com.soywiz.korio.file.VfsFile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 import me.shedaniel.linkie.utils.div
 import me.shedaniel.linkie.utils.error
 import me.shedaniel.linkie.utils.info
@@ -81,25 +80,29 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
     override suspend fun applyVersion(version: String): MappingsContainer {
         mutex.withLock {
             Namespaces.limitCachedData(1)
-            return getCachedVersion(version) ?: withTimeoutOrNull(20.seconds) {
-                super.applyVersion(version)
-            }?.also {
-                it.namespace = namespace.id
-                Namespaces.addMappingsContainer(it)
-            } ?: throw IllegalStateException("TIMED OUT! Failed to load $version in $namespace.")
+            return getCachedVersion(version) ?: runCatching {
+                withTimeout(20.seconds) {
+                    super.applyVersion(version)
+                }.also {
+                    it.namespace = namespace.id
+                    Namespaces.addMappingsContainer(it)
+                }
+            }.getOrElse {
+                throw IllegalStateException("Failed to load $version in $namespace.", it)
+            }
         }
     }
 
     override suspend fun isCached(version: String): Boolean {
         return getCachedVersion(version) != null || super.isCached(version)
     }
-    
+
     private fun getCachedVersion(version: String): MappingsContainer? =
         Namespaces.cachedMappings.firstOrNull { it.namespace == namespace.id && it.version == version.toLowerCase() }
-    
+
     companion object {
         fun create(namespace: Namespace, supplier: () -> MappingsSupplier) {
-            
+
         }
     }
 }
