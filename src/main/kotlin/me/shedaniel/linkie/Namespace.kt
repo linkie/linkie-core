@@ -96,7 +96,9 @@ abstract class Namespace(val id: String) {
     abstract fun getDefaultLoadedVersions(): List<String>
     abstract fun getAllVersions(): Sequence<String>
     abstract suspend fun reloadData()
-    open val defaultVersion: String get() = getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
+    open val defaultVersion: String? get() =
+        getAllVersions().mapNotNull { it.tryToVersion()?.takeIf { version -> version.snapshot == null }?.let { version -> it to version } }.maxByOrNull { it.first }?.first
+            ?: getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
 
     fun getAllSortedVersions(): List<String> =
         getAllVersions().sortedWith(nullsFirst(compareBy { it.tryToVersion() })).toList().asReversed()
@@ -361,6 +363,10 @@ abstract class Namespace(val id: String) {
             }
         }
     }
+    
+    fun hasProvider(version: String): Boolean {
+        return mappingsSuppliers.any { it.isApplicable(version) }
+    }
 
     suspend fun getProvider(version: String): MappingsProvider {
         val entry = mappingsSuppliers.firstOrNull { it.isApplicable(version) } ?: return MappingsProvider.empty(this)
@@ -368,7 +374,7 @@ abstract class Namespace(val id: String) {
     }
 
     suspend fun getDefaultProvider(): MappingsProvider {
-        return getProvider(defaultVersion)
+        return getProvider(defaultVersion!!)
     }
 
     open fun supportsMixin(): Boolean = false

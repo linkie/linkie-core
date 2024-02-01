@@ -116,6 +116,17 @@ class LinkieTest {
     }
 
     @Test
+    fun mojmapRaw() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangRawNamespace)))
+            delay(2000)
+            while (MojangRawNamespace.reloading) delay(100)
+            val container = MojangRawNamespace.getDefaultProvider().get()
+            container
+        }
+    }
+
+    @Test
     fun mojmap() {
         runBlocking {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))

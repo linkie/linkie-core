@@ -192,7 +192,7 @@ class MappingsBuilder(
         operator(container)
     }
 
-    fun replace(operator: MappingsContainer.() -> MappingsContainer) {
+    suspend fun replace(operator: suspend MappingsContainer.() -> MappingsContainer) {
         container = operator(container)
     }
 
