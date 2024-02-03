@@ -28,7 +28,11 @@ object MojangNamespace : Namespace("mojang") {
             }
             buildVersions {
                 versions { versionJsonMap.keys }
-                uuid { if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it }
+                uuid {
+                    (if (!YarnNamespace.getProvider(it).isEmpty()) "$it-intermediary" else it).let { uuid ->
+                        if (MojangRawNamespace.hasMethodArgs(it)) "$uuid-parchment-${MojangRawNamespace.parchmentVersionMap[it]}" else uuid
+                    }
+                }
 
                 buildMappings(name = "Mojang (via Intermediary)") {
                     val raw = MojangRawNamespace.getProvider(it)
@@ -49,6 +53,7 @@ object MojangNamespace : Namespace("mojang") {
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
     override fun supportsSource(): Boolean = true
+    override fun hasMethodArgs(version: String): Boolean = MojangRawNamespace.hasMethodArgs(version)
 
     override fun getDefaultLoadedVersions(): List<String> = defaultVersion?.let(::listOf) ?: listOf()
 

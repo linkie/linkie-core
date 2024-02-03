@@ -1,32 +1,12 @@
 package me.shedaniel.linkie.utils
 
-import com.soywiz.korio.net.http.HttpClient
-import com.soywiz.korio.net.http.createHttpClient
-import com.soywiz.korio.stream.AsyncInputStream
-import com.soywiz.korio.stream.AsyncStream
-import com.soywiz.korio.stream.openAsync
-import com.soywiz.korio.stream.readAvailable
-import okio.BufferedSource
 import java.util.zip.ZipInputStream
 
-val httpClient = createHttpClient()
-val defaultRequestConfig = HttpClient.RequestConfig(
-    throwErrors = true
-)
-
-suspend fun AsyncInputStream.readText(): String = readBytes().decodeToString()
-suspend fun AsyncInputStream.lines(): Sequence<String> = readText().lineSequence()
-suspend fun AsyncInputStream.readBytes() = readAvailable()
-suspend fun URL.readBytes() = httpClient.readBytes(this.toString(), defaultRequestConfig)
+suspend fun URL.readBytes() = java.net.URL(toString()).readBytes()
 suspend fun URL.readText() = readBytes().decodeToString()
 suspend fun URL.readLines() = readText().lineSequence()
 suspend fun ByteArray.lines() = decodeToString().lineSequence()
-suspend fun URL.toAsyncZip(): ZipFile = toAsyncStream().zip()
-suspend fun URL.toAsyncStream(): AsyncStream = readBytes().openAsync()
-suspend fun AsyncStream.zip(): ZipFile = ZipFile(readBytes())
-
-inline fun BufferedSource.forEachLine(consumer: (String) -> Unit) = readUtf8().lineSequence().forEach(consumer)
-fun BufferedSource.lines() = readUtf8().lines()
+suspend fun URL.toAsyncZip(): ZipFile = ZipFile(readBytes())
 
 fun getMillis(): Long = System.currentTimeMillis()
 

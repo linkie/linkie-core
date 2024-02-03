@@ -1,15 +1,7 @@
 package me.shedaniel.linkie.namespaces
 
-import com.soywiz.korio.async.runBlockingNoJs
-import me.shedaniel.linkie.MappingsContainer
-import me.shedaniel.linkie.MappingsMember
-import me.shedaniel.linkie.MappingsSource
-import me.shedaniel.linkie.Namespace
-import me.shedaniel.linkie.Namespaces
-import me.shedaniel.linkie.jar.GameJarProvider
-import me.shedaniel.linkie.obfMergedName
-import me.shedaniel.linkie.obfMergedOrOptimumName
-import me.shedaniel.linkie.optimumName
+import kotlinx.coroutines.runBlocking
+import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.remapDescriptor
 import me.shedaniel.linkie.utils.singleSequenceOf
 import org.quiltmc.mappings_hasher.MappingsHasher
@@ -21,12 +13,13 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
     override fun getDependencies(): Set<Namespace> = setOf(MojangNamespace)
     override fun getDefaultLoadedVersions(): List<String> = listOf()
     override fun getAllVersions(): Sequence<String> = MojangNamespace.getAllVersions().filter {
-        runBlockingNoJs { jarProvider?.canProvideVersion(it) == true }
+        runBlocking { jarProvider?.canProvideVersion(it) == true }
     }
 
     override suspend fun reloadData() = Unit
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
+    override fun hasMethodArgs(version: String): Boolean = MojangRawNamespace.hasMethodArgs(version)
 
     init {
         buildSupplier {
@@ -34,6 +27,10 @@ object MojangHashedNamespace : Namespace("mojang_hashed") {
 
             buildVersions {
                 versionsSeq(MojangNamespace::getAllVersions)
+                uuid {
+                    if (MojangRawNamespace.hasMethodArgs(it)) "$it-parchment-${MojangRawNamespace.parchmentVersionMap[it]}" else it
+                }
+
                 mappings { version ->
                     MojangNamespace.getProvider(version).get()
                         .clone()

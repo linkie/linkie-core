@@ -76,9 +76,9 @@ fun Namespace.multipleCachedSupplier(
     cachedSupplier(uuidGetter, multipleSupplier(versions, supplier))
 
 private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {
-    private val mutex = Mutex()
+    private val locks = mutableMapOf<String, Mutex>()
     override suspend fun applyVersion(version: String): MappingsContainer {
-        mutex.withLock {
+        locks.getOrPut(version) { Mutex() }.withLock {
             Namespaces.limitCachedData(1)
             return getCachedVersion(version) ?: runCatching {
                 withTimeout(20.seconds) {
@@ -99,12 +99,6 @@ private class NamespacedMappingsSupplier(val namespace: Namespace, mappingsSuppl
 
     private fun getCachedVersion(version: String): MappingsContainer? =
         Namespaces.cachedMappings.firstOrNull { it.namespace == namespace.id && it.version == version.toLowerCase() }
-
-    companion object {
-        fun create(namespace: Namespace, supplier: () -> MappingsSupplier) {
-
-        }
-    }
 }
 
 private class LoggingMappingsSupplier(val namespace: Namespace, mappingsSupplier: MappingsSupplier) : DelegateMappingsSupplier(mappingsSupplier) {

@@ -66,6 +66,7 @@ object YarnNamespace : Namespace("yarn") {
     override fun supportsMixin(): Boolean = true
     override fun supportsAW(): Boolean = true
     override fun supportsSource(): Boolean = true
+    override fun hasMethodArgs(version: String): Boolean = true
 
     override suspend fun reloadData() {
         val buildMap = LinkedHashMap<String, MutableList<YarnBuild>>()

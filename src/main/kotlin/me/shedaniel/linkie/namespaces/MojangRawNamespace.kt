@@ -3,18 +3,14 @@ package me.shedaniel.linkie.namespaces
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import me.shedaniel.linkie.ClassBuilder
-import me.shedaniel.linkie.MappingsBuilder
-import me.shedaniel.linkie.MappingsSource
-import me.shedaniel.linkie.Namespace
+import kotlinx.serialization.json.*
+import me.shedaniel.linkie.*
 import me.shedaniel.linkie.utils.*
 import kotlin.collections.set
 
 object MojangRawNamespace : Namespace("mojang_raw") {
     val versionJsonMap = mutableMapOf<String, String>()
+    val parchmentVersionMap = mutableMapOf<String, String>()
     private var latestRelease = ""
     private var latestSnapshot = ""
 
@@ -33,6 +29,7 @@ object MojangRawNamespace : Namespace("mojang_raw") {
             }
             buildVersions {
                 versions { versionJsonMap.keys }
+                uuid { if (parchmentVersionMap.contains(it)) "${it}-parchment-${parchmentVersionMap[it]}" else it }
 
                 buildMappings(name = "Mojang") {
                     val url = URL(versionJsonMap[it]!!)
@@ -43,6 +40,38 @@ object MojangRawNamespace : Namespace("mojang_raw") {
                         server = downloads["server_mappings"]!!.jsonObject["url"]!!.jsonPrimitive.content
                     )
                     source(MappingsSource.MOJANG)
+
+                    if (parchmentVersionMap.contains(it)) {
+                        runCatching {
+                            val parchmentVersion = parchmentVersionMap[it]
+                            URL("https://maven.parchmentmc.org/org/parchmentmc/data/parchment-$it/$parchmentVersion/parchment-$it-$parchmentVersion.zip").toAsyncZip()
+                                .forEachEntry { path, entry ->
+                                    if (!entry.isDirectory && path.split("/").lastOrNull() == "parchment.json") {
+                                        appendParchment(json.parseToJsonElement(entry.bytes.decodeToString()))
+                                    }
+                                }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun MappingsBuilder.appendParchment(json: JsonElement) {
+        json.jsonObject["classes"]?.jsonArray?.map { it.jsonObject }?.forEach { classJson ->
+            val name = classJson["name"]?.jsonPrimitive?.contentOrNull ?: return@forEach
+            container.getClass(name)?.also { clazz ->
+                classJson["methods"]?.jsonArray?.map { it.jsonObject }?.forEach inner@{ methodJson ->
+                    val methodName = methodJson["name"]?.jsonPrimitive?.contentOrNull ?: return@inner
+                    val methodDesc = methodJson["descriptor"]?.jsonPrimitive?.contentOrNull ?: return@inner
+                    clazz.getMethod(methodName, methodDesc)?.also { method ->
+                        methodJson["parameters"]?.jsonArray?.map { it.jsonObject }?.forEach parameter@{ parameterJson ->
+                            val index = parameterJson["index"]?.jsonPrimitive?.intOrNull ?: return@parameter
+                            val name = parameterJson["name"]?.jsonPrimitive?.contentOrNull ?: return@parameter
+                            if (method.args == null) method.args = mutableListOf()
+                            method.args!!.add(MethodArg(index, name))
+                        }
+                    }
                 }
             }
         }
@@ -52,6 +81,7 @@ object MojangRawNamespace : Namespace("mojang_raw") {
     override fun supportsAW(): Boolean = true
     override fun supportsAT(): Boolean = true
     override fun supportsSource(): Boolean = true
+    override fun hasMethodArgs(version: String): Boolean = parchmentVersionMap.contains(version)
 
     override fun getDefaultLoadedVersions(): List<String> = listOf(latestRelease)
 
@@ -60,6 +90,7 @@ object MojangRawNamespace : Namespace("mojang_raw") {
 
     override suspend fun reloadData() {
         versionJsonMap.clear()
+        parchmentVersionMap.clear()
         val versionManifest = json.parseToJsonElement(URL("https://piston-meta.mojang.com/mc/game/version_manifest.json").readText())
         val lowestVersionWithMojmap = "19w36a".toVersion()
         versionManifest.jsonObject["versions"]!!.jsonArray.forEach { versionElement ->
@@ -72,6 +103,11 @@ object MojangRawNamespace : Namespace("mojang_raw") {
         }
         latestRelease = versionManifest.jsonObject["latest"]!!.jsonObject["release"]!!.jsonPrimitive.content
         latestSnapshot = versionManifest.jsonObject["latest"]!!.jsonObject["snapshot"]!!.jsonPrimitive.content
+        runCatching {
+            json.parseToJsonElement(URL("https://versioning.parchmentmc.org/versions").readText()).jsonObject["releases"]!!.jsonObject.forEach { (key, value) ->
+                parchmentVersionMap[key] = value.jsonPrimitive.content
+            }
+        }
     }
 
     override val defaultVersion: String

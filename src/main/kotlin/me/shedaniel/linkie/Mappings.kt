@@ -482,6 +482,7 @@ data class Method(
         intermediaryDesc,
         obfName.copy(),
         mappedName,
+        args?.toMutableList(),
     )
 
     override fun hashCode(): Int = 31 * (31 + intermediaryName.hashCode()) + intermediaryDesc.hashCode()

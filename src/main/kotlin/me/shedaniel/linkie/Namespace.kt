@@ -97,14 +97,14 @@ abstract class Namespace(val id: String) {
     abstract fun getAllVersions(): Sequence<String>
     abstract suspend fun reloadData()
     open val defaultVersion: String? get() =
-        getAllVersions().mapNotNull { it.tryToVersion()?.takeIf { version -> version.snapshot == null }?.let { version -> it to version } }.maxByOrNull { it.first }?.first
-            ?: getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))!!
+        getAllVersions().mapNotNull { it.tryToVersion()?.takeIf { version -> version.snapshot == null }?.let { version -> it to version } }.maxByOrNull { it.second }?.first
+            ?: getAllVersions().maxWithOrNull(nullsFirst(compareBy(String::tryToVersion)))
 
     fun getAllSortedVersions(): List<String> =
         getAllVersions().sortedWith(nullsFirst(compareBy { it.tryToVersion() })).toList().asReversed()
 
     protected fun registerSupplier(mappingsSupplier: MappingsSupplier) {
-        mappingsSuppliers.add(namespacedSupplier(loggingSupplier(mappingsSupplier)))
+        mappingsSuppliers.add(loggingSupplier(namespacedSupplier(mappingsSupplier)))
     }
 
     protected inline fun buildSupplier(builder: MappingsSupplierBuilder.() -> Unit) {
@@ -382,6 +382,7 @@ abstract class Namespace(val id: String) {
     open fun supportsAW(): Boolean = false
     open fun supportsFieldDescription(): Boolean = true
     open fun supportsSource(): Boolean = false
+    open fun hasMethodArgs(version: String): Boolean = false
     
     data class PreSource(
         val result: GameJarProvider.Result,

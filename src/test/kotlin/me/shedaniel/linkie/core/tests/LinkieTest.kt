@@ -1,6 +1,7 @@
 package me.shedaniel.linkie.core.tests
 
 import com.soywiz.klock.measureTime
+import com.soywiz.korio.dynamic.KDynamic.Companion.get
 import com.soywiz.korio.util.toStringDecimal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -67,7 +68,8 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(YarnNamespace)))
             delay(2000)
             while (YarnNamespace.reloading) delay(100)
-            YarnNamespace.getDefaultProvider().get()
+            val container = YarnNamespace.getDefaultProvider().get()
+            container
         }
     }
 
@@ -89,7 +91,8 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(QuiltMappingsNamespace)))
             delay(2000)
             while (QuiltMappingsNamespace.reloading) delay(100)
-            QuiltMappingsNamespace.getDefaultProvider().get()
+            val source = QuiltMappingsNamespace.getDefaultProvider().get()
+            source
         }
     }
 
@@ -133,6 +136,17 @@ class LinkieTest {
             delay(2000)
             while (MojangNamespace.reloading) delay(100)
             val container = MojangNamespace.getDefaultProvider().get()
+            container
+        }
+    }
+
+    @Test
+    fun mojmap_1_20_3() {
+        runBlocking {
+            Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(MojangNamespace)))
+            delay(2000)
+            while (MojangNamespace.reloading) delay(100)
+            val container = MojangNamespace.getProvider("1.20.3").get()
             container
         }
     }
@@ -198,7 +212,8 @@ class LinkieTest {
             Namespaces.init(LinkieConfig.DEFAULT.copy(namespaces = listOf(BarnNamespace)))
             delay(2000)
             while (BarnNamespace.reloading) delay(100)
-            BarnNamespace.getDefaultProvider().get()
+            val container = BarnNamespace.getDefaultProvider().get()
+            container
         }
     }
 
