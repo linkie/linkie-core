@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.shedaniel.linkie.MappingsBuilder
 import me.shedaniel.linkie.MappingsSource
+import me.shedaniel.linkie.MethodArg
 import me.shedaniel.linkie.Namespace
 import me.shedaniel.linkie.parser.apply
 import me.shedaniel.linkie.parser.srg
@@ -29,13 +30,15 @@ object MCPNamespace : Namespace("mcp") {
 
                 buildMappings(name = "MCP") {
                     val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!
-                    source(if (it.toVersion() >= Version(1, 13)) {
-                        loadTsrgFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
-                        MappingsSource.MCP_TSRG
-                    } else {
-                        loadSrgFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
-                        MappingsSource.MCP_SRG
-                    })
+                    source(
+                        if (it.toVersion() >= Version(1, 13)) {
+                            loadTsrgFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
+                            MappingsSource.MCP_TSRG
+                        } else {
+                            loadSrgFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
+                            MappingsSource.MCP_SRG
+                        }
+                    )
                     loadMCPFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
                 }
             }
@@ -95,14 +98,16 @@ object MCPNamespace : Namespace("mcp") {
     }
 
     private fun MappingsBuilder.loadSrgFromInputStream(content: String) {
-        apply(srg(content),
+        apply(
+            srg(content),
             obfMerged = "obf",
             intermediary = "srg",
         )
     }
 
     private fun MappingsBuilder.loadTsrgFromInputStream(content: String) {
-        apply(tsrg(content),
+        apply(
+            tsrg(content),
             obfMerged = "obf",
             intermediary = "srg",
         )
@@ -114,6 +119,7 @@ object MCPNamespace : Namespace("mcp") {
                 when (path.split("/").lastOrNull()) {
                     "fields.csv" -> loadMCPFieldsCSVFromInputStream(entry.bytes.lines())
                     "methods.csv" -> loadMCPMethodsCSVFromInputStream(entry.bytes.lines())
+                    "params.csv" -> loadMCPParamsCSVFromInputStream(entry.bytes.lines())
                 }
             }
         }
@@ -144,6 +150,27 @@ object MCPNamespace : Namespace("mcp") {
             it.methods.forEach { method ->
                 map[method.intermediaryName]?.apply {
                     method.mappedName = this
+                }
+            }
+        }
+    }
+
+    private fun MappingsBuilder.loadMCPParamsCSVFromInputStream(lines: Sequence<String>) {
+        val map = mutableMapOf<String, MutableList<MethodArg>>()
+        val paramRegex = """p_(\d+)_(\d+)_?""".toRegex()
+        val funcRegex = """func_(\d+)_([^_]+)_?""".toRegex()
+        lines.filterNotBlank().forEach {
+            val split = it.split(',')
+            val match = paramRegex.matchEntire(split[0]) ?: return@forEach
+            map.getOrPut(match.groups[1]!!.value) { mutableListOf() }
+                .add(MethodArg(match.groups[2]!!.value.toInt(), split[1]))
+        }
+        container.classes.forEach { (_, it) ->
+            it.methods.forEach inner@{ method ->
+                val match = funcRegex.matchEntire(method.intermediaryName) ?: return@inner
+                map[match.groups[1]!!.value]?.apply {
+                    if (method.args == null) method.args = mutableListOf()
+                    method.args!!.addAll(this)
                 }
             }
         }
