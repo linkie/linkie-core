@@ -30,10 +30,10 @@ object MCPNamespace : Namespace("mcp") {
                 buildMappings(name = "MCP") {
                     val latestSnapshot = mcpConfigSnapshots[it.toVersion()]?.maxOrNull()!!
                     source(if (it.toVersion() >= Version(1, 13)) {
-                        loadTsrgFromURLZip(URL("http://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
+                        loadTsrgFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/$it/mcp_config-$it.zip"))
                         MappingsSource.MCP_TSRG
                     } else {
-                        loadSrgFromURLZip(URL("http://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
+                        loadSrgFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/$it/mcp-$it-srg.zip"))
                         MappingsSource.MCP_SRG
                     })
                     loadMCPFromURLZip(URL("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_snapshot/$latestSnapshot-$it/mcp_snapshot-$latestSnapshot-$it.zip"))
